@@ -84,6 +84,21 @@ with st.sidebar:
         help="Number of consecutive candles with same signal needed for validation"
     )
     
+    # Stop loss selection
+    st.subheader("Stop Loss Display")
+    stop_options = {
+        "Stop Justo (1.5x ATR)": "Stop_Justo",
+        "Stop Balanceado (2.0x ATR)": "Stop_Balanceado", 
+        "Stop Largo (3.0x ATR)": "Stop_Largo"
+    }
+    
+    selected_stop_display = st.selectbox(
+        "Select Stop Loss Type",
+        list(stop_options.keys()),
+        index=0
+    )
+    selected_stop = stop_options[selected_stop_display]
+    
     # Analyze button
     analyze_button = st.button("🔍 Analyze", type="primary", use_container_width=True)
 
@@ -109,12 +124,12 @@ if analyze_button:
         # Download data
         df = yf.download(symbol, start=start_str, end=end_str, interval=interval)
         
-        if df.empty:
+        if df is None or df.empty:
             st.error(f"No data found for symbol '{symbol}' in the specified date range.")
             st.stop()
         
         # Handle multi-level columns if present
-        if hasattr(df.columns, 'levels'):
+        if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
             df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
         
         progress_bar.progress(40)
@@ -234,7 +249,9 @@ if analyze_button:
         df['Color'] = 'black'
         df.loc[df['Estado'] == 'Buy', 'Color'] = 'blue'
         df.loc[df['Estado'] == 'Sell', 'Color'] = 'red'
-        df['Indicator'] = df['Estado'].map({'Buy': 1, 'Sell': 0, 'Stay Out': 0.5})
+        # Create indicator mapping
+        estado_mapping = {'Buy': 1, 'Sell': 0, 'Stay Out': 0.5}
+        df['Indicator'] = df['Estado'].apply(lambda x: estado_mapping.get(x, 0.5))
         
         progress_bar.progress(100)
         status_text.text("Analysis complete!")
@@ -302,26 +319,18 @@ if analyze_button:
             showlegend=False
         ), row=1, col=1)
         
-        # Add stop loss traces
-        fig.add_trace(go.Scatter(
-            x=df['time'], y=df['Stop_Justo'],
-            mode="lines", name="STOP Justo",
-            line=dict(color="orange", width=1.2, dash="dot"),
-            visible=True
-        ), row=1, col=1)
+        # Add selected stop loss trace
+        stop_colors = {
+            "Stop_Justo": "orange",
+            "Stop_Balanceado": "gray", 
+            "Stop_Largo": "green"
+        }
         
         fig.add_trace(go.Scatter(
-            x=df['time'], y=df['Stop_Balanceado'],
-            mode="lines", name="STOP Balanceado",
-            line=dict(color="gray", width=1.5, dash="dot"),
-            visible=False
-        ), row=1, col=1)
-        
-        fig.add_trace(go.Scatter(
-            x=df['time'], y=df['Stop_Largo'],
-            mode="lines", name="STOP Largo",
-            line=dict(color="green", width=1.5, dash="dot"),
-            visible=False
+            x=df['time'], y=df[selected_stop],
+            mode="lines", name=selected_stop_display,
+            line=dict(color=stop_colors[selected_stop], width=2, dash="dot"),
+            hovertemplate=f"<b>{selected_stop_display}:</b> %{{y:.2f}}<extra></extra>"
         ), row=1, col=1)
         
         # Add signal indicator
@@ -370,45 +379,12 @@ if analyze_button:
                         ticktext=['Sell', 'Stay Out', 'Buy'], row=2, col=1)
         fig.update_xaxes(showgrid=False, row=2, col=1)
         
-        # Add dropdown for stop selection
+        # Update layout
         fig.update_layout(
             title=dict(text=titulo_grafico, x=0.5, font=dict(size=18)),
             template="plotly_white",
             hovermode="x unified",
-            height=700,
-            updatemenus=[
-                dict(
-                    buttons=list([
-                        dict(
-                            args=[{"visible": [True if i < len(fig.data) - 6 else 
-                                             (i == len(fig.data) - 6 if j == 0 else False) 
-                                             for i, j in zip(range(len(fig.data)), [0, 1, 2] * (len(fig.data) // 3 + 1))]}],
-                            label="Stop Justo",
-                            method="restyle"
-                        ),
-                        dict(
-                            args=[{"visible": [True if i < len(fig.data) - 6 else 
-                                             (i == len(fig.data) - 5 if j == 1 else False) 
-                                             for i, j in zip(range(len(fig.data)), [0, 1, 2] * (len(fig.data) // 3 + 1))]}],
-                            label="Stop Balanceado",
-                            method="restyle"
-                        ),
-                        dict(
-                            args=[{"visible": [True if i < len(fig.data) - 6 else 
-                                             (i == len(fig.data) - 4 if j == 2 else False) 
-                                             for i, j in zip(range(len(fig.data)), [0, 1, 2] * (len(fig.data) // 3 + 1))]}],
-                            label="Stop Largo",
-                            method="restyle"
-                        )
-                    ]),
-                    direction="down",
-                    showactive=True,
-                    x=0.01,
-                    xanchor="left",
-                    y=1.02,
-                    yanchor="top"
-                )
-            ]
+            height=700
         )
         
         # Display the chart
