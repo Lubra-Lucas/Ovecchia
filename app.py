@@ -463,12 +463,12 @@ if analyze_button:
         # Display the chart
         st.plotly_chart(fig, use_container_width=True)
         
-        # Last 5 Returns Section
-        st.subheader("📈 Últimos 5 Retornos do Sistema")
+        # Last 10 Returns Section
+        st.subheader("📈 Últimos 10 Retornos do Sistema")
         
         if not returns_df.empty:
-            # Get last 5 returns
-            last_returns = returns_df.tail(5).copy()
+            # Get last 10 returns
+            last_returns = returns_df.tail(10).copy()
             last_returns = last_returns.sort_values('exit_time', ascending=False)
             
             # Create columns for returns display
