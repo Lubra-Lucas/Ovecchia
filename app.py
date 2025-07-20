@@ -505,7 +505,13 @@ if analyze_button:
             profitable_trades = len(returns_df[returns_df['return_pct'] > 0])
             win_rate = (profitable_trades / total_trades * 100) if total_trades > 0 else 0
             avg_return = returns_df['return_pct'].mean() if not returns_df.empty else 0
+            total_return = returns_df['return_pct'].sum() if not returns_df.empty else 0
             
+            # Find best and worst trades
+            best_trade = returns_df.loc[returns_df['return_pct'].idxmax()] if not returns_df.empty else None
+            worst_trade = returns_df.loc[returns_df['return_pct'].idxmin()] if not returns_df.empty else None
+            
+            # Display main statistics
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("Total de Operações", total_trades)
@@ -515,6 +521,30 @@ if analyze_button:
                 st.metric("Taxa de Acerto", f"{win_rate:.1f}%")
             with col4:
                 st.metric("Retorno Médio", f"{avg_return:.2f}%")
+            
+            # Display additional statistics
+            st.markdown("### 📊 Estatísticas Detalhadas")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                return_color = "🟢" if total_return >= 0 else "🔴"
+                st.metric("Retorno Total do Modelo", f"{return_color} {total_return:.2f}%")
+            
+            with col2:
+                if best_trade is not None:
+                    best_date = best_trade['exit_time'].strftime('%d/%m/%Y') if hasattr(best_trade['exit_time'], 'strftime') else str(best_trade['exit_time'])
+                    st.metric("Maior Ganho", f"🟢 {best_trade['return_pct']:.2f}%")
+                    st.caption(f"Data: {best_date}")
+                else:
+                    st.metric("Maior Ganho", "N/A")
+            
+            with col3:
+                if worst_trade is not None:
+                    worst_date = worst_trade['exit_time'].strftime('%d/%m/%Y') if hasattr(worst_trade['exit_time'], 'strftime') else str(worst_trade['exit_time'])
+                    st.metric("Maior Perda", f"🔴 {worst_trade['return_pct']:.2f}%")
+                    st.caption(f"Data: {worst_date}")
+                else:
+                    st.metric("Maior Perda", "N/A")
                 
         else:
             st.info("Nenhuma operação completa encontrada no período analisado.")
