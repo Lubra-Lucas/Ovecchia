@@ -58,21 +58,35 @@ with st.sidebar:
     st.subheader("Time Interval")
     interval_options = {
         "1 minute": "1m",
+        "2 minutes": "2m",
         "5 minutes": "5m",
         "15 minutes": "15m",
         "30 minutes": "30m",
+        "60 minutes": "60m",
+        "90 minutes": "90m",
         "1 hour": "1h",
+        "4 hours": "4h",
         "1 day": "1d",
+        "5 days": "5d",
         "1 week": "1wk",
-        "1 month": "1mo"
+        "1 month": "1mo",
+        "3 months": "3mo"
     }
     
     interval_display = st.selectbox(
         "Select Interval",
         list(interval_options.keys()),
-        index=5  # Default to "1 day"
+        index=9  # Default to "1 day"
     )
     interval = interval_options[interval_display]
+    
+    # Data limitations info
+    if interval in ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "4h"]:
+        st.info(
+            "ℹ️ **Data Limitation:** Intraday data (minute/hour intervals) "
+            "is limited to the last 60-730 days depending on the interval. "
+            "For historical analysis beyond this period, use daily intervals."
+        )
     
     # Confirmation candles parameter
     st.subheader("Signal Confirmation")

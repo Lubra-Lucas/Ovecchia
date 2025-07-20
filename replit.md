@@ -7,6 +7,7 @@ LUBRA Trading Analysis Dashboard is a Streamlit-based web application for financ
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Language: Portuguese/English (responds in same language as user input)
 
 ## System Architecture
 
@@ -38,6 +39,9 @@ The application follows a single-file Streamlit architecture pattern, implementi
 ### User Interface
 - **Streamlit Framework**: Web-based dashboard with sidebar controls
 - **Interactive Widgets**: Date pickers, text inputs, and parameter controls
+- **Comprehensive Time Intervals**: Full range from 1m to 3mo (1m,2m,5m,15m,30m,60m,90m,1h,4h,1d,5d,1wk,1mo,3mo)
+- **Stop Loss Selection**: User-selectable stop loss types (Justo, Balanceado, Largo)
+- **Data Limitation Warnings**: Automatic notifications about Yahoo Finance intraday data constraints
 - **Responsive Layout**: Wide layout configuration for optimal chart display
 
 ## Data Flow
