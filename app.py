@@ -267,6 +267,65 @@ if analyze_button:
         estado_mapping = {'Buy': 1, 'Sell': 0, 'Stay Out': 0.5}
         df['Indicator'] = df['Estado'].apply(lambda x: estado_mapping.get(x, 0.5))
         
+        # Calculate returns based on signal changes
+        def calculate_signal_returns(df):
+            returns_data = []
+            current_signal = None
+            entry_price = None
+            entry_time = None
+            
+            for i in range(len(df)):
+                estado = df['Estado'].iloc[i]
+                price = df['close'].iloc[i]
+                time = df['time'].iloc[i]
+                
+                if estado != current_signal and estado != 'Stay Out':
+                    if current_signal is not None and entry_price is not None:
+                        # Calculate return when signal changes
+                        if current_signal == 'Buy':
+                            # Exit from buy position
+                            return_pct = ((price - entry_price) / entry_price) * 100
+                        else:  # current_signal == 'Sell'
+                            # Exit from sell position (short)
+                            return_pct = ((entry_price - price) / entry_price) * 100
+                        
+                        returns_data.append({
+                            'signal': current_signal,
+                            'entry_time': entry_time,
+                            'exit_time': time,
+                            'entry_price': entry_price,
+                            'exit_price': price,
+                            'return_pct': return_pct
+                        })
+                    
+                    # Start new position
+                    current_signal = estado
+                    entry_price = price
+                    entry_time = time
+                elif estado == 'Stay Out' and current_signal is not None:
+                    # Exit position to stay out
+                    if current_signal == 'Buy':
+                        return_pct = ((price - entry_price) / entry_price) * 100
+                    else:  # current_signal == 'Sell'
+                        return_pct = ((entry_price - price) / entry_price) * 100
+                    
+                    returns_data.append({
+                        'signal': current_signal,
+                        'entry_time': entry_time,
+                        'exit_time': time,
+                        'entry_price': entry_price,
+                        'exit_price': price,
+                        'return_pct': return_pct
+                    })
+                    
+                    current_signal = None
+                    entry_price = None
+                    entry_time = None
+            
+            return pd.DataFrame(returns_data)
+        
+        returns_df = calculate_signal_returns(df)
+        
         progress_bar.progress(100)
         status_text.text("Analysis complete!")
         
@@ -404,8 +463,66 @@ if analyze_button:
         # Display the chart
         st.plotly_chart(fig, use_container_width=True)
         
+        # Last 5 Returns Section
+        st.subheader("📈 Últimos 5 Retornos do Sistema")
+        
+        if not returns_df.empty:
+            # Get last 5 returns
+            last_returns = returns_df.tail(5).copy()
+            last_returns = last_returns.sort_values('exit_time', ascending=False)
+            
+            # Create columns for returns display
+            for idx, row in last_returns.iterrows():
+                col1, col2, col3, col4, col5 = st.columns([1, 2, 2, 2, 1.5])
+                
+                # Color coding for returns
+                return_color = "🟢" if row['return_pct'] > 0 else "🔴"
+                signal_icon = "🔵" if row['signal'] == 'Buy' else "🔴"
+                
+                with col1:
+                    st.write(f"{signal_icon}")
+                
+                with col2:
+                    st.write(f"**{row['signal']}**")
+                
+                with col3:
+                    st.write(f"Entrada: {row['entry_price']:.2f}")
+                    st.write(f"Saída: {row['exit_price']:.2f}")
+                
+                with col4:
+                    entry_date = row['entry_time'].strftime('%d/%m/%Y %H:%M') if hasattr(row['entry_time'], 'strftime') else str(row['entry_time'])
+                    exit_date = row['exit_time'].strftime('%d/%m/%Y %H:%M') if hasattr(row['exit_time'], 'strftime') else str(row['exit_time'])
+                    st.write(f"Entrada: {entry_date}")
+                    st.write(f"Saída: {exit_date}")
+                
+                with col5:
+                    st.write(f"{return_color} **{row['return_pct']:.2f}%**")
+                
+                st.markdown("---")
+            
+            # Summary statistics
+            total_trades = len(returns_df)
+            profitable_trades = len(returns_df[returns_df['return_pct'] > 0])
+            win_rate = (profitable_trades / total_trades * 100) if total_trades > 0 else 0
+            avg_return = returns_df['return_pct'].mean() if not returns_df.empty else 0
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total de Operações", total_trades)
+            with col2:
+                st.metric("Operações Lucrativas", profitable_trades)
+            with col3:
+                st.metric("Taxa de Acerto", f"{win_rate:.1f}%")
+            with col4:
+                st.metric("Retorno Médio", f"{avg_return:.2f}%")
+                
+        else:
+            st.info("Nenhuma operação completa encontrada no período analisado.")
+        
+        st.markdown("---")
+        
         # Technical analysis summary
-        st.subheader("📊 Technical Analysis Summary")
+        st.subheader("📊 Resumo da Análise Técnica")
         
         col1, col2 = st.columns(2)
         
