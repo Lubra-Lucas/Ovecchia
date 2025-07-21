@@ -540,14 +540,14 @@ if analyze_button:
             if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
                 df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
 
-        progress_bar.progress(40)
+            progress_bar.progress(40)
             status_text.text("Processando indicadores...")
 
             # Data preprocessing
             symbol_label = symbol.replace("=X", "")
             df.reset_index(inplace=True)
 
-        # Standardize column names
+            # Standardize column names
             column_mapping = {
                 "Datetime": "time", 
                 "Date": "time", 
