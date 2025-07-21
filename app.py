@@ -227,7 +227,7 @@ with st.sidebar:
     
     exit_criteria = st.selectbox(
         "Tipo de Saída",
-        ["Mudança de Estado (Padrão)", "Stop Loss", "Alvo Fixo", "Tempo", "Volatilidade"],
+        ["Mudança de Estado (Padrão)", "Stop Loss", "Alvo Fixo", "Tempo"],
         index=0,
         help="Escolha como calcular a saída das posições"
     )
@@ -241,29 +241,33 @@ with st.sidebar:
             ["Stop Justo", "Stop Balanceado", "Stop Largo"]
         )
     elif exit_criteria == "Alvo Fixo":
-        exit_params['target_pct'] = st.number_input(
-            "Alvo Percentual (%)",
-            min_value=0.1,
-            max_value=50.0,
-            value=3.0,
-            step=0.1
-        )
+        col1, col2 = st.columns(2)
+        with col1:
+            exit_params['target_pct'] = st.number_input(
+                "Alvo Percentual (%)",
+                min_value=0.1,
+                max_value=50.0,
+                value=3.0,
+                step=0.1,
+                help="Percentual de ganho desejado"
+            )
+        with col2:
+            exit_params['stop_loss_pct'] = st.number_input(
+                "Stop Loss Limite (%)",
+                min_value=0.1,
+                max_value=20.0,
+                value=2.0,
+                step=0.1,
+                help="Máximo percentual de perda aceito"
+            )
     elif exit_criteria == "Tempo":
-        exit_params['time_days'] = st.number_input(
-            "Dias após entrada",
+        exit_params['time_candles'] = st.number_input(
+            "Candles após entrada",
             min_value=1,
-            max_value=365,
+            max_value=1000,
             value=10,
-            step=1
-        )
-    elif exit_criteria == "Volatilidade":
-        exit_params['volatility_factor'] = st.number_input(
-            "Fator de Volatilidade",
-            min_value=0.1,
-            max_value=5.0,
-            value=1.0,
-            step=0.1,
-            help="Multiplica o ATR para stop loss"
+            step=1,
+            help="Número de candles após a entrada para sair da posição"
         )
     
     # Analyze button
@@ -530,7 +534,7 @@ if analyze_button:
             """Calculate exit price based on selected criteria"""
             
             if criteria == "Stop Loss":
-                stop_col = f"Stop_{params['stop_type'].replace(' ', '_')}"
+                stop_col = params['stop_type'].replace(' ', '_')
                 for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
                     stop_price = df[stop_col].iloc[i]
                     current_price = df['close'].iloc[i]
@@ -542,47 +546,35 @@ if analyze_button:
             
             elif criteria == "Alvo Fixo":
                 target_pct = params['target_pct'] / 100
+                stop_loss_pct = params['stop_loss_pct'] / 100
+                
                 if signal == 'Buy':
                     target_price = entry_price * (1 + target_pct)
+                    stop_loss_price = entry_price * (1 - stop_loss_pct)
                 else:
                     target_price = entry_price * (1 - target_pct)
+                    stop_loss_price = entry_price * (1 + stop_loss_pct)
                 
                 for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
-                    current_price = df['close'].iloc[i]
-                    
-                    if signal == 'Buy' and current_price >= target_price:
-                        return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
-                    elif signal == 'Sell' and current_price <= target_price:
-                        return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
-            
-            elif criteria == "Tempo":
-                target_days = params['time_days']
-                entry_time = df['time'].iloc[entry_idx]
-                
-                for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
-                    current_time = df['time'].iloc[i]
-                    if hasattr(entry_time, 'timestamp') and hasattr(current_time, 'timestamp'):
-                        days_diff = (current_time.timestamp() - entry_time.timestamp()) / (24 * 3600)
-                    else:
-                        days_diff = target_days + 1  # Fallback
-                    
-                    if days_diff >= target_days:
-                        return df['close'].iloc[i], current_time, f"Tempo {target_days} dias"
-            
-            elif criteria == "Volatilidade":
-                factor = params['volatility_factor']
-                for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
-                    atr = df['ATR'].iloc[i]
                     current_price = df['close'].iloc[i]
                     
                     if signal == 'Buy':
-                        stop_price = entry_price - (factor * atr)
-                        if current_price <= stop_price:
-                            return stop_price, df['time'].iloc[i], f"Volatilidade {factor}x"
-                    else:
-                        stop_price = entry_price + (factor * atr)
-                        if current_price >= stop_price:
-                            return stop_price, df['time'].iloc[i], f"Volatilidade {factor}x"
+                        if current_price >= target_price:
+                            return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
+                        elif current_price <= stop_loss_price:
+                            return stop_loss_price, df['time'].iloc[i], f"Stop Loss {params['stop_loss_pct']}%"
+                    else:  # Sell
+                        if current_price <= target_price:
+                            return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
+                        elif current_price >= stop_loss_price:
+                            return stop_loss_price, df['time'].iloc[i], f"Stop Loss {params['stop_loss_pct']}%"
+            
+            elif criteria == "Tempo":
+                target_candles = params['time_candles']
+                target_idx = entry_idx + target_candles
+                
+                if target_idx < len(df) and target_idx <= current_idx:
+                    return df['close'].iloc[target_idx], df['time'].iloc[target_idx], f"Tempo {target_candles} candles"
             
             return None, None, None
         
