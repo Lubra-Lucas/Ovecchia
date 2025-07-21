@@ -269,43 +269,82 @@ with st.sidebar:
         help="Escolha como calcular a saída das posições"
     )
 
+    # Optimization option
+    optimize_params = st.checkbox(
+        "🎯 Otimizar Parâmetros",
+        value=False,
+        help="Testa diferentes combinações de parâmetros para encontrar o melhor retorno"
+    )
+
     # Additional parameters based on exit criteria
     exit_params = {}
 
     if exit_criteria == "Stop Loss":
-        exit_params['stop_type'] = st.selectbox(
-            "Tipo de Stop",
-            ["Stop Justo", "Stop Balanceado", "Stop Largo"]
-        )
+        if not optimize_params:
+            exit_params['stop_type'] = st.selectbox(
+                "Tipo de Stop",
+                ["Stop Justo", "Stop Balanceado", "Stop Largo"]
+            )
+        else:
+            st.info("🔍 Modo Otimização: Testará todos os tipos de stop (Justo, Balanceado, Largo)")
     elif exit_criteria == "Alvo Fixo":
-        col1, col2 = st.columns(2)
-        with col1:
-            exit_params['target_pct'] = st.number_input(
-                "Alvo Percentual (%)",
-                min_value=0.1,
-                max_value=50.0,
-                value=3.0,
-                step=0.1,
-                help="Percentual de ganho desejado"
-            )
-        with col2:
-            exit_params['stop_loss_pct'] = st.number_input(
-                "Stop Loss Limite (%)",
-                min_value=0.1,
-                max_value=20.0,
-                value=2.0,
-                step=0.1,
-                help="Máximo percentual de perda aceito"
-            )
+        if not optimize_params:
+            col1, col2 = st.columns(2)
+            with col1:
+                exit_params['target_pct'] = st.number_input(
+                    "Alvo Percentual (%)",
+                    min_value=0.1,
+                    max_value=50.0,
+                    value=3.0,
+                    step=0.1,
+                    help="Percentual de ganho desejado"
+                )
+            with col2:
+                exit_params['stop_loss_pct'] = st.number_input(
+                    "Stop Loss Limite (%)",
+                    min_value=0.1,
+                    max_value=20.0,
+                    value=2.0,
+                    step=0.1,
+                    help="Máximo percentual de perda aceito"
+                )
+        else:
+            st.info("🔍 Modo Otimização: Testará múltiplas combinações de alvo e stop")
+            col1, col2 = st.columns(2)
+            with col1:
+                target_range = st.multiselect(
+                    "Alvos a Testar (%)",
+                    [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0, 7.0, 8.0, 10.0],
+                    default=[2.0, 3.0, 4.0, 5.0]
+                )
+            with col2:
+                stop_range = st.multiselect(
+                    "Stops a Testar (%)",
+                    [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0],
+                    default=[1.0, 2.0, 3.0]
+                )
+            exit_params['target_range'] = target_range
+            exit_params['stop_range'] = stop_range
     elif exit_criteria == "Tempo":
-        exit_params['time_candles'] = st.number_input(
-            "Candles após entrada",
-            min_value=1,
-            max_value=1000,
-            value=10,
-            step=1,
-            help="Número de candles após a entrada para sair da posição"
-        )
+        if not optimize_params:
+            exit_params['time_candles'] = st.number_input(
+                "Candles após entrada",
+                min_value=1,
+                max_value=1000,
+                value=10,
+                step=1,
+                help="Número de candles após a entrada para sair da posição"
+            )
+        else:
+            st.info("🔍 Modo Otimização: Testará de 1 a 10 candles")
+            max_candles = st.number_input(
+                "Máximo de candles a testar",
+                min_value=5,
+                max_value=50,
+                value=10,
+                step=1
+            )
+            exit_params['max_candles'] = max_candles
 
     # Analyze button
     analyze_button = st.button("🔍 Analisar", type="primary", use_container_width=True)
@@ -862,7 +901,111 @@ if analyze_button:
 
                 return None, None, None
 
-            custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params)
+            def optimize_exit_parameters(df, criteria, params):
+                """Optimize parameters for the selected exit criteria"""
+                all_results = []
+                best_return = float('-inf')
+                best_params = None
+                best_returns_df = pd.DataFrame()
+                
+                if criteria == "Tempo":
+                    # Test different number of candles
+                    max_candles = params.get('max_candles', 10)
+                    for candles in range(1, max_candles + 1):
+                        test_params = {'time_candles': candles}
+                        returns_df = calculate_custom_exit_returns(df, criteria, test_params)
+                        
+                        if not returns_df.empty:
+                            total_return = returns_df['return_pct'].sum()
+                            avg_return = returns_df['return_pct'].mean()
+                            win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
+                            
+                            all_results.append({
+                                'parametro': f"{candles} candles",
+                                'total_return': total_return,
+                                'avg_return': avg_return,
+                                'win_rate': win_rate,
+                                'total_trades': len(returns_df)
+                            })
+                            
+                            if total_return > best_return:
+                                best_return = total_return
+                                best_params = candles
+                                best_returns_df = returns_df.copy()
+                
+                elif criteria == "Stop Loss":
+                    # Test different stop types
+                    stop_types = ["Stop Justo", "Stop Balanceado", "Stop Largo"]
+                    for stop_type in stop_types:
+                        test_params = {'stop_type': stop_type}
+                        returns_df = calculate_custom_exit_returns(df, criteria, test_params)
+                        
+                        if not returns_df.empty:
+                            total_return = returns_df['return_pct'].sum()
+                            avg_return = returns_df['return_pct'].mean()
+                            win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
+                            
+                            all_results.append({
+                                'parametro': stop_type,
+                                'total_return': total_return,
+                                'avg_return': avg_return,
+                                'win_rate': win_rate,
+                                'total_trades': len(returns_df)
+                            })
+                            
+                            if total_return > best_return:
+                                best_return = total_return
+                                best_params = stop_type
+                                best_returns_df = returns_df.copy()
+                
+                elif criteria == "Alvo Fixo":
+                    # Test different combinations of target and stop
+                    target_range = params.get('target_range', [2.0, 3.0, 4.0, 5.0])
+                    stop_range = params.get('stop_range', [1.0, 2.0, 3.0])
+                    
+                    for target in target_range:
+                        for stop in stop_range:
+                            if target > stop:  # Only test valid combinations
+                                test_params = {'target_pct': target, 'stop_loss_pct': stop}
+                                returns_df = calculate_custom_exit_returns(df, criteria, test_params)
+                                
+                                if not returns_df.empty:
+                                    total_return = returns_df['return_pct'].sum()
+                                    avg_return = returns_df['return_pct'].mean()
+                                    win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
+                                    
+                                    all_results.append({
+                                        'parametro': f"Stop {stop}% / Alvo {target}%",
+                                        'total_return': total_return,
+                                        'avg_return': avg_return,
+                                        'win_rate': win_rate,
+                                        'total_trades': len(returns_df)
+                                    })
+                                    
+                                    if total_return > best_return:
+                                        best_return = total_return
+                                        best_params = {'stop': stop, 'target': target}
+                                        best_returns_df = returns_df.copy()
+                
+                return {
+                    'best_returns': best_returns_df,
+                    'best_params': best_params,
+                    'best_total_return': best_return,
+                    'all_results': all_results
+                }
+
+            # Calculate returns with optimization if enabled
+            if optimize_params:
+                status_text.text("Otimizando parâmetros...")
+                progress_bar.progress(85)
+                
+                optimization_results = optimize_exit_parameters(df, exit_criteria, exit_params)
+                custom_returns_df = optimization_results['best_returns']
+                best_params = optimization_results['best_params']
+                all_results = optimization_results['all_results']
+            else:
+                custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params)
+                optimization_results = None
 
             progress_bar.progress(100)
             status_text.text("Análise Completa!")
@@ -872,7 +1015,33 @@ if analyze_button:
             status_text.empty()
 
             # Display results
-            st.success(f"✅ Análise completa para  {symbol_label}")
+            if optimize_params and optimization_results:
+                st.success(f"✅ Análise e otimização completa para {symbol_label}")
+                
+                # Show optimization results
+                st.subheader("🎯 Resultados da Otimização")
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Melhor Retorno Total", f"{optimization_results['best_total_return']:.2f}%")
+                with col2:
+                    if exit_criteria == "Tempo":
+                        st.metric("Melhor Parâmetro", f"{best_params} candles")
+                    elif exit_criteria == "Stop Loss":
+                        st.metric("Melhor Stop", best_params)
+                    elif exit_criteria == "Alvo Fixo":
+                        st.metric("Melhor Combinação", f"Stop {best_params['stop']}% / Alvo {best_params['target']}%")
+                with col3:
+                    st.metric("Operações", len(custom_returns_df))
+                
+                # Show comparison table
+                st.subheader("📊 Comparação de Parâmetros")
+                comparison_df = pd.DataFrame(all_results)
+                comparison_df = comparison_df.sort_values('total_return', ascending=False)
+                st.dataframe(comparison_df, use_container_width=True)
+                
+            else:
+                st.success(f"✅ Análise completa para  {symbol_label}")
 
             # Current status display
             col1, col2, col3, col4 = st.columns(4)
@@ -1005,7 +1174,10 @@ if analyze_button:
             st.subheader("📈 Análise de Retornos")
 
             # Create tabs for different return calculations
-            tab1, tab2 = st.tabs(["📊 Mudança de Estado", f"🎯 {exit_criteria}"])
+            if optimize_params and optimization_results:
+                tab1, tab2, tab3 = st.tabs(["📊 Mudança de Estado", f"🎯 {exit_criteria} (Otimizado)", "📋 Comparação Detalhada"])
+            else:
+                tab1, tab2 = st.tabs(["📊 Mudança de Estado", f"🎯 {exit_criteria}"])
 
             with tab1:
                 st.write("**Retornos baseados na mudança natural do estado dos sinais**")
@@ -1015,11 +1187,60 @@ if analyze_button:
                     st.info("Nenhuma operação completa encontrada no período analisado.")
 
             with tab2:
-                st.write(f"**Retornos baseados no critério: {exit_criteria}**")
+                if optimize_params and optimization_results:
+                    st.write(f"**Retornos otimizados para: {exit_criteria}**")
+                    if best_params:
+                        if exit_criteria == "Tempo":
+                            st.success(f"🏆 Melhor configuração: **{best_params} candles**")
+                        elif exit_criteria == "Stop Loss":
+                            st.success(f"🏆 Melhor configuração: **{best_params}**")
+                        elif exit_criteria == "Alvo Fixo":
+                            st.success(f"🏆 Melhor configuração: **Stop {best_params['stop']}% / Alvo {best_params['target']}%**")
+                else:
+                    st.write(f"**Retornos baseados no critério: {exit_criteria}**")
+                
                 if not custom_returns_df.empty:
                     display_returns_section(custom_returns_df, exit_criteria)
                 else:
                     st.info("Nenhuma operação completa encontrada com este critério no período analisado.")
+
+            if optimize_params and optimization_results:
+                with tab3:
+                    st.write("**Comparação detalhada de todos os parâmetros testados**")
+                    
+                    # Create a more detailed comparison
+                    if all_results:
+                        comparison_df = pd.DataFrame(all_results)
+                        comparison_df = comparison_df.sort_values('total_return', ascending=False)
+                        
+                        # Format columns
+                        comparison_df['total_return'] = comparison_df['total_return'].round(2)
+                        comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
+                        comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
+                        
+                        # Rename columns for better display
+                        comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
+                        
+                        # Color code the best result
+                        def highlight_best(s):
+                            if s.name == 'Retorno Total (%)':
+                                is_max = s == s.max()
+                                return ['background-color: lightgreen' if v else '' for v in is_max]
+                            return ['' for _ in s]
+                        
+                        styled_df = comparison_df.style.apply(highlight_best, axis=0)
+                        st.dataframe(styled_df, use_container_width=True)
+                        
+                        # Show summary statistics
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Melhor Retorno Total", f"{comparison_df['Retorno Total (%)'].max():.2f}%")
+                        with col2:
+                            st.metric("Pior Retorno Total", f"{comparison_df['Retorno Total (%)'].min():.2f}%")
+                        with col3:
+                            st.metric("Diferença", f"{comparison_df['Retorno Total (%)'].max() - comparison_df['Retorno Total (%)'].min():.2f}%")
+                    else:
+                        st.info("Nenhum resultado de otimização disponível.")
 
             st.markdown("---")
             # Technical analysis summary
