@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore')
 def display_returns_section(returns_data, criteria_name):
     """Helper function to display returns section"""
     if not returns_data.empty:
-        # Get last 10 returns
+        # Get last 20 returns
         last_returns = returns_data.tail(20).copy()
         last_returns = last_returns.sort_values('exit_time', ascending=False)
         
@@ -95,26 +95,26 @@ def display_returns_section(returns_data, criteria_name):
 
 # Page configuration
 st.set_page_config(
-    page_title="LUBRA Trading Analysis",
+    page_title="OVECCHIA TRADING - MODELO QUANT",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # Main title
-st.title("📈 LUBRA Trading Analysis Dashboard")
+st.title("OVECCHIA TRADING - MODELO QUANT ")
 st.markdown("---")
 
 # Sidebar for inputs
-st.sidebar.header("Trading Parameters")
+st.sidebar.header("Parâmetros de Análise")
 
 # Input fields in sidebar
 with st.sidebar:
-    st.subheader("Asset Configuration")
+    st.subheader("Configuração de Ativo")
     
     # Symbol input with examples
     symbol = st.text_input(
-        "Asset Symbol",
+        "Ticker",
         value="BTC-USD",
         help="Examples: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
     ).strip()
@@ -127,20 +127,20 @@ with st.sidebar:
     default_start = default_end - timedelta(days=30)
     
     start_date = st.date_input(
-        "Start Date",
+        "Data Inicial",
         value=default_start,
         max_value=default_end
     )
     
     end_date = st.date_input(
-        "End Date",
+        "Data Final",
         value=default_end,
         min_value=start_date,
         max_value=default_end
     )
     
     # Interval selection
-    st.subheader("Time Interval")
+    st.subheader("Intervalo de Tempo (Timeframe)")
     interval_options = {
         "1 minute": "1m",
         "2 minutes": "2m",
@@ -159,7 +159,7 @@ with st.sidebar:
     }
     
     interval_display = st.selectbox(
-        "Select Interval",
+        "Selecione o Intervalo",
         list(interval_options.keys()),
         index=9  # Default to "1 day"
     )
@@ -174,13 +174,13 @@ with st.sidebar:
         )
     
     # Confirmation candles parameter
-    st.subheader("Signal Confirmation")
+    st.subheader("Confirmação de Sinais")
     confirm_candles = st.number_input(
-        "Confirmation Candles",
+        "Candles de Confirmação",
         min_value=0,
         max_value=5,
         value=0,
-        help="Number of consecutive candles with same signal needed for validation"
+        help="Número de candles consecutivos para confirmar o sinal"
     )
     
     # Moving averages configuration
@@ -208,15 +208,15 @@ with st.sidebar:
         )
     
     # Stop loss selection
-    st.subheader("Stop Loss Display")
+    st.subheader("Stop Loss")
     stop_options = {
-        "Stop Justo (1.5x ATR)": "Stop_Justo",
-        "Stop Balanceado (2.0x ATR)": "Stop_Balanceado", 
-        "Stop Largo (3.0x ATR)": "Stop_Largo"
+        "Stop Justo (2.0x ATR)": "Stop_Justo",
+        "Stop Balanceado (2.5x ATR)": "Stop_Balanceado", 
+        "Stop Largo (3.5x ATR)": "Stop_Largo"
     }
     
     selected_stop_display = st.selectbox(
-        "Select Stop Loss Type",
+        "Selecione o tipo de Stop Loss",
         list(stop_options.keys()),
         index=0
     )
@@ -227,7 +227,7 @@ with st.sidebar:
     
     exit_criteria = st.selectbox(
         "Tipo de Saída",
-        ["Mudança de Estado (Padrão)", "Stop Loss", "Alvo Fixo", "Tempo"],
+        ["Mudança de Estado", "Stop Loss", "Alvo Fixo", "Tempo"],
         index=0,
         help="Escolha como calcular a saída das posições"
     )
@@ -271,12 +271,12 @@ with st.sidebar:
         )
     
     # Analyze button
-    analyze_button = st.button("🔍 Analyze", type="primary", use_container_width=True)
+    analyze_button = st.button("🔍 Analisar", type="primary", use_container_width=True)
 
 # Main content area
 if analyze_button:
     if not symbol:
-        st.error("Please enter a valid asset symbol.")
+        st.error("Por favor entre com um ticker válido.")
         st.stop()
     
     # Progress indicator
@@ -285,7 +285,7 @@ if analyze_button:
     
     try:
         # Fetch data
-        status_text.text("Fetching market data...")
+        status_text.text("Coletando dados de mercado...")
         progress_bar.progress(20)
         
         # Convert dates to strings
@@ -296,7 +296,7 @@ if analyze_button:
         df = yf.download(symbol, start=start_str, end=end_str, interval=interval)
         
         if df is None or df.empty:
-            st.error(f"No data found for symbol '{symbol}' in the specified date range.")
+            st.error(f"Sem data encontrada para '{symbol}' nesse período de tempo.")
             st.stop()
         
         # Handle multi-level columns if present
@@ -304,7 +304,7 @@ if analyze_button:
             df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
         
         progress_bar.progress(40)
-        status_text.text("Processing technical indicators...")
+        status_text.text("Processando indicadores...")
         
         # Data preprocessing
         symbol_label = symbol.replace("=X", "")
@@ -350,7 +350,7 @@ if analyze_button:
         df['RSL_20'] = df['close'] / df['SMA_20']
         
         progress_bar.progress(80)
-        status_text.text("Generating trading signals...")
+        status_text.text("Gerando sinais de trading...")
         
         # Signal generation
         df['Signal'] = 'Stay Out'
@@ -400,7 +400,7 @@ if analyze_button:
         df['Stop_Largo'] = np.nan
         
         # ATR factors for each stop type
-        fatores = {'Stop_Justo': 1.5, 'Stop_Balanceado': 2.0, 'Stop_Largo': 3.0}
+        fatores = {'Stop_Justo': 2.0 , 'Stop_Balanceado': 2.5 , 'Stop_Largo': 3.5}
         
         for i in range(1, len(df)):
             estado = df['Estado'].iloc[i]
@@ -485,7 +485,7 @@ if analyze_button:
         
         # Calculate custom exit criteria returns
         def calculate_custom_exit_returns(df, exit_criteria, exit_params):
-            if exit_criteria == "Mudança de Estado (Padrão)":
+            if exit_criteria == "Mudança de Estado":
                 return returns_df
             
             custom_returns = []
@@ -628,14 +628,14 @@ if analyze_button:
         custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params)
         
         progress_bar.progress(100)
-        status_text.text("Analysis complete!")
+        status_text.text("Análise Completa!")
         
         # Clear progress indicators
         progress_bar.empty()
         status_text.empty()
         
         # Display results
-        st.success(f"✅ Analysis completed for {symbol_label}")
+        st.success(f"✅ Análise completa para  {symbol_label}")
         
         # Current status display
         col1, col2, col3, col4 = st.columns(4)
@@ -785,39 +785,26 @@ if analyze_button:
                 st.info("Nenhuma operação completa encontrada com este critério no período analisado.")
         
         st.markdown("---")
-        
         # Technical analysis summary
-        st.subheader("📊 Resumo da Análise Técnica")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.write("**Moving Averages:**")
-            st.write(f"• SMA 20: {df['SMA_20'].iloc[-1]:.2f}")
-            st.write(f"• SMA {sma_short}: {df[f'SMA_{sma_short}'].iloc[-1]:.2f}")
-            st.write(f"• SMA {sma_long}: {df[f'SMA_{sma_long}'].iloc[-1]:.2f}")
-            
-            st.write("**Stop Loss Levels:**")
+        st.subheader("Informações Relevantes ")
+
+        # Apenas uma coluna com os dados relevantes
+        col = st.container()
+
+        with col:
+            st.write("**Níveis de Stop Loss:**")
             st.write(f"• Stop Justo: {df['Stop_Justo'].iloc[-1]:.2f}")
             st.write(f"• Stop Balanceado: {df['Stop_Balanceado'].iloc[-1]:.2f}")
             st.write(f"• Stop Largo: {df['Stop_Largo'].iloc[-1]:.2f}")
-        
-        with col2:
-            st.write("**Technical Indicators:**")
-            st.write(f"• RSI (14): {current_rsi:.2f}")
-            st.write(f"• RSL (20): {current_rsl:.3f}")
-            st.write(f"• ATR (14): {df['ATR'].iloc[-1]:.4f}")
-            
-            # Signal statistics
+
+            st.write("**Distribuição dos Sinais:**")
             buy_signals = (df['Estado'] == 'Buy').sum()
             sell_signals = (df['Estado'] == 'Sell').sum()
             stay_out = (df['Estado'] == 'Stay Out').sum()
-            
-            st.write("**Signal Distribution:**")
-            st.write(f"• Buy signals: {buy_signals}")
-            st.write(f"• Sell signals: {sell_signals}")
-            st.write(f"• Stay out: {stay_out}")
-        
+            st.write(f"• Sinais de Compra (Buy): {buy_signals}")
+            st.write(f"• Sinais de Venda (Sell): {sell_signals}")
+            st.write(f"• Fora do Mercado (Stay Out): {stay_out}")
+
         # Data table option
         if st.checkbox("Show Raw Data"):
             st.subheader("📋 Raw Data")
@@ -832,26 +819,26 @@ if analyze_button:
 
 else:
     # Initial state - show instructions
-    st.info("👈 Configure your trading parameters in the sidebar and click 'Analyze' to start the analysis.")
+    st.info("👈 Configure os parâmetros de trading na barra lateral e clique em 'Analisar' para iniciar a análise.")
     
-    st.subheader("📋 How to Use")
+    st.subheader("📋 Como Usar")
     st.write("""
-    1. **Enter Asset Symbol**: Use standard ticker symbols (e.g., BTC-USD, AAPL, PETR4.SA)
-    2. **Set Date Range**: Choose your analysis period
-    3. **Select Time Interval**: Pick the timeframe for your analysis
-    4. **Configure Confirmation**: Set how many consecutive signals are needed for validation
-    5. **Click Analyze**: Generate your trading analysis
+    1. **Insira o Símbolo do Ativo**: Use os símbolos padrão (ex: BTC-USD, AAPL, PETR4.SA)  
+    2. **Defina o Período de Análise**: Escolha o intervalo de datas que deseja analisar  
+    3. **Selecione o Intervalo de Tempo**: Escolha o timeframe para sua análise  
+    4. **Configure a Confirmação**: Defina quantos sinais consecutivos são necessários para validação  
+    5. **Clique em Analisar**: Gere sua análise de trading
     """)
     
-    st.subheader("🔍 Features")
+    st.subheader("🔍 Funcionalidades")
     st.write("""
-    - **Technical Indicators**: SMA (20, 60, 70), RSI (14), RSL (20), ATR (14)
-    - **Trading Signals**: Buy, Sell, Stay Out with confirmation logic
-    - **Stop Loss Levels**: Three different ATR-based stop levels
-    - **Interactive Charts**: Zoom, pan, and hover for detailed information
-    - **Real-time Data**: Powered by Yahoo Finance API
+    - **Indicadores Técnicos**: SMA (20, 60, 70), RSI (14), RSL (20), ATR (14)  
+    - **Sinais de Trading**: Compra, Venda e Ficar de Fora, com lógica de confirmação  
+    - **Níveis de Stop Loss**: Três níveis diferentes baseados no ATR  
+    - **Gráficos Interativos**: Zoom, arrastar e visualização ao passar o mouse para mais detalhes  
+    - **Dados em Tempo Real**: Fornecidos pela API do Yahoo Finance
     """)
 
-# Footer
+
 st.markdown("---")
-st.markdown("*LUBRA Trading Analysis Dashboard - For educational purposes only. Not financial advice.*")
+st.markdown("*OVECCHIA TRADING - MODELO QUANT - Para fins educacionais apenas. Não é uma recomendação financeira.*")
