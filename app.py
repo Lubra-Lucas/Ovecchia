@@ -110,14 +110,51 @@ st.sidebar.header("Parâmetros de Análise")
 
 # Input fields in sidebar
 with st.sidebar:
-    st.subheader("Configuração de Ativo")
-
-    # Symbol input with examples
-    symbol = st.text_input(
-        "Ticker",
-        value="BTC-USD",
-        help="Examples: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
-    ).strip()
+    st.subheader("Modo de Análise")
+    
+    analysis_mode = st.radio(
+        "Escolha o tipo de análise:",
+        ["Ativo Individual", "Screening de Múltiplos Ativos"]
+    )
+    
+    if analysis_mode == "Ativo Individual":
+        st.subheader("Configuração de Ativo")
+        # Symbol input with examples
+        symbol = st.text_input(
+            "Ticker",
+            value="BTC-USD",
+            help="Examples: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
+        ).strip()
+        
+    else:  # Screening mode
+        st.subheader("Lista de Ativos para Screening")
+        
+        # Predefined lists
+        preset_lists = {
+            "Criptomoedas Top 10": ["BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD", "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD"],
+            "Ações Brasileiras": ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "MGLU3.SA", "ABEV3.SA", "JBSS3.SA", "WEGE3.SA", "RENT3.SA", "LREN3.SA"],
+            "Ações Americanas": ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "META", "NVDA", "NFLX", "AMD", "BABA"],
+            "Pares de Forex": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"]
+        }
+        
+        selected_preset = st.selectbox(
+            "Lista Pré-definida:",
+            ["Customizada"] + list(preset_lists.keys())
+        )
+        
+        if selected_preset != "Customizada":
+            symbols_list = preset_lists[selected_preset]
+            st.info(f"Selecionados: {', '.join(symbols_list)}")
+        else:
+            symbols_input = st.text_area(
+                "Digite os tickers (um por linha):",
+                value="BTC-USD\nETH-USD\nPETR4.SA\nAAPL",
+                help="Digite um ticker por linha"
+            )
+            symbols_list = [s.strip() for s in symbols_input.split('\n') if s.strip()]
+        
+        # Show selected symbols
+        st.write(f"**{len(symbols_list)} ativos selecionados para screening**")
 
     # Date range selection
     st.subheader("Date Range")
@@ -275,175 +312,395 @@ with st.sidebar:
 
 # Main content area
 if analyze_button:
-    if not symbol:
-        st.error("Por favor entre com um ticker válido.")
-        st.stop()
+    if analysis_mode == "Ativo Individual":
+        if not symbol:
+            st.error("Por favor entre com um ticker válido.")
+            st.stop()
+        symbols_to_analyze = [symbol]
+    else:  # Screening mode
+        if not symbols_list:
+            st.error("Por favor selecione pelo menos um ativo para screening.")
+            st.stop()
+        symbols_to_analyze = symbols_list
 
     # Progress indicator
     progress_bar = st.progress(0)
     status_text = st.empty()
 
     try:
-        # Fetch data
-        status_text.text("Coletando dados de mercado...")
-        progress_bar.progress(20)
+        if analysis_mode == "Screening de Múltiplos Ativos":
+            # Screening mode
+            screening_results = []
+            total_symbols = len(symbols_to_analyze)
+            
+            for idx, current_symbol in enumerate(symbols_to_analyze):
+                status_text.text(f"Analisando {current_symbol} ({idx+1}/{total_symbols})...")
+                progress_bar.progress(int((idx / total_symbols) * 100))
+                
+                try:
+                    # Convert dates to strings
+                    start_str = start_date.strftime("%Y-%m-%d")
+                    end_str = end_date.strftime("%Y-%m-%d")
+                    
+                    # Download data for current symbol
+                    df_temp = yf.download(current_symbol, start=start_str, end=end_str, interval=interval)
+                    
+                    if df_temp is None or df_temp.empty:
+                        screening_results.append({
+                            'symbol': current_symbol,
+                            'status': 'Erro - Sem dados',
+                            'current_state': 'N/A',
+                            'previous_state': 'N/A',
+                            'state_change': False,
+                            'current_price': 'N/A'
+                        })
+                        continue
+                    
+                    # Handle multi-level columns if present
+                    if hasattr(df_temp.columns, 'nlevels') and df_temp.columns.nlevels > 1:
+                        df_temp = df_temp.xs(current_symbol, level='Ticker', axis=1, drop_level=True)
+                    
+                    # Ensure we have the required columns
+                    df_temp.reset_index(inplace=True)
+                    column_mapping = {
+                        "Datetime": "time", 
+                        "Date": "time", 
+                        "Open": "open", 
+                        "High": "high", 
+                        "Low": "low", 
+                        "Close": "close",
+                        "Volume": "volume"
+                    }
+                    df_temp.rename(columns=column_mapping, inplace=True)
+                    
+                    # Calculate indicators (simplified for screening)
+                    df_temp[f'SMA_{sma_short}'] = df_temp['close'].rolling(window=sma_short).mean()
+                    df_temp[f'SMA_{sma_long}'] = df_temp['close'].rolling(window=sma_long).mean()
+                    df_temp['SMA_20'] = df_temp['close'].rolling(window=20).mean()
+                    
+                    # RSI calculation
+                    delta = df_temp['close'].diff()
+                    gain = np.where(delta > 0, delta, 0)
+                    loss = np.where(delta < 0, -delta, 0)
+                    avg_gain = pd.Series(gain, index=df_temp.index).rolling(window=14).mean()
+                    avg_loss = pd.Series(loss, index=df_temp.index).rolling(window=14).mean()
+                    rs = avg_gain / avg_loss
+                    df_temp['RSI_14'] = 100 - (100 / (1 + rs))
+                    
+                    # RSL calculation
+                    df_temp['RSL_20'] = df_temp['close'] / df_temp['SMA_20']
+                    
+                    # Signal generation
+                    df_temp['Signal'] = 'Stay Out'
+                    for i in range(1, len(df_temp)):
+                        rsi_up = df_temp['RSI_14'].iloc[i] > df_temp['RSI_14'].iloc[i-1]
+                        rsi_down = df_temp['RSI_14'].iloc[i] < df_temp['RSI_14'].iloc[i-1]
+                        rsl = df_temp['RSL_20'].iloc[i]
+                        rsl_prev = df_temp['RSL_20'].iloc[i-1]
 
-        # Convert dates to strings
-        start_str = start_date.strftime("%Y-%m-%d")
-        end_str = end_date.strftime("%Y-%m-%d")
+                        rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
+                        rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
 
-        # Download data
-        df = yf.download(symbol, start=start_str, end=end_str, interval=interval)
+                        if (
+                            df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_short}'].iloc[i]
+                            and df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_long}'].iloc[i]
+                            and rsi_up and rsl_buy
+                        ):
+                            df_temp.at[i, 'Signal'] = 'Buy'
+                        elif (
+                            df_temp['close'].iloc[i] < df_temp[f'SMA_{sma_short}'].iloc[i]
+                            and rsi_down and rsl_sell
+                        ):
+                            df_temp.at[i, 'Signal'] = 'Sell'
+                    
+                    # State persistence
+                    df_temp['Estado'] = 'Stay Out'
+                    for i in range(confirm_candles, len(df_temp)):
+                        last_signals = df_temp['Signal'].iloc[i - confirm_candles:i]
+                        current_signal = df_temp['Signal'].iloc[i]
 
-        if df is None or df.empty:
-            st.error(f"Sem data encontrada para '{symbol}' nesse período de tempo.")
-            st.stop()
+                        if all(last_signals == current_signal) and current_signal != 'Stay Out':
+                            df_temp.loc[df_temp.index[i], 'Estado'] = current_signal
+                        else:
+                            df_temp.loc[df_temp.index[i], 'Estado'] = df_temp['Estado'].iloc[i - 1]
+                    
+                    # Check for state change
+                    current_state = df_temp['Estado'].iloc[-1]
+                    previous_state = df_temp['Estado'].iloc[-2] if len(df_temp) > 1 else current_state
+                    state_change = current_state != previous_state
+                    current_price = df_temp['close'].iloc[-1]
+                    
+                    screening_results.append({
+                        'symbol': current_symbol,
+                        'status': 'Sucesso',
+                        'current_state': current_state,
+                        'previous_state': previous_state,
+                        'state_change': state_change,
+                        'current_price': current_price
+                    })
+                    
+                except Exception as e:
+                    screening_results.append({
+                        'symbol': current_symbol,
+                        'status': f'Erro: {str(e)[:50]}...',
+                        'current_state': 'N/A',
+                        'previous_state': 'N/A',
+                        'state_change': False,
+                        'current_price': 'N/A'
+                    })
+            
+            progress_bar.progress(100)
+            status_text.text("Screening Completo!")
+            
+            # Display screening results
+            st.success(f"✅ Screening completo para {len(symbols_to_analyze)} ativos")
+            
+            # Filter and display assets with state changes
+            state_changes = [r for r in screening_results if r['state_change']]
+            
+            if state_changes:
+                st.subheader(f"🚨 {len(state_changes)} Ativo(s) com Mudança de Estado Detectada!")
+                
+                for result in state_changes:
+                    col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
+                    
+                    state_icon = "🔵" if result['current_state'] == "Buy" else "🔴" if result['current_state'] == "Sell" else "⚫"
+                    prev_icon = "🔵" if result['previous_state'] == "Buy" else "🔴" if result['previous_state'] == "Sell" else "⚫"
+                    
+                    with col1:
+                        st.write(f"**{result['symbol']}**")
+                    with col2:
+                        st.write(f"Preço: {result['current_price']:.2f}")
+                    with col3:
+                        st.write(f"De: {prev_icon} {result['previous_state']}")
+                    with col4:
+                        st.write(f"Para: {state_icon} {result['current_state']}")
+                    with col5:
+                        if result['current_state'] == 'Buy':
+                            st.success("🟢 COMPRA")
+                        elif result['current_state'] == 'Sell':
+                            st.error("🔴 VENDA")
+                        else:
+                            st.info("⚫ FORA")
+                    
+                    st.markdown("---")
+            else:
+                st.info("ℹ️ Nenhum ativo com mudança de estado detectada no período analisado.")
+            
+            # Summary table of all assets
+            st.subheader("📊 Resumo Geral do Screening")
+            
+            # Create summary dataframe
+            summary_df = pd.DataFrame(screening_results)
+            
+            # Display metrics
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                total_assets = len(summary_df)
+                st.metric("Total de Ativos", total_assets)
+            
+            with col2:
+                successful_analysis = len(summary_df[summary_df['status'] == 'Sucesso'])
+                st.metric("Análises Bem-sucedidas", successful_analysis)
+            
+            with col3:
+                buy_signals = len(summary_df[summary_df['current_state'] == 'Buy'])
+                st.metric("Sinais de Compra", buy_signals)
+            
+            with col4:
+                sell_signals = len(summary_df[summary_df['current_state'] == 'Sell'])
+                st.metric("Sinais de Venda", sell_signals)
+            
+            # Display full table
+            st.dataframe(summary_df, use_container_width=True)
+            
+            # Clear progress indicators
+            progress_bar.empty()
+            status_text.empty()
+            
+        else:
+            # Individual analysis mode (existing code)
+            # Fetch data
+            status_text.text("Coletando dados de mercado...")
+            progress_bar.progress(20)
 
-        # Handle multi-level columns if present
-        if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
-            df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
+            # Convert dates to strings
+            start_str = start_date.strftime("%Y-%m-%d")
+            end_str = end_date.strftime("%Y-%m-%d")
+
+            # Download data
+            df = yf.download(symbol, start=start_str, end=end_str, interval=interval)
+
+            if df is None or df.empty:
+                st.error(f"Sem data encontrada para '{symbol}' nesse período de tempo.")
+                st.stop()
+
+            # Handle multi-level columns if present
+            if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
+                df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
 
         progress_bar.progress(40)
-        status_text.text("Processando indicadores...")
+            status_text.text("Processando indicadores...")
 
-        # Data preprocessing
-        symbol_label = symbol.replace("=X", "")
-        df.reset_index(inplace=True)
+            # Data preprocessing
+            symbol_label = symbol.replace("=X", "")
+            df.reset_index(inplace=True)
 
         # Standardize column names
-        column_mapping = {
-            "Datetime": "time", 
-            "Date": "time", 
-            "Open": "open", 
-            "High": "high", 
-            "Low": "low", 
-            "Close": "close",
-            "Volume": "volume"
-        }
-        df.rename(columns=column_mapping, inplace=True)
+            column_mapping = {
+                "Datetime": "time", 
+                "Date": "time", 
+                "Open": "open", 
+                "High": "high", 
+                "Low": "low", 
+                "Close": "close",
+                "Volume": "volume"
+            }
+            df.rename(columns=column_mapping, inplace=True)
 
-        # Ensure we have the required columns
-        required_columns = ['time', 'open', 'high', 'low', 'close']
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        if missing_columns:
-            st.error(f"Missing required data columns: {missing_columns}")
-            st.stop()
+            # Ensure we have the required columns
+            required_columns = ['time', 'open', 'high', 'low', 'close']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                st.error(f"Missing required data columns: {missing_columns}")
+                st.stop()
 
-        progress_bar.progress(60)
+            progress_bar.progress(60)
 
         # Calculate technical indicators
-        # Moving averages (customizable)
-        df[f'SMA_{sma_short}'] = df['close'].rolling(window=sma_short).mean()
-        df[f'SMA_{sma_long}'] = df['close'].rolling(window=sma_long).mean()
-        df['SMA_20'] = df['close'].rolling(window=20).mean()
+            # Moving averages (customizable)
+            df[f'SMA_{sma_short}'] = df['close'].rolling(window=sma_short).mean()
+            df[f'SMA_{sma_long}'] = df['close'].rolling(window=sma_long).mean()
+            df['SMA_20'] = df['close'].rolling(window=20).mean()
 
-        # RSI calculation
-        delta = df['close'].diff()
-        gain = np.where(delta > 0, delta, 0)
-        loss = np.where(delta < 0, -delta, 0)
-        avg_gain = pd.Series(gain, index=df.index).rolling(window=14).mean()
-        avg_loss = pd.Series(loss, index=df.index).rolling(window=14).mean()
-        rs = avg_gain / avg_loss
-        df['RSI_14'] = 100 - (100 / (1 + rs))
+            # RSI calculation
+            delta = df['close'].diff()
+            gain = np.where(delta > 0, delta, 0)
+            loss = np.where(delta < 0, -delta, 0)
+            avg_gain = pd.Series(gain, index=df.index).rolling(window=14).mean()
+            avg_loss = pd.Series(loss, index=df.index).rolling(window=14).mean()
+            rs = avg_gain / avg_loss
+            df['RSI_14'] = 100 - (100 / (1 + rs))
 
-        # RSL calculation
-        df['RSL_20'] = df['close'] / df['SMA_20']
+            # RSL calculation
+            df['RSL_20'] = df['close'] / df['SMA_20']
 
-        progress_bar.progress(80)
-        status_text.text("Gerando sinais de trading...")
+            progress_bar.progress(80)
+            status_text.text("Gerando sinais de trading...")
 
-        # Signal generation
-        df['Signal'] = 'Stay Out'
-        for i in range(1, len(df)):
-            rsi_up = df['RSI_14'].iloc[i] > df['RSI_14'].iloc[i-1]
-            rsi_down = df['RSI_14'].iloc[i] < df['RSI_14'].iloc[i-1]
-            rsl = df['RSL_20'].iloc[i]
-            rsl_prev = df['RSL_20'].iloc[i-1]
+            # Signal generation
+            df['Signal'] = 'Stay Out'
+            for i in range(1, len(df)):
+                rsi_up = df['RSI_14'].iloc[i] > df['RSI_14'].iloc[i-1]
+                rsi_down = df['RSI_14'].iloc[i] < df['RSI_14'].iloc[i-1]
+                rsl = df['RSL_20'].iloc[i]
+                rsl_prev = df['RSL_20'].iloc[i-1]
 
-            rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
-            rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
+                rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
+                rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
 
-            if (
-                df['close'].iloc[i] > df[f'SMA_{sma_short}'].iloc[i]
-                and df['close'].iloc[i] > df[f'SMA_{sma_long}'].iloc[i]
-                and rsi_up and rsl_buy
-            ):
-                df.at[i, 'Signal'] = 'Buy'
-            elif (
-                df['close'].iloc[i] < df[f'SMA_{sma_short}'].iloc[i]
-                and rsi_down and rsl_sell
-            ):
-                df.at[i, 'Signal'] = 'Sell'
+                if (
+                    df['close'].iloc[i] > df[f'SMA_{sma_short}'].iloc[i]
+                    and df['close'].iloc[i] > df[f'SMA_{sma_long}'].iloc[i]
+                    and rsi_up and rsl_buy
+                ):
+                    df.at[i, 'Signal'] = 'Buy'
+                elif (
+                    df['close'].iloc[i] < df[f'SMA_{sma_short}'].iloc[i]
+                    and rsi_down and rsl_sell
+                ):
+                    df.at[i, 'Signal'] = 'Sell'
 
-        # State persistence with confirmation filter
-        df['Estado'] = 'Stay Out'
-        for i in range(confirm_candles, len(df)):
-            last_signals = df['Signal'].iloc[i - confirm_candles:i]
-            current_signal = df['Signal'].iloc[i]
+            # State persistence with confirmation filter
+            df['Estado'] = 'Stay Out'
+            for i in range(confirm_candles, len(df)):
+                last_signals = df['Signal'].iloc[i - confirm_candles:i]
+                current_signal = df['Signal'].iloc[i]
 
-            if all(last_signals == current_signal) and current_signal != 'Stay Out':
-                df.loc[df.index[i], 'Estado'] = current_signal
-            else:
-                df.loc[df.index[i], 'Estado'] = df['Estado'].iloc[i - 1]
+                if all(last_signals == current_signal) and current_signal != 'Stay Out':
+                    df.loc[df.index[i], 'Estado'] = current_signal
+                else:
+                    df.loc[df.index[i], 'Estado'] = df['Estado'].iloc[i - 1]
 
-        # ATR and Stop Loss calculations
-        df['prior_close'] = df['close'].shift(1)
-        df['tr1'] = df['high'] - df['low']
-        df['tr2'] = abs(df['high'] - df['prior_close'])
-        df['tr3'] = abs(df['low'] - df['prior_close'])
-        df['TR'] = df[['tr1', 'tr2', 'tr3']].max(axis=1)
-        df['ATR'] = df['TR'].rolling(window=14).mean()
+            # ATR and Stop Loss calculations
+            df['prior_close'] = df['close'].shift(1)
+            df['tr1'] = df['high'] - df['low']
+            df['tr2'] = abs(df['high'] - df['prior_close'])
+            df['tr3'] = abs(df['low'] - df['prior_close'])
+            df['TR'] = df[['tr1', 'tr2', 'tr3']].max(axis=1)
+            df['ATR'] = df['TR'].rolling(window=14).mean()
 
-        # Initialize stop loss levels
-        df['Stop_Justo'] = np.nan
-        df['Stop_Balanceado'] = np.nan
-        df['Stop_Largo'] = np.nan
+            # Initialize stop loss levels
+            df['Stop_Justo'] = np.nan
+            df['Stop_Balanceado'] = np.nan
+            df['Stop_Largo'] = np.nan
 
-        # ATR factors for each stop type
-        fatores = {'Stop_Justo': 2.0 , 'Stop_Balanceado': 2.5 , 'Stop_Largo': 3.5}
+            # ATR factors for each stop type
+            fatores = {'Stop_Justo': 2.0 , 'Stop_Balanceado': 2.5 , 'Stop_Largo': 3.5}
 
-        for i in range(1, len(df)):
-            estado = df['Estado'].iloc[i]
-            close = df['close'].iloc[i]
-            atr = df['ATR'].iloc[i]
-
-            for stop_tipo, fator in fatores.items():
-                stop_anterior = df[stop_tipo].iloc[i - 1]
-                if estado == 'Buy':
-                    stop_atual = close - fator * atr
-                    df.loc[df.index[i], stop_tipo] = max(stop_anterior, stop_atual) if pd.notna(stop_anterior) else stop_atual
-                elif estado == 'Sell':
-                    stop_atual = close + fator * atr
-                    df.loc[df.index[i], stop_tipo] = min(stop_anterior, stop_atual) if pd.notna(stop_anterior) else stop_atual
-
-        # Color coding and indicators
-        df['Color'] = 'black'
-        df.loc[df['Estado'] == 'Buy', 'Color'] = 'blue'
-        df.loc[df['Estado'] == 'Sell', 'Color'] = 'red'
-        # Create indicator mapping
-        estado_mapping = {'Buy': 1, 'Sell': 0, 'Stay Out': 0.5}
-        df['Indicator'] = df['Estado'].apply(lambda x: estado_mapping.get(x, 0.5))
-
-        # Calculate returns based on signal changes
-        def calculate_signal_returns(df):
-            returns_data = []
-            current_signal = None
-            entry_price = None
-            entry_time = None
-
-            for i in range(len(df)):
+            for i in range(1, len(df)):
                 estado = df['Estado'].iloc[i]
-                price = df['close'].iloc[i]
-                time = df['time'].iloc[i]
+                close = df['close'].iloc[i]
+                atr = df['ATR'].iloc[i]
 
-                if estado != current_signal and estado != 'Stay Out':
-                    if current_signal is not None and entry_price is not None:
-                        # Calculate return when signal changes
+                for stop_tipo, fator in fatores.items():
+                    stop_anterior = df[stop_tipo].iloc[i - 1]
+                    if estado == 'Buy':
+                        stop_atual = close - fator * atr
+                        df.loc[df.index[i], stop_tipo] = max(stop_anterior, stop_atual) if pd.notna(stop_anterior) else stop_atual
+                    elif estado == 'Sell':
+                        stop_atual = close + fator * atr
+                        df.loc[df.index[i], stop_tipo] = min(stop_anterior, stop_atual) if pd.notna(stop_anterior) else stop_atual
+
+            # Color coding and indicators
+            df['Color'] = 'black'
+            df.loc[df['Estado'] == 'Buy', 'Color'] = 'blue'
+            df.loc[df['Estado'] == 'Sell', 'Color'] = 'red'
+            # Create indicator mapping
+            estado_mapping = {'Buy': 1, 'Sell': 0, 'Stay Out': 0.5}
+            df['Indicator'] = df['Estado'].apply(lambda x: estado_mapping.get(x, 0.5))
+
+            # Calculate returns based on signal changes
+            def calculate_signal_returns(df):
+                returns_data = []
+                current_signal = None
+                entry_price = None
+                entry_time = None
+
+                for i in range(len(df)):
+                    estado = df['Estado'].iloc[i]
+                    price = df['close'].iloc[i]
+                    time = df['time'].iloc[i]
+
+                    if estado != current_signal and estado != 'Stay Out':
+                        if current_signal is not None and entry_price is not None:
+                            # Calculate return when signal changes
+                            if current_signal == 'Buy':
+                                # Exit from buy position
+                                return_pct = ((price - entry_price) / entry_price) * 100
+                            else:  # current_signal == 'Sell'
+                                # Exit from sell position (short)
+                                return_pct = ((entry_price - price) / entry_price) * 100
+
+                            returns_data.append({
+                                'signal': current_signal,
+                                'entry_time': entry_time,
+                                'exit_time': time,
+                                'entry_price': entry_price,
+                                'exit_price': price,
+                                'return_pct': return_pct
+                            })
+
+                        # Start new position
+                        current_signal = estado
+                        entry_price = price
+                        entry_time = time
+                    elif estado == 'Stay Out' and current_signal is not None:
+                        # Exit position to stay out
                         if current_signal == 'Buy':
-                            # Exit from buy position
                             return_pct = ((price - entry_price) / entry_price) * 100
                         else:  # current_signal == 'Sell'
-                            # Exit from sell position (short)
                             return_pct = ((entry_price - price) / entry_price) * 100
 
                         returns_data.append({
@@ -455,363 +712,343 @@ if analyze_button:
                             'return_pct': return_pct
                         })
 
-                    # Start new position
-                    current_signal = estado
-                    entry_price = price
-                    entry_time = time
-                elif estado == 'Stay Out' and current_signal is not None:
-                    # Exit position to stay out
-                    if current_signal == 'Buy':
-                        return_pct = ((price - entry_price) / entry_price) * 100
-                    else:  # current_signal == 'Sell'
-                        return_pct = ((entry_price - price) / entry_price) * 100
+                        current_signal = None
+                        entry_price = None
+                        entry_time = None
 
-                    returns_data.append({
-                        'signal': current_signal,
-                        'entry_time': entry_time,
-                        'exit_time': time,
-                        'entry_price': entry_price,
-                        'exit_price': price,
-                        'return_pct': return_pct
-                    })
+                return pd.DataFrame(returns_data)
 
-                    current_signal = None
-                    entry_price = None
-                    entry_time = None
+            returns_df = calculate_signal_returns(df)
 
-            return pd.DataFrame(returns_data)
+            # Calculate custom exit criteria returns
+            def calculate_custom_exit_returns(df, exit_criteria, exit_params):
+                if exit_criteria == "Mudança de Estado":
+                    return returns_df
 
-        returns_df = calculate_signal_returns(df)
+                custom_returns = []
+                current_signal = None
+                entry_price = None
+                entry_time = None
+                entry_index = None
+                previous_state = None  # Track previous state to detect changes
 
-        # Calculate custom exit criteria returns
-        def calculate_custom_exit_returns(df, exit_criteria, exit_params):
-            if exit_criteria == "Mudança de Estado":
-                return returns_df
+                for i in range(len(df)):
+                    estado = df['Estado'].iloc[i]
+                    price = df['close'].iloc[i]
+                    time = df['time'].iloc[i]
 
-            custom_returns = []
-            current_signal = None
-            entry_price = None
-            entry_time = None
-            entry_index = None
-            previous_state = None  # Track previous state to detect changes
+                    # Check if we have an active position
+                    if current_signal is not None and entry_price is not None and entry_index is not None:
 
-            for i in range(len(df)):
-                estado = df['Estado'].iloc[i]
-                price = df['close'].iloc[i]
-                time = df['time'].iloc[i]
+                        # 1. First check for state change (highest priority)
+                        if estado != current_signal:
+                            # State changed - close current position immediately
+                            if current_signal == 'Buy':
+                                return_pct = ((price - entry_price) / entry_price) * 100
+                            else:  # Sell
+                                return_pct = ((entry_price - price) / entry_price) * 100
 
-                # Check if we have an active position
-                if current_signal is not None and entry_price is not None and entry_index is not None:
+                            custom_returns.append({
+                                'signal': current_signal,
+                                'entry_time': entry_time,
+                                'exit_time': time,
+                                'entry_price': entry_price,
+                                'exit_price': price,
+                                'return_pct': return_pct,
+                                'exit_reason': 'Mudança de Estado'
+                            })
 
-                    # 1. First check for state change (highest priority)
-                    if estado != current_signal:
-                        # State changed - close current position immediately
-                        if current_signal == 'Buy':
-                            return_pct = ((price - entry_price) / entry_price) * 100
-                        else:  # Sell
-                            return_pct = ((entry_price - price) / entry_price) * 100
+                            # Start new position if new state is Buy/Sell (only on state change)
+                            if estado in ['Buy', 'Sell']:
+                                current_signal = estado
+                                entry_price = price
+                                entry_time = time
+                                entry_index = i
+                            else:
+                                current_signal = None
+                                entry_price = None
+                                entry_time = None
+                                entry_index = None
 
-                        custom_returns.append({
-                            'signal': current_signal,
-                            'entry_time': entry_time,
-                            'exit_time': time,
-                            'entry_price': entry_price,
-                            'exit_price': price,
-                            'return_pct': return_pct,
-                            'exit_reason': 'Mudança de Estado'
-                        })
+                            previous_state = estado
+                            continue
 
-                        # Start new position if new state is Buy/Sell (only on state change)
-                        if estado in ['Buy', 'Sell']:
-                            current_signal = estado
-                            entry_price = price
-                            entry_time = time
-                            entry_index = i
-                        else:
+                        # 2. Check custom exit criteria (only if no state change)
+                        exit_price, exit_time, exit_reason = calculate_exit(
+                            df, entry_index, i, current_signal, entry_price, exit_criteria, exit_params
+                        )
+
+                        if exit_price is not None:
+                            if current_signal == 'Buy':
+                                return_pct = ((exit_price - entry_price) / entry_price) * 100
+                            else:  # Sell
+                                return_pct = ((entry_price - exit_price) / entry_price) * 100
+
+                            custom_returns.append({
+                                'signal': current_signal,
+                                'entry_time': entry_time,
+                                'exit_time': exit_time,
+                                'entry_price': entry_price,
+                                'exit_price': exit_price,
+                                'return_pct': return_pct,
+                                'exit_reason': exit_reason
+                            })
+
+                            # Position closed by custom criteria - wait for next state change
                             current_signal = None
                             entry_price = None
                             entry_time = None
                             entry_index = None
+                            continue
 
-                        previous_state = estado
-                        continue
+                    # Entry logic - ONLY open new position on STATE CHANGE (not just when Buy/Sell)
+                    elif previous_state != estado and estado in ['Buy', 'Sell']:
+                        # This is a state change to Buy or Sell - open new position
+                        current_signal = estado
+                        entry_price = price
+                        entry_time = time
+                        entry_index = i
 
-                    # 2. Check custom exit criteria (only if no state change)
-                    exit_price, exit_time, exit_reason = calculate_exit(
-                        df, entry_index, i, current_signal, entry_price, exit_criteria, exit_params
-                    )
+                    # Update previous state for next iteration
+                    previous_state = estado
 
-                    if exit_price is not None:
-                        if current_signal == 'Buy':
-                            return_pct = ((exit_price - entry_price) / entry_price) * 100
-                        else:  # Sell
-                            return_pct = ((entry_price - exit_price) / entry_price) * 100
+                return pd.DataFrame(custom_returns)
 
-                        custom_returns.append({
-                            'signal': current_signal,
-                            'entry_time': entry_time,
-                            'exit_time': exit_time,
-                            'entry_price': entry_price,
-                            'exit_price': exit_price,
-                            'return_pct': return_pct,
-                            'exit_reason': exit_reason
-                        })
+            def calculate_exit(df, entry_idx, current_idx, signal, entry_price, criteria, params):
+                """Calculate exit price based on selected criteria - doesn't check state change as main loop handles it"""
 
-                        # Position closed by custom criteria - wait for next state change
-                        current_signal = None
-                        entry_price = None
-                        entry_time = None
-                        entry_index = None
-                        continue
+                if criteria == "Stop Loss":
+                    stop_col = params['stop_type'].replace(' ', '_')
+                    for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
+                        stop_price = df[stop_col].iloc[i]
+                        current_price = df['close'].iloc[i]
 
-                # Entry logic - ONLY open new position on STATE CHANGE (not just when Buy/Sell)
-                elif previous_state != estado and estado in ['Buy', 'Sell']:
-                    # This is a state change to Buy or Sell - open new position
-                    current_signal = estado
-                    entry_price = price
-                    entry_time = time
-                    entry_index = i
+                        if signal == 'Buy' and current_price <= stop_price:
+                            return stop_price, df['time'].iloc[i], f"Stop {params['stop_type']}"
+                        elif signal == 'Sell' and current_price >= stop_price:
+                            return stop_price, df['time'].iloc[i], f"Stop {params['stop_type']}"
 
-                # Update previous state for next iteration
-                previous_state = estado
-
-            return pd.DataFrame(custom_returns)
-
-        def calculate_exit(df, entry_idx, current_idx, signal, entry_price, criteria, params):
-            """Calculate exit price based on selected criteria - doesn't check state change as main loop handles it"""
-
-            if criteria == "Stop Loss":
-                stop_col = params['stop_type'].replace(' ', '_')
-                for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
-                    stop_price = df[stop_col].iloc[i]
-                    current_price = df['close'].iloc[i]
-
-                    if signal == 'Buy' and current_price <= stop_price:
-                        return stop_price, df['time'].iloc[i], f"Stop {params['stop_type']}"
-                    elif signal == 'Sell' and current_price >= stop_price:
-                        return stop_price, df['time'].iloc[i], f"Stop {params['stop_type']}"
-
-            elif criteria == "Alvo Fixo":
-                target_pct = params['target_pct'] / 100
-                stop_loss_pct = params['stop_loss_pct'] / 100
-
-                if signal == 'Buy':
-                    target_price = entry_price * (1 + target_pct)
-                    stop_loss_price = entry_price * (1 - stop_loss_pct)
-                else:
-                    target_price = entry_price * (1 - target_pct)
-                    stop_loss_price = entry_price * (1 + stop_loss_pct)
-
-                for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
-                    current_price = df['close'].iloc[i]
+                elif criteria == "Alvo Fixo":
+                    target_pct = params['target_pct'] / 100
+                    stop_loss_pct = params['stop_loss_pct'] / 100
 
                     if signal == 'Buy':
-                        if current_price >= target_price:
-                            return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
-                        elif current_price <= stop_loss_price:
-                            return stop_loss_price, df['time'].iloc[i], f"Stop Loss {params['stop_loss_pct']}%"
-                    else:  # Sell
-                        if current_price <= target_price:
-                            return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
-                        elif current_price >= stop_loss_price:
-                            return stop_loss_price, df['time'].iloc[i], f"Stop Loss {params['stop_loss_pct']}%"
+                        target_price = entry_price * (1 + target_pct)
+                        stop_loss_price = entry_price * (1 - stop_loss_pct)
+                    else:
+                        target_price = entry_price * (1 - target_pct)
+                        stop_loss_price = entry_price * (1 + stop_loss_pct)
 
-            elif criteria == "Tempo":
-                target_candles = params['time_candles']
-                target_idx = entry_idx + target_candles
+                    for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
+                        current_price = df['close'].iloc[i]
 
-                if target_idx < len(df) and target_idx <= current_idx:
-                    return df['close'].iloc[target_idx], df['time'].iloc[target_idx], f"Tempo {target_candles} candles"
+                        if signal == 'Buy':
+                            if current_price >= target_price:
+                                return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
+                            elif current_price <= stop_loss_price:
+                                return stop_loss_price, df['time'].iloc[i], f"Stop Loss {params['stop_loss_pct']}%"
+                        else:  # Sell
+                            if current_price <= target_price:
+                                return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
+                            elif current_price >= stop_loss_price:
+                                return stop_loss_price, df['time'].iloc[i], f"Stop Loss {params['stop_loss_pct']}%"
 
-            return None, None, None
+                elif criteria == "Tempo":
+                    target_candles = params['time_candles']
+                    target_idx = entry_idx + target_candles
 
-        custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params)
+                    if target_idx < len(df) and target_idx <= current_idx:
+                        return df['close'].iloc[target_idx], df['time'].iloc[target_idx], f"Tempo {target_candles} candles"
 
-        progress_bar.progress(100)
-        status_text.text("Análise Completa!")
+                return None, None, None
 
-        # Clear progress indicators
-        progress_bar.empty()
-        status_text.empty()
+            custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params)
 
-        # Display results
-        st.success(f"✅ Análise completa para  {symbol_label}")
+            progress_bar.progress(100)
+            status_text.text("Análise Completa!")
 
-        # Current status display
-        col1, col2, col3, col4 = st.columns(4)
+            # Clear progress indicators
+            progress_bar.empty()
+            status_text.empty()
 
-        current_price = df['close'].iloc[-1]
-        current_signal = df['Estado'].iloc[-1]
-        current_rsi = df['RSI_14'].iloc[-1]
-        current_rsl = df['RSL_20'].iloc[-1]
+            # Display results
+            st.success(f"✅ Análise completa para  {symbol_label}")
 
-        with col1:
-            st.metric("Current Price", f"{current_price:.2f}")
+            # Current status display
+            col1, col2, col3, col4 = st.columns(4)
 
-        with col2:
-            signal_color = "🔵" if current_signal == "Buy" else "🔴" if current_signal == "Sell" else "⚫"
-            st.metric("Current Signal", f"{signal_color} {current_signal}")
+            current_price = df['close'].iloc[-1]
+            current_signal = df['Estado'].iloc[-1]
+            current_rsi = df['RSI_14'].iloc[-1]
+            current_rsl = df['RSL_20'].iloc[-1]
 
-        with col3:
-            st.metric("RSI (14)", f"{current_rsi:.2f}")
+            with col1:
+                st.metric("Current Price", f"{current_price:.2f}")
 
-        with col4:
-            st.metric("RSL (20)", f"{current_rsl:.3f}")
+            with col2:
+                signal_color = "🔵" if current_signal == "Buy" else "🔴" if current_signal == "Sell" else "⚫"
+                st.metric("Current Signal", f"{signal_color} {current_signal}")
 
-        st.markdown("---")
+            with col3:
+                st.metric("RSI (14)", f"{current_rsi:.2f}")
 
-        # Create the interactive chart
-        titulo_grafico = f"LUBRA TRADING - {symbol_label} - Timeframe: {interval.upper()}"
+            with col4:
+                st.metric("RSL (20)", f"{current_rsl:.3f}")
 
-        fig = make_subplots(
-            rows=2, cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.03,
-            row_heights=[0.75, 0.25],
-            subplot_titles=("Price Chart with Signals", "Signal Indicator")
-        )
+            st.markdown("---")
 
-        # Add price line with color coding
-        for i in range(len(df) - 1):
+            # Create the interactive chart
+            titulo_grafico = f"LUBRA TRADING - {symbol_label} - Timeframe: {interval.upper()}"
+
+            fig = make_subplots(
+                rows=2, cols=1,
+                shared_xaxes=True,
+                vertical_spacing=0.03,
+                row_heights=[0.75, 0.25],
+                subplot_titles=("Price Chart with Signals", "Signal Indicator")
+            )
+
+            # Add price line with color coding
+            for i in range(len(df) - 1):
+                fig.add_trace(go.Scatter(
+                    x=df['time'][i:i+2],
+                    y=df['close'][i:i+2],
+                    mode="lines",
+                    line=dict(color=df['Color'][i], width=2),
+                    showlegend=False,
+                    hoverinfo="skip"
+                ), row=1, col=1)
+
+            # Add invisible trace for hover info
             fig.add_trace(go.Scatter(
-                x=df['time'][i:i+2],
-                y=df['close'][i:i+2],
-                mode="lines",
-                line=dict(color=df['Color'][i], width=2),
-                showlegend=False,
-                hoverinfo="skip"
+                x=df['time'],
+                y=df['close'],
+                mode='lines',
+                line=dict(color='rgba(0,0,0,0)'),
+                name='Price',
+                hovertemplate="<b>Price:</b> %{y:.2f}<br><b>Time:</b> %{x}<extra></extra>",
+                showlegend=False
             ), row=1, col=1)
 
-        # Add invisible trace for hover info
-        fig.add_trace(go.Scatter(
-            x=df['time'],
-            y=df['close'],
-            mode='lines',
-            line=dict(color='rgba(0,0,0,0)'),
-            name='Price',
-            hovertemplate="<b>Price:</b> %{y:.2f}<br><b>Time:</b> %{x}<extra></extra>",
-            showlegend=False
-        ), row=1, col=1)
+            # Add selected stop loss trace
+            stop_colors = {
+                "Stop_Justo": "orange",
+                "Stop_Balanceado": "gray", 
+                "Stop_Largo": "green"
+            }
 
-        # Add selected stop loss trace
-        stop_colors = {
-            "Stop_Justo": "orange",
-            "Stop_Balanceado": "gray", 
-            "Stop_Largo": "green"
-        }
+            fig.add_trace(go.Scatter(
+                x=df['time'], y=df[selected_stop],
+                mode="lines", name=selected_stop_display,
+                line=dict(color=stop_colors[selected_stop], width=2, dash="dot"),
+                hovertemplate=f"<b>{selected_stop_display}:</b> %{{y:.2f}}<extra></extra>"
+            ), row=1, col=1)
 
-        fig.add_trace(go.Scatter(
-            x=df['time'], y=df[selected_stop],
-            mode="lines", name=selected_stop_display,
-            line=dict(color=stop_colors[selected_stop], width=2, dash="dot"),
-            hovertemplate=f"<b>{selected_stop_display}:</b> %{{y:.2f}}<extra></extra>"
-        ), row=1, col=1)
+            # Add signal indicator
+            fig.add_trace(go.Scatter(
+                x=df['time'],
+                y=df['Indicator'],
+                mode="lines+markers",
+                name="Signal Indicator",
+                line=dict(color="purple", width=2),
+                marker=dict(size=4),
+                showlegend=False
+            ), row=2, col=1)
 
-        # Add signal indicator
-        fig.add_trace(go.Scatter(
-            x=df['time'],
-            y=df['Indicator'],
-            mode="lines+markers",
-            name="Signal Indicator",
-            line=dict(color="purple", width=2),
-            marker=dict(size=4),
-            showlegend=False
-        ), row=2, col=1)
+            # Add legend items
+            fig.add_trace(go.Scatter(
+                x=[None], y=[None], mode='lines',
+                line=dict(color='blue', width=2),
+                name='Buy Signal'
+            ), row=1, col=1)
 
-        # Add legend items
-        fig.add_trace(go.Scatter(
-            x=[None], y=[None], mode='lines',
-            line=dict(color='blue', width=2),
-            name='Buy Signal'
-        ), row=1, col=1)
+            fig.add_trace(go.Scatter(
+                x=[None], y=[None], mode='lines',
+                line=dict(color='red', width=2),
+                name='Sell Signal'
+            ), row=1, col=1)
 
-        fig.add_trace(go.Scatter(
-            x=[None], y=[None], mode='lines',
-            line=dict(color='red', width=2),
-            name='Sell Signal'
-        ), row=1, col=1)
+            fig.add_trace(go.Scatter(
+                x=[None], y=[None], mode='lines',
+                line=dict(color='black', width=2),
+                name='Stay Out'
+            ), row=1, col=1)
 
-        fig.add_trace(go.Scatter(
-            x=[None], y=[None], mode='lines',
-            line=dict(color='black', width=2),
-            name='Stay Out'
-        ), row=1, col=1)
+            # Add reference line for signal indicator
+            fig.add_shape(
+                type="line",
+                x0=df['time'].iloc[0],
+                x1=df['time'].iloc[-1],
+                y0=0.5,
+                y1=0.5,
+                line=dict(color="black", width=1, dash="dash"),
+                xref="x", yref="y2"
+            )
 
-        # Add reference line for signal indicator
-        fig.add_shape(
-            type="line",
-            x0=df['time'].iloc[0],
-            x1=df['time'].iloc[-1],
-            y0=0.5,
-            y1=0.5,
-            line=dict(color="black", width=1, dash="dash"),
-            xref="x", yref="y2"
-        )
+            # Update layout
+            fig.update_yaxes(range=[-0.1, 1.1], tickvals=[0, 0.5, 1], 
+                            ticktext=['Sell', 'Stay Out', 'Buy'], row=2, col=1)
+            fig.update_xaxes(showgrid=False, row=2, col=1)
 
-        # Update layout
-        fig.update_yaxes(range=[-0.1, 1.1], tickvals=[0, 0.5, 1], 
-                        ticktext=['Sell', 'Stay Out', 'Buy'], row=2, col=1)
-        fig.update_xaxes(showgrid=False, row=2, col=1)
+            # Update layout
+            fig.update_layout(
+                title=dict(text=titulo_grafico, x=0.5, font=dict(size=18)),
+                template="plotly_white",
+                hovermode="x unified",
+                height=700
+            )
 
-        # Update layout
-        fig.update_layout(
-            title=dict(text=titulo_grafico, x=0.5, font=dict(size=18)),
-            template="plotly_white",
-            hovermode="x unified",
-            height=700
-        )
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
 
-        # Display the chart
-        st.plotly_chart(fig, use_container_width=True)
+            # Returns Analysis Section
+            st.subheader("📈 Análise de Retornos")
 
-        # Returns Analysis Section
-        st.subheader("📈 Análise de Retornos")
+            # Create tabs for different return calculations
+            tab1, tab2 = st.tabs(["📊 Mudança de Estado", f"🎯 {exit_criteria}"])
 
-        # Create tabs for different return calculations
-        tab1, tab2 = st.tabs(["📊 Mudança de Estado", f"🎯 {exit_criteria}"])
+            with tab1:
+                st.write("**Retornos baseados na mudança natural do estado dos sinais**")
+                if not returns_df.empty:
+                    display_returns_section(returns_df, "Mudança de Estado")
+                else:
+                    st.info("Nenhuma operação completa encontrada no período analisado.")
 
-        with tab1:
-            st.write("**Retornos baseados na mudança natural do estado dos sinais**")
-            if not returns_df.empty:
-                display_returns_section(returns_df, "Mudança de Estado")
-            else:
-                st.info("Nenhuma operação completa encontrada no período analisado.")
+            with tab2:
+                st.write(f"**Retornos baseados no critério: {exit_criteria}**")
+                if not custom_returns_df.empty:
+                    display_returns_section(custom_returns_df, exit_criteria)
+                else:
+                    st.info("Nenhuma operação completa encontrada com este critério no período analisado.")
 
-        with tab2:
-            st.write(f"**Retornos baseados no critério: {exit_criteria}**")
-            if not custom_returns_df.empty:
-                display_returns_section(custom_returns_df, exit_criteria)
-            else:
-                st.info("Nenhuma operação completa encontrada com este critério no período analisado.")
+            st.markdown("---")
+            # Technical analysis summary
+            st.subheader("Informações Relevantes ")
 
-        st.markdown("---")
-        # Technical analysis summary
-        st.subheader("Informações Relevantes ")
+            # Apenas uma coluna com os dados relevantes
+            col = st.container()
 
-        # Apenas uma coluna com os dados relevantes
-        col = st.container()
+            with col:
+                st.write("**Níveis de Stop Loss:**")
+                st.write(f"• Stop Justo: {df['Stop_Justo'].iloc[-1]:.2f}")
+                st.write(f"• Stop Balanceado: {df['Stop_Balanceado'].iloc[-1]:.2f}")
+                st.write(f"• Stop Largo: {df['Stop_Largo'].iloc[-1]:.2f}")
 
-        with col:
-            st.write("**Níveis de Stop Loss:**")
-            st.write(f"• Stop Justo: {df['Stop_Justo'].iloc[-1]:.2f}")
-            st.write(f"• Stop Balanceado: {df['Stop_Balanceado'].iloc[-1]:.2f}")
-            st.write(f"• Stop Largo: {df['Stop_Largo'].iloc[-1]:.2f}")
+                st.write("**Distribuição dos Sinais:**")
+                buy_signals = (df['Estado'] == 'Buy').sum()
+                sell_signals = (df['Estado'] == 'Sell').sum()
+                stay_out = (df['Estado'] == 'Stay Out').sum()
+                st.write(f"• Sinais de Compra (Buy): {buy_signals}")
+                st.write(f"• Sinais de Venda (Sell): {sell_signals}")
+                st.write(f"• Fora do Mercado (Stay Out): {stay_out}")
 
-            st.write("**Distribuição dos Sinais:**")
-            buy_signals = (df['Estado'] == 'Buy').sum()
-            sell_signals = (df['Estado'] == 'Sell').sum()
-            stay_out = (df['Estado'] == 'Stay Out').sum()
-            st.write(f"• Sinais de Compra (Buy): {buy_signals}")
-            st.write(f"• Sinais de Venda (Sell): {sell_signals}")
-            st.write(f"• Fora do Mercado (Stay Out): {stay_out}")
-
-        # Data table option
-        if st.checkbox("Show Raw Data"):
-            st.subheader("📋 Raw Data")
-            display_columns = ['time', 'open', 'high', 'low', 'close', 'SMA_20', 'SMA_60', 'SMA_70', 
-                             'RSI_14', 'RSL_20', 'Signal', 'Estado', 'ATR']
-            available_columns = [col for col in display_columns if col in df.columns]
-            st.dataframe(df[available_columns].tail(50), use_container_width=True)
+            # Data table option
+            if st.checkbox("Show Raw Data"):
+                st.subheader("📋 Raw Data")
+                display_columns = ['time', 'open', 'high', 'low', 'close', 'SMA_20', 'SMA_60', 'SMA_70', 
+                                 'RSI_14', 'RSL_20', 'Signal', 'Estado', 'ATR']
+                available_columns = [col for col in display_columns if col in df.columns]
+                st.dataframe(df[available_columns].tail(50), use_container_width=True)
 
     except Exception as e:
         st.error(f"An error occurred during analysis: {str(e)}")
