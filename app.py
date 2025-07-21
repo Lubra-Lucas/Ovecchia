@@ -493,6 +493,7 @@ if analyze_button:
             entry_price = None
             entry_time = None
             entry_index = None
+            previous_state = None  # Track previous state to detect changes
             
             for i in range(len(df)):
                 estado = df['Estado'].iloc[i]
@@ -520,8 +521,8 @@ if analyze_button:
                             'exit_reason': 'Mudança de Estado'
                         })
                         
-                        # Start new position if new state is not Stay Out
-                        if estado != 'Stay Out':
+                        # Start new position if new state is Buy/Sell (only on state change)
+                        if estado in ['Buy', 'Sell']:
                             current_signal = estado
                             entry_price = price
                             entry_time = time
@@ -531,6 +532,8 @@ if analyze_button:
                             entry_price = None
                             entry_time = None
                             entry_index = None
+                        
+                        previous_state = estado
                         continue
                     
                     # 2. Check custom exit criteria (only if no state change)
@@ -554,19 +557,23 @@ if analyze_button:
                             'exit_reason': exit_reason
                         })
                         
-                        # Position closed by custom criteria - no new position until next signal
+                        # Position closed by custom criteria - wait for next state change
                         current_signal = None
                         entry_price = None
                         entry_time = None
                         entry_index = None
                         continue
                 
-                # Entry logic - start new position when state changes to Buy/Sell (and no active position)
-                if current_signal is None and estado in ['Buy', 'Sell']:
+                # Entry logic - ONLY open new position on STATE CHANGE (not just when Buy/Sell)
+                elif previous_state != estado and estado in ['Buy', 'Sell']:
+                    # This is a state change to Buy or Sell - open new position
                     current_signal = estado
                     entry_price = price
                     entry_time = time
                     entry_index = i
+                
+                # Update previous state for next iteration
+                previous_state = estado
             
             return pd.DataFrame(custom_returns)
         
