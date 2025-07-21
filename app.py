@@ -12,7 +12,7 @@ def display_returns_section(returns_data, criteria_name):
     """Helper function to display returns section"""
     if not returns_data.empty:
         # Get last 10 returns
-        last_returns = returns_data.tail(10).copy()
+        last_returns = returns_data.tail(20).copy()
         last_returns = last_returns.sort_values('exit_time', ascending=False)
         
         # Create columns for returns display
@@ -499,30 +499,70 @@ if analyze_button:
                 price = df['close'].iloc[i]
                 time = df['time'].iloc[i]
                 
-                # Entry logic
-                if estado != current_signal and estado != 'Stay Out':
-                    if current_signal is not None and entry_price is not None and entry_index is not None:
-                        # Calculate exit based on criteria
-                        exit_price, exit_time, exit_reason = calculate_exit(
-                            df, entry_index, i, current_signal, entry_price, exit_criteria, exit_params
-                        )
-                        
-                        if exit_price is not None:
-                            if current_signal == 'Buy':
-                                return_pct = ((exit_price - entry_price) / entry_price) * 100
-                            else:  # Sell
-                                return_pct = ((entry_price - exit_price) / entry_price) * 100
-                            
-                            custom_returns.append({
-                                'signal': current_signal,
-                                'entry_time': entry_time,
-                                'exit_time': exit_time,
-                                'entry_price': entry_price,
-                                'exit_price': exit_price,
-                                'return_pct': return_pct,
-                                'exit_reason': exit_reason
-                            })
+                # Check if we have an active position
+                if current_signal is not None and entry_price is not None and entry_index is not None:
                     
+                    # 1. First check for state change (highest priority)
+                    if estado != current_signal:
+                        # State changed - close current position immediately
+                        if current_signal == 'Buy':
+                            return_pct = ((price - entry_price) / entry_price) * 100
+                        else:  # Sell
+                            return_pct = ((entry_price - price) / entry_price) * 100
+                        
+                        custom_returns.append({
+                            'signal': current_signal,
+                            'entry_time': entry_time,
+                            'exit_time': time,
+                            'entry_price': entry_price,
+                            'exit_price': price,
+                            'return_pct': return_pct,
+                            'exit_reason': 'Mudança de Estado'
+                        })
+                        
+                        # Start new position if new state is not Stay Out
+                        if estado != 'Stay Out':
+                            current_signal = estado
+                            entry_price = price
+                            entry_time = time
+                            entry_index = i
+                        else:
+                            current_signal = None
+                            entry_price = None
+                            entry_time = None
+                            entry_index = None
+                        continue
+                    
+                    # 2. Check custom exit criteria (only if no state change)
+                    exit_price, exit_time, exit_reason = calculate_exit(
+                        df, entry_index, i, current_signal, entry_price, exit_criteria, exit_params
+                    )
+                    
+                    if exit_price is not None:
+                        if current_signal == 'Buy':
+                            return_pct = ((exit_price - entry_price) / entry_price) * 100
+                        else:  # Sell
+                            return_pct = ((entry_price - exit_price) / entry_price) * 100
+                        
+                        custom_returns.append({
+                            'signal': current_signal,
+                            'entry_time': entry_time,
+                            'exit_time': exit_time,
+                            'entry_price': entry_price,
+                            'exit_price': exit_price,
+                            'return_pct': return_pct,
+                            'exit_reason': exit_reason
+                        })
+                        
+                        # Position closed by custom criteria - no new position until next signal
+                        current_signal = None
+                        entry_price = None
+                        entry_time = None
+                        entry_index = None
+                        continue
+                
+                # Entry logic - start new position when state changes to Buy/Sell (and no active position)
+                if current_signal is None and estado in ['Buy', 'Sell']:
                     current_signal = estado
                     entry_price = price
                     entry_time = time
@@ -531,7 +571,7 @@ if analyze_button:
             return pd.DataFrame(custom_returns)
         
         def calculate_exit(df, entry_idx, current_idx, signal, entry_price, criteria, params):
-            """Calculate exit price based on selected criteria"""
+            """Calculate exit price based on selected criteria - doesn't check state change as main loop handles it"""
             
             if criteria == "Stop Loss":
                 stop_col = params['stop_type'].replace(' ', '_')
