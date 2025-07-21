@@ -8,6 +8,91 @@ from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
 
+def display_returns_section(returns_data, criteria_name):
+    """Helper function to display returns section"""
+    if not returns_data.empty:
+        # Get last 10 returns
+        last_returns = returns_data.tail(10).copy()
+        last_returns = last_returns.sort_values('exit_time', ascending=False)
+        
+        # Create columns for returns display
+        for idx, row in last_returns.iterrows():
+            col1, col2, col3, col4, col5 = st.columns([1, 2, 2, 2, 1.5])
+            
+            # Color coding for returns
+            return_color = "🟢" if row['return_pct'] > 0 else "🔴"
+            signal_icon = "🔵" if row['signal'] == 'Buy' else "🔴"
+            
+            with col1:
+                st.write(f"{signal_icon}")
+            
+            with col2:
+                st.write(f"**{row['signal']}**")
+            
+            with col3:
+                st.write(f"Entrada: {row['entry_price']:.2f}")
+                st.write(f"Saída: {row['exit_price']:.2f}")
+            
+            with col4:
+                entry_date = row['entry_time'].strftime('%d/%m/%Y %H:%M') if hasattr(row['entry_time'], 'strftime') else str(row['entry_time'])
+                exit_date = row['exit_time'].strftime('%d/%m/%Y %H:%M') if hasattr(row['exit_time'], 'strftime') else str(row['exit_time'])
+                st.write(f"Entrada: {entry_date}")
+                st.write(f"Saída: {exit_date}")
+            
+            with col5:
+                st.write(f"{return_color} **{row['return_pct']:.2f}%**")
+                # Show exit reason for custom criteria
+                if 'exit_reason' in row and pd.notna(row['exit_reason']):
+                    st.caption(f"Saída: {row['exit_reason']}")
+            
+            st.markdown("---")
+        
+        # Summary statistics
+        total_trades = len(returns_data)
+        profitable_trades = len(returns_data[returns_data['return_pct'] > 0])
+        win_rate = (profitable_trades / total_trades * 100) if total_trades > 0 else 0
+        avg_return = returns_data['return_pct'].mean() if not returns_data.empty else 0
+        total_return = returns_data['return_pct'].sum() if not returns_data.empty else 0
+        
+        # Find best and worst trades
+        best_trade = returns_data.loc[returns_data['return_pct'].idxmax()] if not returns_data.empty else None
+        worst_trade = returns_data.loc[returns_data['return_pct'].idxmin()] if not returns_data.empty else None
+        
+        # Display main statistics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total de Operações", total_trades)
+        with col2:
+            st.metric("Operações Lucrativas", profitable_trades)
+        with col3:
+            st.metric("Taxa de Acerto", f"{win_rate:.1f}%")
+        with col4:
+            st.metric("Retorno Médio", f"{avg_return:.2f}%")
+        
+        # Display additional statistics
+        st.markdown("### 📊 Estatísticas Detalhadas")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            return_color = "🟢" if total_return >= 0 else "🔴"
+            st.metric("Retorno Total do Modelo", f"{return_color} {total_return:.2f}%")
+        
+        with col2:
+            if best_trade is not None:
+                best_date = best_trade['exit_time'].strftime('%d/%m/%Y') if hasattr(best_trade['exit_time'], 'strftime') else str(best_trade['exit_time'])
+                st.metric("Maior Ganho", f"🟢 {best_trade['return_pct']:.2f}%")
+                st.caption(f"Data: {best_date}")
+            else:
+                st.metric("Maior Ganho", "N/A")
+        
+        with col3:
+            if worst_trade is not None:
+                worst_date = worst_trade['exit_time'].strftime('%d/%m/%Y') if hasattr(worst_trade['exit_time'], 'strftime') else str(worst_trade['exit_time'])
+                st.metric("Maior Perda", f"🔴 {worst_trade['return_pct']:.2f}%")
+                st.caption(f"Data: {worst_date}")
+            else:
+                st.metric("Maior Perda", "N/A")
+
 # Page configuration
 st.set_page_config(
     page_title="LUBRA Trading Analysis",
@@ -98,6 +183,30 @@ with st.sidebar:
         help="Number of consecutive candles with same signal needed for validation"
     )
     
+    # Moving averages configuration
+    st.subheader("Configuração de Médias Móveis")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        sma_short = st.number_input(
+            "Média Móvel Curta",
+            min_value=5,
+            max_value=200,
+            value=60,
+            step=5,
+            help="Primeira condição para sinais de compra"
+        )
+    
+    with col2:
+        sma_long = st.number_input(
+            "Média Móvel Longa", 
+            min_value=10,
+            max_value=300,
+            value=70,
+            step=5,
+            help="Segunda condição para sinais de compra"
+        )
+    
     # Stop loss selection
     st.subheader("Stop Loss Display")
     stop_options = {
@@ -112,6 +221,50 @@ with st.sidebar:
         index=0
     )
     selected_stop = stop_options[selected_stop_display]
+    
+    # Exit criteria configuration
+    st.subheader("Critérios de Saída Personalizados")
+    
+    exit_criteria = st.selectbox(
+        "Tipo de Saída",
+        ["Mudança de Estado (Padrão)", "Stop Loss", "Alvo Fixo", "Tempo", "Volatilidade"],
+        index=0,
+        help="Escolha como calcular a saída das posições"
+    )
+    
+    # Additional parameters based on exit criteria
+    exit_params = {}
+    
+    if exit_criteria == "Stop Loss":
+        exit_params['stop_type'] = st.selectbox(
+            "Tipo de Stop",
+            ["Stop Justo", "Stop Balanceado", "Stop Largo"]
+        )
+    elif exit_criteria == "Alvo Fixo":
+        exit_params['target_pct'] = st.number_input(
+            "Alvo Percentual (%)",
+            min_value=0.1,
+            max_value=50.0,
+            value=3.0,
+            step=0.1
+        )
+    elif exit_criteria == "Tempo":
+        exit_params['time_days'] = st.number_input(
+            "Dias após entrada",
+            min_value=1,
+            max_value=365,
+            value=10,
+            step=1
+        )
+    elif exit_criteria == "Volatilidade":
+        exit_params['volatility_factor'] = st.number_input(
+            "Fator de Volatilidade",
+            min_value=0.1,
+            max_value=5.0,
+            value=1.0,
+            step=0.1,
+            help="Multiplica o ATR para stop loss"
+        )
     
     # Analyze button
     analyze_button = st.button("🔍 Analyze", type="primary", use_container_width=True)
@@ -175,9 +328,9 @@ if analyze_button:
         progress_bar.progress(60)
         
         # Calculate technical indicators
-        # Moving averages
-        df['SMA_60'] = df['close'].rolling(window=60).mean()
-        df['SMA_70'] = df['close'].rolling(window=70).mean()
+        # Moving averages (customizable)
+        df[f'SMA_{sma_short}'] = df['close'].rolling(window=sma_short).mean()
+        df[f'SMA_{sma_long}'] = df['close'].rolling(window=sma_long).mean()
         df['SMA_20'] = df['close'].rolling(window=20).mean()
         
         # RSI calculation
@@ -207,13 +360,13 @@ if analyze_button:
             rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
             
             if (
-                df['close'].iloc[i] > df['SMA_60'].iloc[i]
-                and df['close'].iloc[i] > df['SMA_70'].iloc[i]
+                df['close'].iloc[i] > df[f'SMA_{sma_short}'].iloc[i]
+                and df['close'].iloc[i] > df[f'SMA_{sma_long}'].iloc[i]
                 and rsi_up and rsl_buy
             ):
                 df.at[i, 'Signal'] = 'Buy'
             elif (
-                df['close'].iloc[i] < df['SMA_60'].iloc[i]
+                df['close'].iloc[i] < df[f'SMA_{sma_short}'].iloc[i]
                 and rsi_down and rsl_sell
             ):
                 df.at[i, 'Signal'] = 'Sell'
@@ -325,6 +478,115 @@ if analyze_button:
             return pd.DataFrame(returns_data)
         
         returns_df = calculate_signal_returns(df)
+        
+        # Calculate custom exit criteria returns
+        def calculate_custom_exit_returns(df, exit_criteria, exit_params):
+            if exit_criteria == "Mudança de Estado (Padrão)":
+                return returns_df
+            
+            custom_returns = []
+            current_signal = None
+            entry_price = None
+            entry_time = None
+            entry_index = None
+            
+            for i in range(len(df)):
+                estado = df['Estado'].iloc[i]
+                price = df['close'].iloc[i]
+                time = df['time'].iloc[i]
+                
+                # Entry logic
+                if estado != current_signal and estado != 'Stay Out':
+                    if current_signal is not None and entry_price is not None and entry_index is not None:
+                        # Calculate exit based on criteria
+                        exit_price, exit_time, exit_reason = calculate_exit(
+                            df, entry_index, i, current_signal, entry_price, exit_criteria, exit_params
+                        )
+                        
+                        if exit_price is not None:
+                            if current_signal == 'Buy':
+                                return_pct = ((exit_price - entry_price) / entry_price) * 100
+                            else:  # Sell
+                                return_pct = ((entry_price - exit_price) / entry_price) * 100
+                            
+                            custom_returns.append({
+                                'signal': current_signal,
+                                'entry_time': entry_time,
+                                'exit_time': exit_time,
+                                'entry_price': entry_price,
+                                'exit_price': exit_price,
+                                'return_pct': return_pct,
+                                'exit_reason': exit_reason
+                            })
+                    
+                    current_signal = estado
+                    entry_price = price
+                    entry_time = time
+                    entry_index = i
+            
+            return pd.DataFrame(custom_returns)
+        
+        def calculate_exit(df, entry_idx, current_idx, signal, entry_price, criteria, params):
+            """Calculate exit price based on selected criteria"""
+            
+            if criteria == "Stop Loss":
+                stop_col = f"Stop_{params['stop_type'].replace(' ', '_')}"
+                for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
+                    stop_price = df[stop_col].iloc[i]
+                    current_price = df['close'].iloc[i]
+                    
+                    if signal == 'Buy' and current_price <= stop_price:
+                        return stop_price, df['time'].iloc[i], f"Stop {params['stop_type']}"
+                    elif signal == 'Sell' and current_price >= stop_price:
+                        return stop_price, df['time'].iloc[i], f"Stop {params['stop_type']}"
+            
+            elif criteria == "Alvo Fixo":
+                target_pct = params['target_pct'] / 100
+                if signal == 'Buy':
+                    target_price = entry_price * (1 + target_pct)
+                else:
+                    target_price = entry_price * (1 - target_pct)
+                
+                for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
+                    current_price = df['close'].iloc[i]
+                    
+                    if signal == 'Buy' and current_price >= target_price:
+                        return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
+                    elif signal == 'Sell' and current_price <= target_price:
+                        return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
+            
+            elif criteria == "Tempo":
+                target_days = params['time_days']
+                entry_time = df['time'].iloc[entry_idx]
+                
+                for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
+                    current_time = df['time'].iloc[i]
+                    if hasattr(entry_time, 'timestamp') and hasattr(current_time, 'timestamp'):
+                        days_diff = (current_time.timestamp() - entry_time.timestamp()) / (24 * 3600)
+                    else:
+                        days_diff = target_days + 1  # Fallback
+                    
+                    if days_diff >= target_days:
+                        return df['close'].iloc[i], current_time, f"Tempo {target_days} dias"
+            
+            elif criteria == "Volatilidade":
+                factor = params['volatility_factor']
+                for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
+                    atr = df['ATR'].iloc[i]
+                    current_price = df['close'].iloc[i]
+                    
+                    if signal == 'Buy':
+                        stop_price = entry_price - (factor * atr)
+                        if current_price <= stop_price:
+                            return stop_price, df['time'].iloc[i], f"Volatilidade {factor}x"
+                    else:
+                        stop_price = entry_price + (factor * atr)
+                        if current_price >= stop_price:
+                            return stop_price, df['time'].iloc[i], f"Volatilidade {factor}x"
+            
+            return None, None, None
+        
+        custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params)
         
         progress_bar.progress(100)
         status_text.text("Analysis complete!")
@@ -463,91 +725,25 @@ if analyze_button:
         # Display the chart
         st.plotly_chart(fig, use_container_width=True)
         
-        # Last 10 Returns Section
-        st.subheader("📈 Últimos 10 Retornos do Sistema")
+        # Returns Analysis Section
+        st.subheader("📈 Análise de Retornos")
         
-        if not returns_df.empty:
-            # Get last 10 returns
-            last_returns = returns_df.tail(10).copy()
-            last_returns = last_returns.sort_values('exit_time', ascending=False)
-            
-            # Create columns for returns display
-            for idx, row in last_returns.iterrows():
-                col1, col2, col3, col4, col5 = st.columns([1, 2, 2, 2, 1.5])
-                
-                # Color coding for returns
-                return_color = "🟢" if row['return_pct'] > 0 else "🔴"
-                signal_icon = "🔵" if row['signal'] == 'Buy' else "🔴"
-                
-                with col1:
-                    st.write(f"{signal_icon}")
-                
-                with col2:
-                    st.write(f"**{row['signal']}**")
-                
-                with col3:
-                    st.write(f"Entrada: {row['entry_price']:.2f}")
-                    st.write(f"Saída: {row['exit_price']:.2f}")
-                
-                with col4:
-                    entry_date = row['entry_time'].strftime('%d/%m/%Y %H:%M') if hasattr(row['entry_time'], 'strftime') else str(row['entry_time'])
-                    exit_date = row['exit_time'].strftime('%d/%m/%Y %H:%M') if hasattr(row['exit_time'], 'strftime') else str(row['exit_time'])
-                    st.write(f"Entrada: {entry_date}")
-                    st.write(f"Saída: {exit_date}")
-                
-                with col5:
-                    st.write(f"{return_color} **{row['return_pct']:.2f}%**")
-                
-                st.markdown("---")
-            
-            # Summary statistics
-            total_trades = len(returns_df)
-            profitable_trades = len(returns_df[returns_df['return_pct'] > 0])
-            win_rate = (profitable_trades / total_trades * 100) if total_trades > 0 else 0
-            avg_return = returns_df['return_pct'].mean() if not returns_df.empty else 0
-            total_return = returns_df['return_pct'].sum() if not returns_df.empty else 0
-            
-            # Find best and worst trades
-            best_trade = returns_df.loc[returns_df['return_pct'].idxmax()] if not returns_df.empty else None
-            worst_trade = returns_df.loc[returns_df['return_pct'].idxmin()] if not returns_df.empty else None
-            
-            # Display main statistics
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Total de Operações", total_trades)
-            with col2:
-                st.metric("Operações Lucrativas", profitable_trades)
-            with col3:
-                st.metric("Taxa de Acerto", f"{win_rate:.1f}%")
-            with col4:
-                st.metric("Retorno Médio", f"{avg_return:.2f}%")
-            
-            # Display additional statistics
-            st.markdown("### 📊 Estatísticas Detalhadas")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                return_color = "🟢" if total_return >= 0 else "🔴"
-                st.metric("Retorno Total do Modelo", f"{return_color} {total_return:.2f}%")
-            
-            with col2:
-                if best_trade is not None:
-                    best_date = best_trade['exit_time'].strftime('%d/%m/%Y') if hasattr(best_trade['exit_time'], 'strftime') else str(best_trade['exit_time'])
-                    st.metric("Maior Ganho", f"🟢 {best_trade['return_pct']:.2f}%")
-                    st.caption(f"Data: {best_date}")
-                else:
-                    st.metric("Maior Ganho", "N/A")
-            
-            with col3:
-                if worst_trade is not None:
-                    worst_date = worst_trade['exit_time'].strftime('%d/%m/%Y') if hasattr(worst_trade['exit_time'], 'strftime') else str(worst_trade['exit_time'])
-                    st.metric("Maior Perda", f"🔴 {worst_trade['return_pct']:.2f}%")
-                    st.caption(f"Data: {worst_date}")
-                else:
-                    st.metric("Maior Perda", "N/A")
-                
-        else:
-            st.info("Nenhuma operação completa encontrada no período analisado.")
+        # Create tabs for different return calculations
+        tab1, tab2 = st.tabs(["📊 Mudança de Estado", f"🎯 {exit_criteria}"])
+        
+        with tab1:
+            st.write("**Retornos baseados na mudança natural do estado dos sinais**")
+            if not returns_df.empty:
+                display_returns_section(returns_df, "Mudança de Estado")
+            else:
+                st.info("Nenhuma operação completa encontrada no período analisado.")
+        
+        with tab2:
+            st.write(f"**Retornos baseados no critério: {exit_criteria}**")
+            if not custom_returns_df.empty:
+                display_returns_section(custom_returns_df, exit_criteria)
+            else:
+                st.info("Nenhuma operação completa encontrada com este critério no período analisado.")
         
         st.markdown("---")
         
@@ -559,8 +755,8 @@ if analyze_button:
         with col1:
             st.write("**Moving Averages:**")
             st.write(f"• SMA 20: {df['SMA_20'].iloc[-1]:.2f}")
-            st.write(f"• SMA 60: {df['SMA_60'].iloc[-1]:.2f}")
-            st.write(f"• SMA 70: {df['SMA_70'].iloc[-1]:.2f}")
+            st.write(f"• SMA {sma_short}: {df[f'SMA_{sma_short}'].iloc[-1]:.2f}")
+            st.write(f"• SMA {sma_long}: {df[f'SMA_{sma_long}'].iloc[-1]:.2f}")
             
             st.write("**Stop Loss Levels:**")
             st.write(f"• Stop Justo: {df['Stop_Justo'].iloc[-1]:.2f}")
