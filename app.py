@@ -528,14 +528,40 @@ if analyze_button:
                     
                     # State persistence
                     df_temp['Estado'] = 'Stay Out'
-                    for i in range(confirm_candles, len(df_temp)):
-                        last_signals = df_temp['Signal'].iloc[i - confirm_candles:i]
+                    
+                    for i in range(len(df_temp)):
+                        if i == 0:
+                            # Primeiro candle sempre Stay Out
+                            df_temp.loc[df_temp.index[i], 'Estado'] = 'Stay Out'
+                            continue
+                        
+                        current_estado = df_temp['Estado'].iloc[i - 1]  # Estado anterior
                         current_signal = df_temp['Signal'].iloc[i]
-
-                        if all(last_signals == current_signal) and current_signal != 'Stay Out':
-                            df_temp.loc[df_temp.index[i], 'Estado'] = current_signal
+                        
+                        # Se não temos candles suficientes para confirmação, mantém o estado anterior
+                        if confirm_candles == 0:
+                            # Sem confirmação, muda imediatamente
+                            if current_signal != 'Stay Out':
+                                df_temp.loc[df_temp.index[i], 'Estado'] = current_signal
+                            else:
+                                df_temp.loc[df_temp.index[i], 'Estado'] = current_estado
+                        elif i < confirm_candles:
+                            # Não temos candles suficientes ainda, mantém o estado
+                            df_temp.loc[df_temp.index[i], 'Estado'] = current_estado
                         else:
-                            df_temp.loc[df_temp.index[i], 'Estado'] = df_temp['Estado'].iloc[i - 1]
+                            # Verificar se temos confirm_candles consecutivos de sinal diferente do estado atual
+                            last_signals = df_temp['Signal'].iloc[i - confirm_candles:i]  # últimos confirm_candles sinais
+                            
+                            # Verificar se todos os últimos sinais são iguais e diferentes do estado atual
+                            if (len(set(last_signals)) == 1 and  # todos iguais
+                                last_signals.iloc[0] != 'Stay Out' and  # não é Stay Out
+                                last_signals.iloc[0] != current_estado):  # diferente do estado atual
+                                
+                                # Mudança confirmada, aplicar novo estado
+                                df_temp.loc[df_temp.index[i], 'Estado'] = last_signals.iloc[0]
+                            else:
+                                # Manter estado anterior
+                                df_temp.loc[df_temp.index[i], 'Estado'] = current_estado
                     
                     # Check for state change
                     current_state = df_temp['Estado'].iloc[-1]
@@ -727,14 +753,40 @@ if analyze_button:
 
             # State persistence with confirmation filter
             df['Estado'] = 'Stay Out'
-            for i in range(confirm_candles, len(df)):
-                last_signals = df['Signal'].iloc[i - confirm_candles:i]
+            
+            for i in range(len(df)):
+                if i == 0:
+                    # Primeiro candle sempre Stay Out
+                    df.loc[df.index[i], 'Estado'] = 'Stay Out'
+                    continue
+                
+                current_estado = df['Estado'].iloc[i - 1]  # Estado anterior
                 current_signal = df['Signal'].iloc[i]
-
-                if all(last_signals == current_signal) and current_signal != 'Stay Out':
-                    df.loc[df.index[i], 'Estado'] = current_signal
+                
+                # Se não temos candles suficientes para confirmação, mantém o estado anterior
+                if confirm_candles == 0:
+                    # Sem confirmação, muda imediatamente
+                    if current_signal != 'Stay Out':
+                        df.loc[df.index[i], 'Estado'] = current_signal
+                    else:
+                        df.loc[df.index[i], 'Estado'] = current_estado
+                elif i < confirm_candles:
+                    # Não temos candles suficientes ainda, mantém o estado
+                    df.loc[df.index[i], 'Estado'] = current_estado
                 else:
-                    df.loc[df.index[i], 'Estado'] = df['Estado'].iloc[i - 1]
+                    # Verificar se temos confirm_candles consecutivos de sinal diferente do estado atual
+                    last_signals = df['Signal'].iloc[i - confirm_candles:i]  # últimos confirm_candles sinais
+                    
+                    # Verificar se todos os últimos sinais são iguais e diferentes do estado atual
+                    if (len(set(last_signals)) == 1 and  # todos iguais
+                        last_signals.iloc[0] != 'Stay Out' and  # não é Stay Out
+                        last_signals.iloc[0] != current_estado):  # diferente do estado atual
+                        
+                        # Mudança confirmada, aplicar novo estado
+                        df.loc[df.index[i], 'Estado'] = last_signals.iloc[0]
+                    else:
+                        # Manter estado anterior
+                        df.loc[df.index[i], 'Estado'] = current_estado
 
             # ATR and Stop Loss calculations
             df['prior_close'] = df['close'].shift(1)
