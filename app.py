@@ -541,22 +541,25 @@ if analyze_button:
                     # Signal generation
                     df_temp['Signal'] = 'Stay Out'
                     for i in range(1, len(df_temp)):
-                        rsi_up = df_temp['RSI_14'].iloc[i] > df_temp['RSI_14'].iloc[i-1]
-                        rsi_down = df_temp['RSI_14'].iloc[i] < df_temp['RSI_14'].iloc[i-1]
-                        rsl = df_temp['RSL_20'].iloc[i]
-                        rsl_prev = df_temp['RSL_20'].iloc[i-1]
+                        try:
+                            rsi_up = df_temp['RSI_14'].iloc[i] > df_temp['RSI_14'].iloc[i-1]
+                            rsi_down = df_temp['RSI_14'].iloc[i] < df_temp['RSI_14'].iloc[i-1]
+                            rsl = df_temp['RSL_20'].iloc[i]
+                            rsl_prev = df_temp['RSL_20'].iloc[i-1]
 
-                        rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
-                        rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
+                            rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
+                            rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
 
-                        if (
-                            df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_short}'].iloc[i]
-                            and df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_long}'].iloc[i]
-                            and rsi_up and rsl_buy
-                        ):
-                            df_temp.at[i, 'Signal'] = 'Buy'
-                        elif (
-                            df_temp['close'].iloc[i] < df_temp[f'SMA_{sma_short}'].iloc[i]
-                            and rsi_down and rsl_sell
-                        ):
-                            df_temp.at[i, 'Signal'] = 'Sell'
+                            if (
+                                df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_short}'].iloc[i]
+                                and df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_long}'].iloc[i]
+                                and rsi_up and rsl_buy
+                            ):
+                                df_temp.at[i, 'Signal'] = 'Buy'
+                            elif (
+                                df_temp['close'].iloc[i] < df_temp[f'SMA_{sma_short}'].iloc[i]
+                                and rsi_down and rsl_sell
+                            ):
+                                df_temp.at[i, 'Signal'] = 'Sell'
+                        except (IndexError, KeyError):
+                            continue
