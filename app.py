@@ -565,8 +565,7 @@ if analyze_button:
                         # Estado anterior
                         estado_anterior = df_temp['Estado'].iloc[i - 1]
 
-                        # Verificar se houve mudança de sinal```python
- há confirm_candles períodos atrás
+                        # Verificar se houve mudança de sinal há confirm_candles períodos atrás
                         if confirm_candles == 0:
                             # Sem confirmação - aplicar sinal imediatamente
                             sinal_atual = df_temp['Signal'].iloc[i]
