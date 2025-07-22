@@ -333,6 +333,16 @@ with st.sidebar:
     )
     selected_stop = stop_options[selected_stop_display]
 
+    # Trading direction configuration
+    st.subheader("Direção de Operação")
+    
+    trading_direction = st.selectbox(
+        "Escolha a direção das operações:",
+        ["Ambos (Compra e Venda)", "Apenas Comprado", "Apenas Vendido"],
+        index=0,
+        help="Selecione se deseja operar apenas comprado, apenas vendido, ou ambas direções"
+    )
+
     # Exit criteria configuration
     st.subheader("Critérios de Saída Personalizados")
 
@@ -817,7 +827,7 @@ if analyze_button:
             df['Indicator'] = df['Estado'].apply(lambda x: estado_mapping.get(x, 0.5))
 
             # Calculate returns based on signal changes
-            def calculate_signal_returns(df):
+            def calculate_signal_returns(df, direction="Ambos (Compra e Venda)"):
                 returns_data = []
                 current_signal = None
                 entry_price = None
@@ -828,7 +838,16 @@ if analyze_button:
                     price = df['close'].iloc[i]
                     time = df['time'].iloc[i]
 
-                    if estado != current_signal and estado != 'Stay Out':
+                    # Filter signals based on trading direction
+                    should_enter = False
+                    if direction == "Ambos (Compra e Venda)":
+                        should_enter = estado in ['Buy', 'Sell']
+                    elif direction == "Apenas Comprado":
+                        should_enter = estado == 'Buy'
+                    elif direction == "Apenas Vendido":
+                        should_enter = estado == 'Sell'
+
+                    if estado != current_signal and should_enter:
                         if current_signal is not None and entry_price is not None:
                             # Calculate return when signal changes
                             if current_signal == 'Buy':
@@ -851,8 +870,10 @@ if analyze_button:
                         current_signal = estado
                         entry_price = price
                         entry_time = time
-                    elif estado == 'Stay Out' and current_signal is not None:
-                        # Exit position to stay out
+                    elif (estado == 'Stay Out' or 
+                          (direction == "Apenas Comprado" and estado == 'Sell') or
+                          (direction == "Apenas Vendido" and estado == 'Buy')) and current_signal is not None:
+                        # Exit position to stay out or opposite signal
                         if current_signal == 'Buy':
                             return_pct = ((price - entry_price) / entry_price) * 100
                         else:  # current_signal == 'Sell'
@@ -873,12 +894,12 @@ if analyze_button:
 
                 return pd.DataFrame(returns_data)
 
-            returns_df = calculate_signal_returns(df)
+            returns_df = calculate_signal_returns(df, trading_direction)
 
             # Calculate custom exit criteria returns
-            def calculate_custom_exit_returns(df, exit_criteria, exit_params):
+            def calculate_custom_exit_returns(df, exit_criteria, exit_params, direction="Ambos (Compra e Venda)"):
                 if exit_criteria == "Mudança de Estado":
-                    return returns_df
+                    return calculate_signal_returns(df, direction)
 
                 custom_returns = []
                 current_signal = None
@@ -892,17 +913,31 @@ if analyze_button:
                     price = df['close'].iloc[i]
                     time = df['time'].iloc[i]
 
+                    # Filter signals based on trading direction
+                    should_enter = False
+                    should_exit_on_opposite = False
+                    
+                    if direction == "Ambos (Compra e Venda)":
+                        should_enter = estado in ['Buy', 'Sell']
+                    elif direction == "Apenas Comprado":
+                        should_enter = estado == 'Buy'
+                        should_exit_on_opposite = estado == 'Sell'
+                    elif direction == "Apenas Vendido":
+                        should_enter = estado == 'Sell'
+                        should_exit_on_opposite = estado == 'Buy'
+
                     # Check if we have an active position
                     if current_signal is not None and entry_price is not None and entry_index is not None:
 
-                        # 1. First check for state change (highest priority)
-                        if estado != current_signal:
-                            # State changed - close current position immediately
+                        # 1. Check for exit conditions (state change or opposite signal)
+                        if (estado != current_signal and estado == 'Stay Out') or should_exit_on_opposite:
+                            # State changed or opposite signal - close current position immediately
                             if current_signal == 'Buy':
                                 return_pct = ((price - entry_price) / entry_price) * 100
                             else:  # Sell
                                 return_pct = ((entry_price - price) / entry_price) * 100
 
+                            exit_reason = 'Mudança de Estado' if estado == 'Stay Out' else 'Sinal Oposto'
                             custom_returns.append({
                                 'signal': current_signal,
                                 'entry_time': entry_time,
@@ -910,11 +945,11 @@ if analyze_button:
                                 'entry_price': entry_price,
                                 'exit_price': price,
                                 'return_pct': return_pct,
-                                'exit_reason': 'Mudança de Estado'
+                                'exit_reason': exit_reason
                             })
 
-                            # Start new position if new state is Buy/Sell (only on state change)
-                            if estado in ['Buy', 'Sell']:
+                            # Start new position if criteria met
+                            if should_enter and previous_state != estado:
                                 current_signal = estado
                                 entry_price = price
                                 entry_time = time
@@ -956,9 +991,9 @@ if analyze_button:
                             entry_index = None
                             continue
 
-                    # Entry logic - ONLY open new position on STATE CHANGE (not just when Buy/Sell)
-                    elif previous_state != estado and estado in ['Buy', 'Sell']:
-                        # This is a state change to Buy or Sell - open new position
+                    # Entry logic - ONLY open new position on STATE CHANGE to allowed signals
+                    elif previous_state != estado and should_enter:
+                        # This is a state change to allowed signal - open new position
                         current_signal = estado
                         entry_price = price
                         entry_time = time
@@ -1017,7 +1052,7 @@ if analyze_button:
 
                 return None, None, None
 
-            def optimize_exit_parameters(df, criteria, params):
+            def optimize_exit_parameters(df, criteria, params, direction="Ambos (Compra e Venda)"):
                 """Optimize parameters for the selected exit criteria"""
                 all_results = []
                 best_return = float('-inf')
@@ -1029,7 +1064,7 @@ if analyze_button:
                     max_candles = params.get('max_candles', 20)
                     for candles in range(1, max_candles + 1):
                         test_params = {'time_candles': candles}
-                        returns_df = calculate_custom_exit_returns(df, criteria, test_params)
+                        returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction)
                         
                         if not returns_df.empty:
                             total_return = returns_df['return_pct'].sum()
@@ -1054,7 +1089,7 @@ if analyze_button:
                     stop_types = ["Stop Justo", "Stop Balanceado", "Stop Largo"]
                     for stop_type in stop_types:
                         test_params = {'stop_type': stop_type}
-                        returns_df = calculate_custom_exit_returns(df, criteria, test_params)
+                        returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction)
                         
                         if not returns_df.empty:
                             total_return = returns_df['return_pct'].sum()
@@ -1083,7 +1118,7 @@ if analyze_button:
                         for stop in stop_range:
                             if target > stop:  # Only test valid combinations
                                 test_params = {'target_pct': target, 'stop_loss_pct': stop}
-                                returns_df = calculate_custom_exit_returns(df, criteria, test_params)
+                                returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction)
                                 
                                 if not returns_df.empty:
                                     total_return = returns_df['return_pct'].sum()
@@ -1115,12 +1150,12 @@ if analyze_button:
                 status_text.text("Otimizando parâmetros...")
                 progress_bar.progress(85)
                 
-                optimization_results = optimize_exit_parameters(df, exit_criteria, exit_params)
+                optimization_results = optimize_exit_parameters(df, exit_criteria, exit_params, trading_direction)
                 custom_returns_df = optimization_results['best_returns']
                 best_params = optimization_results['best_params']
                 all_results = optimization_results['all_results']
             else:
-                custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params)
+                custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params, trading_direction)
                 optimization_results = None
 
             progress_bar.progress(100)
@@ -1290,21 +1325,23 @@ if analyze_button:
             st.subheader("📈 Análise de Retornos")
 
             # Create tabs for different return calculations
+            direction_label = trading_direction.replace("Ambos (Compra e Venda)", "Ambos").replace("Apenas ", "")
+            
             if optimize_params and optimization_results:
-                tab1, tab2, tab3 = st.tabs(["📊 Mudança de Estado", f"🎯 {exit_criteria} (Otimizado)", "📋 Comparação Detalhada"])
+                tab1, tab2, tab3 = st.tabs([f"📊 Mudança de Estado - {direction_label}", f"🎯 {exit_criteria} (Otimizado) - {direction_label}", "📋 Comparação Detalhada"])
             else:
-                tab1, tab2 = st.tabs(["📊 Mudança de Estado", f"🎯 {exit_criteria}"])
+                tab1, tab2 = st.tabs([f"📊 Mudança de Estado - {direction_label}", f"🎯 {exit_criteria} - {direction_label}"])
 
             with tab1:
-                st.write("**Retornos baseados na mudança natural do estado dos sinais**")
+                st.write(f"**Retornos baseados na mudança natural do estado dos sinais - {trading_direction}**")
                 if not returns_df.empty:
                     display_returns_section(returns_df, "Mudança de Estado")
                 else:
-                    st.info("Nenhuma operação completa encontrada no período analisado.")
+                    st.info(f"Nenhuma operação completa encontrada no período analisado para a direção: {trading_direction}.")
 
             with tab2:
                 if optimize_params and optimization_results:
-                    st.write(f"**Retornos otimizados para: {exit_criteria}**")
+                    st.write(f"**Retornos otimizados para: {exit_criteria} - {trading_direction}**")
                     if best_params:
                         if exit_criteria == "Tempo":
                             st.success(f"🏆 Melhor configuração: **{best_params} candles**")
@@ -1313,12 +1350,12 @@ if analyze_button:
                         elif exit_criteria == "Alvo Fixo":
                             st.success(f"🏆 Melhor configuração: **Stop {best_params['stop']}% / Alvo {best_params['target']}%**")
                 else:
-                    st.write(f"**Retornos baseados no critério: {exit_criteria}**")
+                    st.write(f"**Retornos baseados no critério: {exit_criteria} - {trading_direction}**")
                 
                 if not custom_returns_df.empty:
                     display_returns_section(custom_returns_df, exit_criteria)
                 else:
-                    st.info("Nenhuma operação completa encontrada com este critério no período analisado.")
+                    st.info(f"Nenhuma operação completa encontrada com este critério no período analisado para a direção: {trading_direction}.")
 
             if optimize_params and optimization_results:
                 with tab3:
