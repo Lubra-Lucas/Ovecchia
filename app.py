@@ -563,3 +563,167 @@ if analyze_button:
                                 df_temp.at[i, 'Signal'] = 'Sell'
                         except (IndexError, KeyError):
                             continue
+
+                    # Get current and previous states for screening
+                    current_signal = df_temp['Signal'].iloc[-1] if len(df_temp) > 0 else 'Stay Out'
+                    previous_signal = df_temp['Signal'].iloc[-2] if len(df_temp) > 1 else 'Stay Out'
+                    state_change = current_signal != previous_signal
+                    current_price = df_temp['close'].iloc[-1] if len(df_temp) > 0 else 0
+
+                    screening_results.append({
+                        'symbol': current_symbol,
+                        'status': 'OK',
+                        'current_state': current_signal,
+                        'previous_state': previous_signal,
+                        'state_change': state_change,
+                        'current_price': f"{current_price:.2f}"
+                    })
+
+                except Exception as e:
+                    screening_results.append({
+                        'symbol': current_symbol,
+                        'status': f'Erro: {str(e)}',
+                        'current_state': 'N/A',
+                        'previous_state': 'N/A',
+                        'state_change': False,
+                        'current_price': 'N/A'
+                    })
+
+            # Update progress to 100%
+            progress_bar.progress(100)
+            status_text.text("Análise de screening concluída!")
+
+            # Display screening results
+            st.header("📊 Resultados do Screening")
+
+            # Convert to DataFrame for display
+            results_df = pd.DataFrame(screening_results)
+
+            # Filter for state changes
+            state_changes = results_df[results_df['state_change'] == True]
+
+            if not state_changes.empty:
+                st.subheader("🔄 Ativos com Mudança de Estado")
+                for _, row in state_changes.iterrows():
+                    col1, col2, col3, col4 = st.columns([2, 2, 2, 2])
+                    with col1:
+                        st.write(f"**{row['symbol']}**")
+                    with col2:
+                        st.write(f"Anterior: {row['previous_state']}")
+                    with col3:
+                        st.write(f"Atual: {row['current_state']}")
+                    with col4:
+                        st.write(f"Preço: {row['current_price']}")
+
+            # Display all results in expandable section
+            with st.expander("📋 Todos os Resultados", expanded=False):
+                st.dataframe(results_df, use_container_width=True)
+
+        else:
+            # Individual analysis mode
+            status_text.text(f"Baixando dados para {symbol}...")
+            
+            # Convert dates to strings
+            start_str = start_date.strftime("%Y-%m-%d")
+            end_str = end_date.strftime("%Y-%m-%d")
+
+            # Download data
+            df = yf.download(symbol, start=start_str, end=end_str, interval=interval)
+
+            if df is None or df.empty:
+                st.error(f"Não foi possível obter dados para {symbol}. Verifique o ticker e tente novamente.")
+                st.stop()
+
+            # Handle multi-level columns if present
+            if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
+                df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
+
+            # Ensure we have the required columns
+            df.reset_index(inplace=True)
+            column_mapping = {
+                "Datetime": "time", 
+                "Date": "time", 
+                "Open": "open", 
+                "High": "high", 
+                "Low": "low", 
+                "Close": "close",
+                "Volume": "volume"
+            }
+            df.rename(columns=column_mapping, inplace=True)
+
+            progress_bar.progress(25)
+            status_text.text("Calculando indicadores técnicos...")
+
+            # Calculate moving averages
+            df[f'SMA_{sma_short}'] = df['close'].rolling(window=sma_short).mean()
+            df[f'SMA_{sma_long}'] = df['close'].rolling(window=sma_long).mean()
+            df['SMA_20'] = df['close'].rolling(window=20).mean()
+
+            # RSI calculation
+            delta = df['close'].diff()
+            gain = np.where(delta > 0, delta, 0)
+            loss = np.where(delta < 0, -delta, 0)
+            avg_gain = pd.Series(gain, index=df.index).rolling(window=14).mean()
+            avg_loss = pd.Series(loss, index=df.index).rolling(window=14).mean()
+            rs = avg_gain / avg_loss
+            df['RSI_14'] = 100 - (100 / (1 + rs))
+
+            # RSL calculation
+            df['RSL_20'] = df['close'] / df['SMA_20']
+
+            # ATR calculation for stop loss
+            df['high_low'] = df['high'] - df['low']
+            df['high_close'] = np.abs(df['high'] - df['close'].shift())
+            df['low_close'] = np.abs(df['low'] - df['close'].shift())
+            df['true_range'] = df[['high_low', 'high_close', 'low_close']].max(axis=1)
+            df['ATR_14'] = df['true_range'].rolling(window=14).mean()
+
+            # Calculate different stop loss levels
+            df['Stop_Justo'] = df['ATR_14'] * 2.0
+            df['Stop_Balanceado'] = df['ATR_14'] * 2.5
+            df['Stop_Largo'] = df['ATR_14'] * 3.5
+
+            progress_bar.progress(50)
+            status_text.text("Gerando sinais de trading...")
+
+            # Signal generation
+            df['Signal'] = 'Stay Out'
+            for i in range(1, len(df)):
+                try:
+                    rsi_up = df['RSI_14'].iloc[i] > df['RSI_14'].iloc[i-1]
+                    rsi_down = df['RSI_14'].iloc[i] < df['RSI_14'].iloc[i-1]
+                    rsl = df['RSL_20'].iloc[i]
+                    rsl_prev = df['RSL_20'].iloc[i-1]
+
+                    rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
+                    rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
+
+                    if (
+                        df['close'].iloc[i] > df[f'SMA_{sma_short}'].iloc[i]
+                        and df['close'].iloc[i] > df[f'SMA_{sma_long}'].iloc[i]
+                        and rsi_up and rsl_buy
+                    ):
+                        df.at[i, 'Signal'] = 'Buy'
+                    elif (
+                        df['close'].iloc[i] < df[f'SMA_{sma_short}'].iloc[i]
+                        and rsi_down and rsl_sell
+                    ):
+                        df.at[i, 'Signal'] = 'Sell'
+                except (IndexError, KeyError):
+                    continue
+
+            progress_bar.progress(75)
+            status_text.text("Calculando estatísticas...")
+
+            # Rest of the individual analysis code would go here
+            st.success("Análise concluída!")
+            st.write("Individual analysis functionality to be completed...")
+
+    except Exception as e:
+        st.error(f"Erro durante a análise: {str(e)}")
+    finally:
+        progress_bar.progress(100)
+        status_text.text("Análise finalizada!")
+
+else:
+    st.info("👆 Configure os parâmetros na barra lateral e clique em 'Analisar' para começar.")
