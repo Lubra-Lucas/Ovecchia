@@ -111,12 +111,12 @@ st.sidebar.header("Parâmetros de Análise")
 # Input fields in sidebar
 with st.sidebar:
     st.subheader("Modo de Análise")
-    
+
     analysis_mode = st.radio(
         "Escolha o tipo de análise:",
         ["Ativo Individual", "Screening de Múltiplos Ativos"]
     )
-    
+
     if analysis_mode == "Ativo Individual":
         st.subheader("Configuração de Ativo")
         # Symbol input with examples
@@ -125,10 +125,10 @@ with st.sidebar:
             value="BTC-USD",
             help="Examples: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
         ).strip()
-        
+
     else:  # Screening mode
         st.subheader("Lista de Ativos para Screening")
-        
+
         # Predefined lists
         preset_lists = {
             "Criptomoedas Top 10": ["BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD",
@@ -210,12 +210,12 @@ with st.sidebar:
             "Ações Americanas": ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "META", "NVDA", "NFLX", "AMD", "BABA"],
             "Pares de Forex": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"]
         }
-        
+
         selected_preset = st.selectbox(
             "Lista Pré-definida:",
             ["Customizada"] + list(preset_lists.keys())
         )
-        
+
         if selected_preset != "Customizada":
             symbols_list = preset_lists[selected_preset]
             st.info(f"Selecionados: {', '.join(symbols_list)}")
@@ -226,7 +226,7 @@ with st.sidebar:
                 help="Digite um ticker por linha"
             )
             symbols_list = [s.strip() for s in symbols_input.split('\n') if s.strip()]
-        
+
         # Show selected symbols
         st.write(f"**{len(symbols_list)} ativos selecionados para screening**")
 
@@ -335,7 +335,7 @@ with st.sidebar:
 
     # Trading direction configuration
     st.subheader("Direção de Operação")
-    
+
     trading_direction = st.selectbox(
         "Escolha a direção das operações:",
         ["Ambos (Compra e Venda)", "Apenas Comprado", "Apenas Vendido"],
@@ -348,7 +348,7 @@ with st.sidebar:
 
     exit_criteria = st.selectbox(
         "Tipo de Saída",
-        ["Mudança de Estado", "Stop Loss", "Alvo Fixo", "Tempo"],
+        ["Mudança de Estado", "Stop Loss", "Alvo Fixo", "Tempo", "Média Móvel"],
         index=0,
         help="Escolha como calcular a saída das posições"
     )
@@ -429,6 +429,24 @@ with st.sidebar:
                 step=1
             )
             exit_params['max_candles'] = max_candles
+    elif exit_criteria == "Média Móvel":
+        if not optimize_params:
+            exit_params['ma_period'] = st.number_input(
+                "Período da Média Móvel",
+                min_value=5,
+                max_value=200,
+                value=20,
+                step=5,
+                help="Período para a média móvel (MM)"
+            )
+        else:
+            st.info("🔍 Modo Otimização: Testará diferentes períodos de MM")
+            ma_range = st.multiselect(
+                "Períodos de MM a Testar",
+                [10, 20, 30, 50, 60, 70, 80, 90, 100],
+                default=[10, 20, 50]
+            )
+            exit_params['ma_range'] = ma_range
 
     # Analyze button
     analyze_button = st.button("🔍 Analisar", type="primary", use_container_width=True)
@@ -455,19 +473,19 @@ if analyze_button:
             # Screening mode
             screening_results = []
             total_symbols = len(symbols_to_analyze)
-            
+
             for idx, current_symbol in enumerate(symbols_to_analyze):
                 status_text.text(f"Analisando {current_symbol} ({idx+1}/{total_symbols})...")
                 progress_bar.progress(int((idx / total_symbols) * 100))
-                
+
                 try:
                     # Convert dates to strings
                     start_str = start_date.strftime("%Y-%m-%d")
                     end_str = end_date.strftime("%Y-%m-%d")
-                    
+
                     # Download data for current symbol
                     df_temp = yf.download(current_symbol, start=start_str, end=end_str, interval=interval)
-                    
+
                     if df_temp is None or df_temp.empty:
                         screening_results.append({
                             'symbol': current_symbol,
@@ -478,11 +496,11 @@ if analyze_button:
                             'current_price': 'N/A'
                         })
                         continue
-                    
+
                     # Handle multi-level columns if present
                     if hasattr(df_temp.columns, 'nlevels') and df_temp.columns.nlevels > 1:
                         df_temp = df_temp.xs(current_symbol, level='Ticker', axis=1, drop_level=True)
-                    
+
                     # Ensure we have the required columns
                     df_temp.reset_index(inplace=True)
                     column_mapping = {
@@ -495,12 +513,12 @@ if analyze_button:
                         "Volume": "volume"
                     }
                     df_temp.rename(columns=column_mapping, inplace=True)
-                    
+
                     # Calculate indicators (simplified for screening)
                     df_temp[f'SMA_{sma_short}'] = df_temp['close'].rolling(window=sma_short).mean()
                     df_temp[f'SMA_{sma_long}'] = df_temp['close'].rolling(window=sma_long).mean()
                     df_temp['SMA_20'] = df_temp['close'].rolling(window=20).mean()
-                    
+
                     # RSI calculation
                     delta = df_temp['close'].diff()
                     gain = np.where(delta > 0, delta, 0)
@@ -509,10 +527,10 @@ if analyze_button:
                     avg_loss = pd.Series(loss, index=df_temp.index).rolling(window=14).mean()
                     rs = avg_gain / avg_loss
                     df_temp['RSI_14'] = 100 - (100 / (1 + rs))
-                    
+
                     # RSL calculation
                     df_temp['RSL_20'] = df_temp['close'] / df_temp['SMA_20']
-                    
+
                     # Signal generation
                     df_temp['Signal'] = 'Stay Out'
                     for i in range(1, len(df_temp)):
@@ -535,19 +553,20 @@ if analyze_button:
                             and rsi_down and rsl_sell
                         ):
                             df_temp.at[i, 'Signal'] = 'Sell'
-                    
+
                     # State persistence with confirmation delay
                     df_temp['Estado'] = 'Stay Out'
-                    
+
                     for i in range(len(df_temp)):
                         if i == 0:
                             # Primeiro candle sempre Stay Out
                             continue
-                            
+
                         # Estado anterior
                         estado_anterior = df_temp['Estado'].iloc[i - 1]
-                        
-                        # Verificar se houve mudança de sinal há confirm_candles períodos atrás
+
+                        # Verificar se houve mudança de sinal```python
+ há confirm_candles períodos atrás
                         if confirm_candles == 0:
                             # Sem confirmação - aplicar sinal imediatamente
                             sinal_atual = df_temp['Signal'].iloc[i]
@@ -567,13 +586,13 @@ if analyze_button:
                             else:
                                 # Ainda não temos candles suficientes, manter estado anterior
                                 df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
-                    
+
                     # Check for state change
                     current_state = df_temp['Estado'].iloc[-1]
                     previous_state = df_temp['Estado'].iloc[-2] if len(df_temp) > 1 else current_state
                     state_change = current_state != previous_state
                     current_price = df_temp['close'].iloc[-1]
-                    
+
                     screening_results.append({
                         'symbol': current_symbol,
                         'status': 'Sucesso',
@@ -582,7 +601,7 @@ if analyze_button:
                         'state_change': state_change,
                         'current_price': current_price
                     })
-                    
+
                 except Exception as e:
                     screening_results.append({
                         'symbol': current_symbol,
@@ -592,25 +611,25 @@ if analyze_button:
                         'state_change': False,
                         'current_price': 'N/A'
                     })
-            
+
             progress_bar.progress(100)
             status_text.text("Screening Completo!")
-            
+
             # Display screening results
             st.success(f"✅ Screening completo para {len(symbols_to_analyze)} ativos")
-            
+
             # Filter and display assets with state changes
             state_changes = [r for r in screening_results if r['state_change']]
-            
+
             if state_changes:
                 st.subheader(f"🚨 {len(state_changes)} Ativo(s) com Mudança de Estado Detectada!")
-                
+
                 for result in state_changes:
                     col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
-                    
+
                     state_icon = "🔵" if result['current_state'] == "Buy" else "🔴" if result['current_state'] == "Sell" else "⚫"
                     prev_icon = "🔵" if result['previous_state'] == "Buy" else "🔴" if result['previous_state'] == "Sell" else "⚫"
-                    
+
                     with col1:
                         st.write(f"**{result['symbol']}**")
                     with col2:
@@ -626,43 +645,43 @@ if analyze_button:
                             st.error("🔴 VENDA")
                         else:
                             st.info("⚫ FORA")
-                    
+
                     st.markdown("---")
             else:
                 st.info("ℹ️ Nenhum ativo com mudança de estado detectada no período analisado.")
-            
+
             # Summary table of all assets
             st.subheader("📊 Resumo Geral do Screening")
-            
+
             # Create summary dataframe
             summary_df = pd.DataFrame(screening_results)
-            
+
             # Display metrics
             col1, col2, col3, col4 = st.columns(4)
-            
+
             with col1:
                 total_assets = len(summary_df)
                 st.metric("Total de Ativos", total_assets)
-            
+
             with col2:
                 successful_analysis = len(summary_df[summary_df['status'] == 'Sucesso'])
                 st.metric("Análises Bem-sucedidas", successful_analysis)
-            
+
             with col3:
                 buy_signals = len(summary_df[summary_df['current_state'] == 'Buy'])
                 st.metric("Sinais de Compra", buy_signals)
-            
+
             with col4:
                 sell_signals = len(summary_df[summary_df['current_state'] == 'Sell'])
                 st.metric("Sinais de Venda", sell_signals)
-            
+
             # Display full table
             st.dataframe(summary_df, use_container_width=True)
-            
+
             # Clear progress indicators
             progress_bar.empty()
             status_text.empty()
-            
+
         else:
             # Individual analysis mode (existing code)
             # Fetch data
@@ -758,15 +777,15 @@ if analyze_button:
 
             # State persistence with confirmation delay
             df['Estado'] = 'Stay Out'
-            
+
             for i in range(len(df)):
                 if i == 0:
                     # Primeiro candle sempre Stay Out
                     continue
-                    
+
                 # Estado anterior
                 estado_anterior = df['Estado'].iloc[i - 1]
-                
+
                 # Verificar se houve mudança de sinal há confirm_candles períodos atrás
                 if confirm_candles == 0:
                     # Sem confirmação - aplicar sinal imediatamente
@@ -916,7 +935,7 @@ if analyze_button:
                     # Filter signals based on trading direction
                     should_enter = False
                     should_exit_on_opposite = False
-                    
+
                     if direction == "Ambos (Compra e Venda)":
                         should_enter = estado in ['Buy', 'Sell']
                     elif direction == "Apenas Comprado":
@@ -1049,6 +1068,17 @@ if analyze_button:
 
                     if target_idx < len(df) and target_idx <= current_idx:
                         return df['close'].iloc[target_idx], df['time'].iloc[target_idx], f"Tempo {target_candles} candles"
+                elif criteria == "Média Móvel":
+                    ma_period = params['ma_period']
+                    ma = df['close'].rolling(window=ma_period).mean()
+                    for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
+                        current_price = df['close'].iloc[i]
+                        ma_value = ma.iloc[i]
+
+                        if signal == 'Buy' and current_price < ma_value:
+                            return current_price, df['time'].iloc[i], f"MM{ma_period} Cruzada para Baixo"
+                        elif signal == 'Sell' and current_price > ma_value:
+                            return current_price, df['time'].iloc[i], f"MM{ma_period} Cruzada para Cima"
 
                 return None, None, None
 
@@ -1058,19 +1088,19 @@ if analyze_button:
                 best_return = float('-inf')
                 best_params = None
                 best_returns_df = pd.DataFrame()
-                
+
                 if criteria == "Tempo":
                     # Test different number of candles
                     max_candles = params.get('max_candles', 20)
                     for candles in range(1, max_candles + 1):
                         test_params = {'time_candles': candles}
                         returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction)
-                        
+
                         if not returns_df.empty:
                             total_return = returns_df['return_pct'].sum()
                             avg_return = returns_df['return_pct'].mean()
                             win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
-                            
+
                             all_results.append({
                                 'parametro': f"{candles} candles",
                                 'total_return': total_return,
@@ -1078,24 +1108,49 @@ if analyze_button:
                                 'win_rate': win_rate,
                                 'total_trades': len(returns_df)
                             })
-                            
+
                             if total_return > best_return:
                                 best_return = total_return
                                 best_params = candles
                                 best_returns_df = returns_df.copy()
-                
+
+                elif criteria == "Média Móvel":
+                    # Test different MA periods
+                    ma_range = params.get('ma_range', [10, 20, 50])
+                    for ma_period in ma_range:
+                        test_params = {'ma_period': ma_period}
+                        returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction)
+
+                        if not returns_df.empty:
+                            total_return = returns_df['return_pct'].sum()
+                            avg_return = returns_df['return_pct'].mean()
+                            win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
+
+                            all_results.append({
+                                'parametro': f"MM{ma_period}",
+                                'total_return': total_return,
+                                'avg_return': avg_return,
+                                'win_rate': win_rate,
+                                'total_trades': len(returns_df)
+                            })
+
+                            if total_return > best_return:
+                                best_return = total_return
+                                best_params = ma_period
+                                best_returns_df = returns_df.copy()
+
                 elif criteria == "Stop Loss":
                     # Test different stop types
                     stop_types = ["Stop Justo", "Stop Balanceado", "Stop Largo"]
                     for stop_type in stop_types:
                         test_params = {'stop_type': stop_type}
                         returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction)
-                        
+
                         if not returns_df.empty:
                             total_return = returns_df['return_pct'].sum()
                             avg_return = returns_df['return_pct'].mean()
                             win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
-                            
+
                             all_results.append({
                                 'parametro': stop_type,
                                 'total_return': total_return,
@@ -1103,28 +1158,28 @@ if analyze_button:
                                 'win_rate': win_rate,
                                 'total_trades': len(returns_df)
                             })
-                            
+
                             if total_return > best_return:
                                 best_return = total_return
                                 best_params = stop_type
                                 best_returns_df = returns_df.copy()
-                
+
                 elif criteria == "Alvo Fixo":
                     # Test different combinations of target and stop
                     target_range = params.get('target_range', [2.0, 3.0, 4.0, 5.0])
                     stop_range = params.get('stop_range', [1.0, 2.0, 3.0])
-                    
+
                     for target in target_range:
                         for stop in stop_range:
                             if target > stop:  # Only test valid combinations
                                 test_params = {'target_pct': target, 'stop_loss_pct': stop}
                                 returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction)
-                                
+
                                 if not returns_df.empty:
                                     total_return = returns_df['return_pct'].sum()
                                     avg_return = returns_df['return_pct'].mean()
                                     win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
-                                    
+
                                     all_results.append({
                                         'parametro': f"Stop {stop}% / Alvo {target}%",
                                         'total_return': total_return,
@@ -1132,12 +1187,12 @@ if analyze_button:
                                         'win_rate': win_rate,
                                         'total_trades': len(returns_df)
                                     })
-                                    
+
                                     if total_return > best_return:
                                         best_return = total_return
                                         best_params = {'stop': stop, 'target': target}
                                         best_returns_df = returns_df.copy()
-                
+
                 return {
                     'best_returns': best_returns_df,
                     'best_params': best_params,
@@ -1149,7 +1204,7 @@ if analyze_button:
             if optimize_params:
                 status_text.text("Otimizando parâmetros...")
                 progress_bar.progress(85)
-                
+
                 optimization_results = optimize_exit_parameters(df, exit_criteria, exit_params, trading_direction)
                 custom_returns_df = optimization_results['best_returns']
                 best_params = optimization_results['best_params']
@@ -1168,10 +1223,10 @@ if analyze_button:
             # Display results
             if optimize_params and optimization_results:
                 st.success(f"✅ Análise e otimização completa para {symbol_label}")
-                
+
                 # Show optimization results
                 st.subheader("🎯 Resultados da Otimização")
-                
+
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Melhor Retorno Total", f"{optimization_results['best_total_return']:.2f}%")
@@ -1182,15 +1237,17 @@ if analyze_button:
                         st.metric("Melhor Stop", best_params)
                     elif exit_criteria == "Alvo Fixo":
                         st.metric("Melhor Combinação", f"Stop {best_params['stop']}% / Alvo {best_params['target']}%")
+                    elif exit_criteria == "Média Móvel":
+                        st.metric("Melhor Período MM", f"MM{best_params}")
                 with col3:
                     st.metric("Operações", len(custom_returns_df))
-                
+
                 # Show comparison table
                 st.subheader("📊 Comparação de Parâmetros")
                 comparison_df = pd.DataFrame(all_results)
                 comparison_df = comparison_df.sort_values('total_return', ascending=False)
                 st.dataframe(comparison_df, use_container_width=True)
-                
+
             else:
                 st.success(f"✅ Análise completa para  {symbol_label}")
 
@@ -1244,8 +1301,7 @@ if analyze_button:
                 x=df['time'],
                 y=df['close'],
                 mode='lines',
-                line=dict(color='rgba(0,0,0,0)'),
-                name='Price',
+                line=dict(color='rgba(0,0,0,0)'),name='Price',
                 hovertemplate="<b>Price:</b> %{y:.2f}<br><b>Time:</b> %{x}<extra></extra>",
                 showlegend=False
             ), row=1, col=1)
@@ -1326,7 +1382,7 @@ if analyze_button:
 
             # Create tabs for different return calculations
             direction_label = trading_direction.replace("Ambos (Compra e Venda)", "Ambos").replace("Apenas ", "")
-            
+
             if optimize_params and optimization_results:
                 tab1, tab2, tab3 = st.tabs([f"📊 Mudança de Estado - {direction_label}", f"🎯 {exit_criteria} (Otimizado) - {direction_label}", "📋 Comparação Detalhada"])
             else:
@@ -1349,9 +1405,11 @@ if analyze_button:
                             st.success(f"🏆 Melhor configuração: **{best_params}**")
                         elif exit_criteria == "Alvo Fixo":
                             st.success(f"🏆 Melhor configuração: **Stop {best_params['stop']}% / Alvo {best_params['target']}%**")
+                        elif exit_criteria == "Média Móvel":
+                            st.success(f"🏆 Melhor configuração: **MM{best_params}**")
                 else:
                     st.write(f"**Retornos baseados no critério: {exit_criteria} - {trading_direction}**")
-                
+
                 if not custom_returns_df.empty:
                     display_returns_section(custom_returns_df, exit_criteria)
                 else:
@@ -1360,30 +1418,30 @@ if analyze_button:
             if optimize_params and optimization_results:
                 with tab3:
                     st.write("**Comparação detalhada de todos os parâmetros testados**")
-                    
+
                     # Create a more detailed comparison
                     if all_results:
                         comparison_df = pd.DataFrame(all_results)
                         comparison_df = comparison_df.sort_values('total_return', ascending=False)
-                        
+
                         # Format columns
                         comparison_df['total_return'] = comparison_df['total_return'].round(2)
                         comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
                         comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
-                        
+
                         # Rename columns for better display
                         comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
-                        
+
                         # Color code the best result
                         def highlight_best(s):
                             if s.name == 'Retorno Total (%)':
                                 is_max = s == s.max()
                                 return ['background-color: lightgreen' if v else '' for v in is_max]
                             return ['' for _ in s]
-                        
+
                         styled_df = comparison_df.style.apply(highlight_best, axis=0)
                         st.dataframe(styled_df, use_container_width=True)
-                        
+
                         # Show summary statistics
                         col1, col2, col3 = st.columns(3)
                         with col1:
