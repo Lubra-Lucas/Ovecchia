@@ -352,21 +352,6 @@ with st.sidebar:
         index=0,
         help="Escolha como calcular a saída das posições"
     )
-    
-    # Exit mode configuration (only for non-state change criteria)
-    exit_mode = "state_change_and_criteria"  # default
-    if exit_criteria != "Mudança de Estado":
-        st.subheader("Modo de Saída")
-        exit_mode = st.radio(
-            "Como deseja que as posições sejam fechadas?",
-            ["criteria_only", "state_change_and_criteria"],
-            format_func=lambda x: {
-                "criteria_only": f"Apenas pelo {exit_criteria}",
-                "state_change_and_criteria": f"Pelo {exit_criteria} OU Mudança de Estado"
-            }[x],
-            index=1,  # Default to combined mode
-            help="Escolha se as posições devem fechar apenas pelo critério selecionado ou também por mudança de estado"
-        )
 
     # Optimization option
     optimize_params = st.checkbox(
@@ -930,7 +915,7 @@ if analyze_button:
             returns_df = calculate_signal_returns(df, trading_direction)
 
             # Calculate custom exit criteria returns
-            def calculate_custom_exit_returns(df, exit_criteria, exit_params, direction="Ambos (Compra e Venda)", exit_mode="state_change_and_criteria"):
+            def calculate_custom_exit_returns(df, exit_criteria, exit_params, direction="Ambos (Compra e Venda)"):
                 if exit_criteria == "Mudança de Estado":
                     return calculate_signal_returns(df, direction)
 
@@ -962,42 +947,41 @@ if analyze_button:
                     # Check if we have an active position
                     if current_signal is not None and entry_price is not None and entry_index is not None:
 
-                        # 1. Check for state change exit conditions (only if exit_mode allows it)
-                        if exit_mode == "state_change_and_criteria":
-                            if (estado != current_signal and estado == 'Stay Out') or should_exit_on_opposite:
-                                # State changed or opposite signal - close current position immediately
-                                if current_signal == 'Buy':
-                                    return_pct = ((price - entry_price) / entry_price) * 100
-                                else:  # Sell
-                                    return_pct = ((entry_price - price) / entry_price) * 100
+                        # 1. Check for exit conditions (state change or opposite signal)
+                        if (estado != current_signal and estado == 'Stay Out') or should_exit_on_opposite:
+                            # State changed or opposite signal - close current position immediately
+                            if current_signal == 'Buy':
+                                return_pct = ((price - entry_price) / entry_price) * 100
+                            else:  # Sell
+                                return_pct = ((entry_price - price) / entry_price) * 100
 
-                                exit_reason = 'Mudança de Estado' if estado == 'Stay Out' else 'Sinal Oposto'
-                                custom_returns.append({
-                                    'signal': current_signal,
-                                    'entry_time': entry_time,
-                                    'exit_time': time,
-                                    'entry_price': entry_price,
-                                    'exit_price': price,
-                                    'return_pct': return_pct,
-                                    'exit_reason': exit_reason
-                                })
+                            exit_reason = 'Mudança de Estado' if estado == 'Stay Out' else 'Sinal Oposto'
+                            custom_returns.append({
+                                'signal': current_signal,
+                                'entry_time': entry_time,
+                                'exit_time': time,
+                                'entry_price': entry_price,
+                                'exit_price': price,
+                                'return_pct': return_pct,
+                                'exit_reason': exit_reason
+                            })
 
-                                # Start new position if criteria met
-                                if should_enter and previous_state != estado:
-                                    current_signal = estado
-                                    entry_price = price
-                                    entry_time = time
-                                    entry_index = i
-                                else:
-                                    current_signal = None
-                                    entry_price = None
-                                    entry_time = None
-                                    entry_index = None
+                            # Start new position if criteria met
+                            if should_enter and previous_state != estado:
+                                current_signal = estado
+                                entry_price = price
+                                entry_time = time
+                                entry_index = i
+                            else:
+                                current_signal = None
+                                entry_price = None
+                                entry_time = None
+                                entry_index = None
 
-                                previous_state = estado
-                                continue
+                            previous_state = estado
+                            continue
 
-                        # 2. Check custom exit criteria
+                        # 2. Check custom exit criteria (only if no state change)
                         exit_price, exit_time, exit_reason = calculate_exit(
                             df, entry_index, i, current_signal, entry_price, exit_criteria, exit_params
                         )
@@ -1097,7 +1081,7 @@ if analyze_button:
 
                 return None, None, None
 
-            def optimize_exit_parameters(df, criteria, params, direction="Ambos (Compra e Venda)", exit_mode="state_change_and_criteria"):
+            def optimize_exit_parameters(df, criteria, params, direction="Ambos (Compra e Venda)"):
                 """Optimize parameters for the selected exit criteria"""
                 all_results = []
                 best_return = float('-inf')
@@ -1109,7 +1093,7 @@ if analyze_button:
                     max_candles = params.get('max_candles', 20)
                     for candles in range(1, max_candles + 1):
                         test_params = {'time_candles': candles}
-                        returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, exit_mode)
+                        returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction)
 
                         if not returns_df.empty:
                             total_return = returns_df['return_pct'].sum()
@@ -1134,7 +1118,7 @@ if analyze_button:
                     ma_range = params.get('ma_range', [10, 20, 50])
                     for ma_period in ma_range:
                         test_params = {'ma_period': ma_period}
-                        returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, exit_mode)
+                        returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction)
 
                         if not returns_df.empty:
                             total_return = returns_df['return_pct'].sum()
@@ -1159,7 +1143,7 @@ if analyze_button:
                     stop_types = ["Stop Justo", "Stop Balanceado", "Stop Largo"]
                     for stop_type in stop_types:
                         test_params = {'stop_type': stop_type}
-                        returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, exit_mode)
+                        returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction)
 
                         if not returns_df.empty:
                             total_return = returns_df['return_pct'].sum()
@@ -1188,7 +1172,7 @@ if analyze_button:
                         for stop in stop_range:
                             if target > stop:  # Only test valid combinations
                                 test_params = {'target_pct': target, 'stop_loss_pct': stop}
-                                returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, exit_mode)
+                                returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction)
 
                                 if not returns_df.empty:
                                     total_return = returns_df['return_pct'].sum()
@@ -1220,12 +1204,12 @@ if analyze_button:
                 status_text.text("Otimizando parâmetros...")
                 progress_bar.progress(85)
 
-                optimization_results = optimize_exit_parameters(df, exit_criteria, exit_params, trading_direction, exit_mode)
+                optimization_results = optimize_exit_parameters(df, exit_criteria, exit_params, trading_direction)
                 custom_returns_df = optimization_results['best_returns']
                 best_params = optimization_results['best_params']
                 all_results = optimization_results['all_results']
             else:
-                custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params, trading_direction, exit_mode)
+                custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params, trading_direction)
                 optimization_results = None
 
             progress_bar.progress(100)
