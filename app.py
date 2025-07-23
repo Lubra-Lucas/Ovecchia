@@ -17,43 +17,90 @@ def is_crypto_symbol(symbol):
 def convert_yf_to_binance_symbol(symbol):
     """Converte símbolo do Yahoo Finance para formato Binance"""
     # Remove sufixos comuns e converte para formato Binance
-    symbol = symbol.upper().replace('-USD', 'USDT').replace('USD', 'USDT')
-    return symbol
+    symbol_clean = symbol.upper().replace('-USD', 'USDT')
+    # Evitar dupla conversão (BTCUSDTT -> BTCUSDT)
+    if symbol_clean.endswith('USDTT'):
+        symbol_clean = symbol_clean.replace('USDTT', 'USDT')
+    return symbol_clean
 
 def convert_interval_to_binance(interval):
-    """Converte intervalo do yfinance para formato Binance"""
+    """Converte intervalo do yfinance para formato Binance (apenas intervalos válidos)"""
     interval_map = {
-            '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m',
-            '60m': '1h', '1h': '1h', '4h': '4h',
-            '1d': '1d', '1wk': '1w', '1mo': '1M'
+        '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m',
+        '60m': '1h', '1h': '1h', '4h': '4h',
+        '1d': '1d', '1wk': '1w', '1mo': '1M'
     }
     return interval_map.get(interval, '1d')
 
+def validate_binance_symbol(symbol):
+    """Valida se o símbolo existe na Binance"""
+    try:
+        url = "https://api.binance.com/api/v3/exchangeInfo"
+        response = requests.get(url)
+        if response.status_code == 200:
+            exchange_info = response.json()
+            valid_symbols = [s['symbol'] for s in exchange_info['symbols']]
+            return symbol in valid_symbols
+        return False
+    except:
+        return False
+
 def get_binance_data(symbol, start_date, end_date, interval):
-    """Coleta dados da API da Binance"""
+    """Coleta dados da API da Binance com paginação e validação"""
     try:
         binance_symbol = convert_yf_to_binance_symbol(symbol)
         binance_interval = convert_interval_to_binance(interval)
+        
+        # Validar se o símbolo existe na Binance
+        if not validate_binance_symbol(binance_symbol):
+            st.error(f"Símbolo '{binance_symbol}' não encontrado na Binance. Símbolo original: '{symbol}'")
+            return pd.DataFrame()
         
         # Converter datas para timestamp
         start_timestamp = int(pd.Timestamp(start_date).timestamp() * 1000)
         end_timestamp = int(pd.Timestamp(end_date).timestamp() * 1000)
         
-        # Requisição para a API da Binance
-        url = f"https://api.binance.com/api/v3/klines"
-        params = {
-            'symbol': binance_symbol,
-            'interval': binance_interval,
-            'startTime': start_timestamp,
-            'endTime': end_timestamp,
-            'limit': 1000
-        }
+        all_data = []
+        current_start = start_timestamp
         
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        data = response.json()
+        # Loop de paginação para coletar dados em chunks de 1000
+        while current_start < end_timestamp:
+            # Requisição para a API da Binance
+            url = "https://api.binance.com/api/v3/klines"
+            params = {
+                'symbol': binance_symbol,
+                'interval': binance_interval,
+                'startTime': current_start,
+                'endTime': end_timestamp,
+                'limit': 1000
+            }
+            
+            response = requests.get(url, params=params)
+            
+            if response.status_code != 200:
+                st.error(f"Erro na API da Binance para {symbol}:")
+                st.error(f"Status Code: {response.status_code}")
+                st.error(f"Resposta: {response.text}")
+                return pd.DataFrame()
+                
+            data = response.json()
+            
+            if not data:
+                break
+                
+            all_data.extend(data)
+            
+            # Atualizar timestamp para próxima requisição
+            # Usar o timestamp do último candle + 1ms
+            last_timestamp = data[-1][6]  # Close time
+            current_start = last_timestamp + 1
+            
+            # Se recebermos menos de 1000 candles, chegamos ao fim
+            if len(data) < 1000:
+                break
         
-        if not data:
+        if not all_data:
+            st.warning(f"Nenhum dado encontrado para {symbol} no período especificado")
             return pd.DataFrame()
         
         # Conversão para DataFrame
@@ -63,7 +110,10 @@ def get_binance_data(symbol, start_date, end_date, interval):
             "Taker buy base volume", "Taker buy quote volume", "Ignore"
         ]
         
-        df = pd.DataFrame(data, columns=columns)
+        df = pd.DataFrame(all_data, columns=columns)
+        
+        # Remover duplicatas baseadas no Open time
+        df = df.drop_duplicates(subset=['Open time'])
         
         # Conversão de colunas para os tipos corretos
         df["Open time"] = pd.to_datetime(df["Open time"], unit="ms")
@@ -81,13 +131,17 @@ def get_binance_data(symbol, start_date, end_date, interval):
             "Volume": "volume"
         })
         
-        # Selecionar apenas colunas principais
+        # Selecionar apenas colunas principais e ordenar por tempo
         df = df[["time", "open", "high", "low", "close", "volume"]]
+        df = df.sort_values('time').reset_index(drop=True)
         
         return df
         
+    except requests.exceptions.RequestException as e:
+        st.error(f"Erro de conexão ao coletar dados da Binance para {symbol}: {str(e)}")
+        return pd.DataFrame()
     except Exception as e:
-        st.error(f"Erro ao coletar dados da Binance para {symbol}: {str(e)}")
+        st.error(f"Erro geral ao coletar dados da Binance para {symbol}: {str(e)}")
         return pd.DataFrame()
 
 def get_market_data(symbol, start_date, end_date, interval):
@@ -413,9 +467,9 @@ with tab2:
 
         st.markdown("#### ⏱️ Intervalo de Tempo")
         interval_options = {
-            "1 minute": "1m", "2 minutes": "2m", "5 minutes": "5m", "15 minutes": "15m",
-            "30 minutes": "30m", "60 minutes": "60m", "90 minutes": "90m", "4 hours": "4h",
-            "1 day": "1d", "5 days": "5d", "1 week": "1wk", "1 month": "1mo", "3 months": "3mo"
+            "1 minute": "1m", "5 minutes": "5m", "15 minutes": "15m",
+            "30 minutes": "30m", "60 minutes": "60m", "4 hours": "4h",
+            "1 day": "1d", "1 week": "1wk", "1 month": "1mo"
         }
         interval_display = st.selectbox("Intervalo", list(interval_options.keys()), index=8)
         interval = interval_options[interval_display]
@@ -1385,7 +1439,7 @@ with tab3:
             end_date_screening = st.date_input("Data Final", value=default_end_screening, min_value=start_date_screening, max_value=default_end_screening, key="end_screening")
 
         # Interval selection
-        interval_display_screening = st.selectbox("Intervalo de Tempo", list(interval_options.keys()), index=8, key="interval_screening")
+        interval_display_screening = st.selectbox("Intervalo de Tempo", list(interval_options.keys()), index=6, key="interval_screening")
         interval_screening = interval_options[interval_display_screening]
 
         # Confirmation candles parameter
