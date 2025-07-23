@@ -6,7 +6,126 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import warnings
+import requests
 warnings.filterwarnings('ignore')
+
+def is_crypto_symbol(symbol):
+    """Detecta se o símbolo é uma criptomoeda baseado no padrão -USD"""
+    crypto_patterns = ['-USD', '-USDT', '-BTC', '-ETH']
+    return any(pattern in symbol.upper() for pattern in crypto_patterns)
+
+def convert_yf_to_binance_symbol(symbol):
+    """Converte símbolo do Yahoo Finance para formato Binance"""
+    # Remove sufixos comuns e converte para formato Binance
+    symbol = symbol.upper().replace('-USD', 'USDT').replace('USD', 'USDT')
+    return symbol
+
+def convert_interval_to_binance(interval):
+    """Converte intervalo do yfinance para formato Binance"""
+    interval_map = {
+        '1m': '1m', '2m': '2m', '5m': '5m', '15m': '15m', '30m': '30m',
+        '60m': '1h', '90m': '90m', '4h': '4h',
+        '1d': '1d', '5d': '5d', '1wk': '1w', '1mo': '1M', '3mo': '3M'
+    }
+    return interval_map.get(interval, '1d')
+
+def get_binance_data(symbol, start_date, end_date, interval):
+    """Coleta dados da API da Binance"""
+    try:
+        binance_symbol = convert_yf_to_binance_symbol(symbol)
+        binance_interval = convert_interval_to_binance(interval)
+        
+        # Converter datas para timestamp
+        start_timestamp = int(pd.Timestamp(start_date).timestamp() * 1000)
+        end_timestamp = int(pd.Timestamp(end_date).timestamp() * 1000)
+        
+        # Requisição para a API da Binance
+        url = f"https://api.binance.com/api/v3/klines"
+        params = {
+            'symbol': binance_symbol,
+            'interval': binance_interval,
+            'startTime': start_timestamp,
+            'endTime': end_timestamp,
+            'limit': 1000
+        }
+        
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        if not data:
+            return pd.DataFrame()
+        
+        # Conversão para DataFrame
+        columns = [
+            "Open time", "Open", "High", "Low", "Close", "Volume",
+            "Close time", "Quote asset volume", "Number of trades",
+            "Taker buy base volume", "Taker buy quote volume", "Ignore"
+        ]
+        
+        df = pd.DataFrame(data, columns=columns)
+        
+        # Conversão de colunas para os tipos corretos
+        df["Open time"] = pd.to_datetime(df["Open time"], unit="ms")
+        df["Close time"] = pd.to_datetime(df["Close time"], unit="ms")
+        numeric_cols = ["Open", "High", "Low", "Close", "Volume"]
+        df[numeric_cols] = df[numeric_cols].astype(float)
+        
+        # Padronizar nomes das colunas para compatibilidade
+        df = df.rename(columns={
+            "Open time": "time",
+            "Open": "open",
+            "High": "high", 
+            "Low": "low",
+            "Close": "close",
+            "Volume": "volume"
+        })
+        
+        # Selecionar apenas colunas principais
+        df = df[["time", "open", "high", "low", "close", "volume"]]
+        
+        return df
+        
+    except Exception as e:
+        st.error(f"Erro ao coletar dados da Binance para {symbol}: {str(e)}")
+        return pd.DataFrame()
+
+def get_market_data(symbol, start_date, end_date, interval):
+    """Função principal para coletar dados do mercado usando a fonte apropriada"""
+    if is_crypto_symbol(symbol):
+        # Usar API da Binance para criptomoedas
+        return get_binance_data(symbol, start_date, end_date, interval)
+    else:
+        # Usar Yahoo Finance para outros ativos
+        try:
+            df = yf.download(symbol, start=start_date, end=end_date, interval=interval)
+            
+            if df is None or df.empty:
+                return pd.DataFrame()
+            
+            # Handle multi-level columns if present
+            if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
+                df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
+            
+            df.reset_index(inplace=True)
+            
+            # Standardize column names
+            column_mapping = {
+                "Datetime": "time", 
+                "Date": "time", 
+                "Open": "open", 
+                "High": "high", 
+                "Low": "low", 
+                "Close": "close",
+                "Volume": "volume"
+            }
+            df.rename(columns=column_mapping, inplace=True)
+            
+            return df
+            
+        except Exception as e:
+            st.error(f"Erro ao coletar dados do Yahoo Finance para {symbol}: {str(e)}")
+            return pd.DataFrame()
 
 def display_returns_section(returns_data, criteria_name):
     """Helper function to display returns section"""
@@ -383,35 +502,18 @@ with tab2:
             start_str = start_date.strftime("%Y-%m-%d")
             end_str = end_date.strftime("%Y-%m-%d")
 
-            # Download data
-            df = yf.download(symbol, start=start_str, end=end_str, interval=interval)
+            # Download data using appropriate API
+            df = get_market_data(symbol, start_str, end_str, interval)
 
             if df is None or df.empty:
                 st.error(f"Sem data encontrada para '{symbol}' nesse período de tempo.")
                 st.stop()
 
-            # Handle multi-level columns if present
-            if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
-                df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
-
             progress_bar.progress(40)
             status_text.text("Processando indicadores...")
 
             # Data preprocessing
-            symbol_label = symbol.replace("=X", "")
-            df.reset_index(inplace=True)
-
-            # Standardize column names
-            column_mapping = {
-                "Datetime": "time", 
-                "Date": "time", 
-                "Open": "open", 
-                "High": "high", 
-                "Low": "low", 
-                "Close": "close",
-                "Volume": "volume"
-            }
-            df.rename(columns=column_mapping, inplace=True)
+            symbol_label = symbol.replace("=X", "").replace("-USD", "")
 
             # Ensure we have the required columns
             required_columns = ['time', 'open', 'high', 'low', 'close']
@@ -1325,8 +1427,8 @@ with tab3:
                     start_str = start_date_screening.strftime("%Y-%m-%d")
                     end_str = end_date_screening.strftime("%Y-%m-%d")
 
-                    # Download data for current symbol
-                    df_temp = yf.download(current_symbol, start=start_str, end=end_str, interval=interval_screening)
+                    # Download data using appropriate API
+                    df_temp = get_market_data(current_symbol, start_str, end_str, interval_screening)
 
                     if df_temp is None or df_temp.empty:
                         screening_results.append({
@@ -1338,23 +1440,6 @@ with tab3:
                             'current_price': 'N/A'
                         })
                         continue
-
-                    # Handle multi-level columns if present
-                    if hasattr(df_temp.columns, 'nlevels') and df_temp.columns.nlevels > 1:
-                        df_temp = df_temp.xs(current_symbol, level='Ticker', axis=1, drop_level=True)
-
-                    # Ensure we have the required columns
-                    df_temp.reset_index(inplace=True)
-                    column_mapping = {
-                        "Datetime": "time", 
-                        "Date": "time", 
-                        "Open": "open", 
-                        "High": "high", 
-                        "Low": "low", 
-                        "Close": "close",
-                        "Volume": "volume"
-                    }
-                    df_temp.rename(columns=column_mapping, inplace=True)
 
                     # Calculate indicators (simplified for screening)
                     df_temp[f'SMA_{sma_short_screening}'] = df_temp['close'].rolling(window=sma_short_screening).mean()
