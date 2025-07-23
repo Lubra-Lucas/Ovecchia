@@ -284,7 +284,7 @@ with tab2:
 
         st.markdown("#### 📅 Intervalo de Data")
         default_end = datetime.now().date()
-        default_start = default_end - timedelta(days=30)
+        default_start = default_end - timedelta(days=365)
 
         col_date1, col_date2 = st.columns(2)
         with col_date1:
