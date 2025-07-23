@@ -40,6 +40,16 @@ def get_market_data(symbol, start_date, end_date, interval):
         st.error(f"Erro ao coletar dados do Yahoo Finance para {symbol}: {str(e)}")
         return pd.DataFrame()
 
+def calcular_bollinger_bands(df, period=20):
+    """Função para calcular as Bandas de Bollinger"""
+    if 'close' not in df.columns:
+        return None, None
+    sma = df['close'].rolling(window=period).mean()
+    std = df['close'].rolling(window=period).std()
+    banda_superior = sma + (2 * std)
+    banda_inferior = sma - (2 * std)
+    return banda_superior, banda_inferior
+
 def display_returns_section(returns_data, criteria_name):
     """Helper function to display returns section"""
     if not returns_data.empty:
@@ -296,7 +306,7 @@ st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING - MODELO QUANT</h1>', 
 st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Análise Técnica e Sinais de Trading</p>', unsafe_allow_html=True)
 
 # Create main navigation tabs
-tab1, tab2, tab3, tab4 = st.tabs(["🏠 Home", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "ℹ️ Sobre"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏠 Home", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "📊 Detecção de Topos e Fundos", "ℹ️ Sobre"])
 
 with tab1:
     # Home page content
@@ -339,6 +349,20 @@ with tab1:
         </div>
         """, unsafe_allow_html=True)
 
+    st.markdown("### 📊 Detecção de Topos e Fundos")
+    st.markdown("""
+    <div class="metric-card">
+        <p><strong>🎯 Bandas de Bollinger para Identificação de Extremos</strong><br>
+        Detecte automaticamente possíveis topos e fundos usando as famosas Bandas de Bollinger.</p>
+        <ul>
+            <li>Detecção de fundos (oportunidades de compra)</li>
+            <li>Detecção de topos (oportunidades de venda)</li>
+            <li>Configuração personalizável de sensibilidade</li>
+            <li>Análise em múltiplos timeframes</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("### 🛠️ Recursos Disponíveis")
 
     col1, col2, col3 = st.columns(3)
@@ -350,6 +374,7 @@ with tab1:
         - **RSI (14):** Relative Strength Index
         - **RSL (20):** Relative Strength Levy
         - **ATR (14):** Average True Range
+        - **Bollinger Bands:** Detecção de topos e fundos
         - **Stop Loss:** 3 níveis para diferentes perfis de investidores
         """)
 
@@ -1602,6 +1627,285 @@ with tab3:
             st.write("Please check your inputs and try again.")
 
 with tab4:
+    # Bollinger Bands Detection tab
+    st.markdown("## 📊 Detecção de Topos e Fundos com Bollinger Bands")
+    st.markdown("Identifique oportunidades de compra e venda baseadas na posição dos preços em relação às Bandas de Bollinger")
+
+    # Parameters section
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
+        st.markdown("#### 💹 Lista de Ativos")
+
+        # Predefined lists for Bollinger Bands screening
+        preset_lists_bb = {
+            "Criptomoedas Top": ["BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD", "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD"],
+            "Ações Brasileiras Top": ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "B3SA3.SA", "ABEV3.SA", "BBAS3.SA", "WEGE3.SA", "PETR3.SA", "JBSS3.SA"],
+            "Ações Americanas Top": ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "META", "NVDA", "NFLX", "AMD", "BABA"],
+            "Forex Principais": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X"],
+            "Commodities": ["GC=F", "SI=F", "CL=F", "NG=F", "HG=F"]
+        }
+
+        selected_preset_bb = st.selectbox(
+            "Lista:",
+            ["Customizada"] + list(preset_lists_bb.keys()),
+            key="preset_bb"
+        )
+
+        if selected_preset_bb != "Customizada":
+            symbols_list_bb = preset_lists_bb[selected_preset_bb]
+            st.info(f"{len(symbols_list_bb)} ativos selecionados")
+        else:
+            symbols_input_bb = st.text_area(
+                "Tickers (um por linha):",
+                value="BTC-USD\nETH-USD\nPETR4.SA\nAAPL",
+                height=100,
+                key="symbols_bb"
+            )
+            symbols_list_bb = [s.strip() for s in symbols_input_bb.split('\n') if s.strip()]
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col2:
+        st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
+        st.markdown("#### 📅 Configurações de Análise")
+
+        # Date range selection
+        default_end_bb = datetime.now().date()
+        default_start_bb = default_end_bb - timedelta(days=30)
+
+        col_date1, col_date2 = st.columns(2)
+        with col_date1:
+            start_date_bb = st.date_input("Data Inicial", value=default_start_bb, max_value=default_end_bb, key="start_bb")
+        with col_date2:
+            end_date_bb = st.date_input("Data Final", value=default_end_bb, min_value=start_date_bb, max_value=default_end_bb, key="end_bb")
+
+        # Interval selection
+        interval_display_bb = st.selectbox("Intervalo de Tempo", list(interval_options.keys()), index=8, key="interval_bb")
+        interval_bb = interval_options[interval_display_bb]
+
+        # Bollinger Bands parameters
+        bb_period = st.number_input("Período das Bandas de Bollinger", min_value=10, max_value=50, value=20, step=1, key="bb_period")
+        bb_std = st.number_input("Desvio Padrão (Multiplicador)", min_value=1.0, max_value=3.0, value=2.0, step=0.1, key="bb_std")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Detection sensitivity
+    st.markdown("#### 🎯 Sensibilidade de Detecção")
+    col1, col2 = st.columns(2)
+    with col1:
+        show_only_signals = st.checkbox("Mostrar apenas ativos com sinais", value=True, key="only_signals_bb")
+    with col2:
+        min_distance_pct = st.number_input("Distância mínima das bandas (%)", min_value=0.1, max_value=5.0, value=1.0, step=0.1, key="min_distance")
+
+    # Analysis button
+    analyze_button_bb = st.button("🚀 INICIAR DETECÇÃO DE TOPOS E FUNDOS", type="primary", use_container_width=True, key="analyze_bb")
+
+    # Analysis logic for Bollinger Bands
+    if analyze_button_bb:
+        if not symbols_list_bb:
+            st.error("Por favor selecione pelo menos um ativo para análise.")
+            st.stop()
+
+        # Progress indicator
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        try:
+            bb_results = []
+            total_symbols = len(symbols_list_bb)
+
+            for idx, current_symbol in enumerate(symbols_list_bb):
+                status_text.text(f"Analisando {current_symbol} ({idx+1}/{total_symbols})...")
+                progress_bar.progress(int((idx / total_symbols) * 100))
+
+                try:
+                    # Convert dates to strings
+                    start_str = start_date_bb.strftime("%Y-%m-%d")
+                    end_str = end_date_bb.strftime("%Y-%m-%d")
+
+                    # Download data
+                    df_temp = get_market_data(current_symbol, start_str, end_str, interval_bb)
+
+                    if df_temp is None or df_temp.empty:
+                        bb_results.append({
+                            'symbol': current_symbol,
+                            'status': 'Erro - Sem dados',
+                            'signal': 'N/A',
+                            'current_price': 'N/A',
+                            'banda_superior': 'N/A',
+                            'banda_inferior': 'N/A',
+                            'sma': 'N/A',
+                            'distance_pct': 'N/A'
+                        })
+                        continue
+
+                    # Calculate Bollinger Bands
+                    sma = df_temp['close'].rolling(window=bb_period).mean()
+                    std = df_temp['close'].rolling(window=bb_period).std()
+                    banda_superior = sma + (bb_std * std)
+                    banda_inferior = sma - (bb_std * std)
+
+                    # Get current values
+                    current_price = df_temp['close'].iloc[-1]
+                    current_banda_superior = banda_superior.iloc[-1]
+                    current_banda_inferior = banda_inferior.iloc[-1]
+                    current_sma = sma.iloc[-1]
+
+                    # Determine signal
+                    signal = 'Neutro'
+                    distance_pct = 0
+
+                    # Check if price is below lower band (potential bottom/buy signal)
+                    if current_price < current_banda_inferior:
+                        distance_pct = ((current_banda_inferior - current_price) / current_price) * 100
+                        if distance_pct >= min_distance_pct:
+                            signal = 'Possível Fundo (Compra)'
+
+                    # Check if price is above upper band (potential top/sell signal)
+                    elif current_price > current_banda_superior:
+                        distance_pct = ((current_price - current_banda_superior) / current_price) * 100
+                        if distance_pct >= min_distance_pct:
+                            signal = 'Possível Topo (Venda)'
+
+                    bb_results.append({
+                        'symbol': current_symbol,
+                        'status': 'Sucesso',
+                        'signal': signal,
+                        'current_price': current_price,
+                        'banda_superior': current_banda_superior,
+                        'banda_inferior': current_banda_inferior,
+                        'sma': current_sma,
+                        'distance_pct': distance_pct
+                    })
+
+                except Exception as e:
+                    bb_results.append({
+                        'symbol': current_symbol,
+                        'status': f'Erro: {str(e)[:50]}...',
+                        'signal': 'N/A',
+                        'current_price': 'N/A',
+                        'banda_superior': 'N/A',
+                        'banda_inferior': 'N/A',
+                        'sma': 'N/A',
+                        'distance_pct': 'N/A'
+                    })
+
+            progress_bar.progress(100)
+            status_text.text("Detecção Completa!")
+
+            # Display results
+            st.success(f"✅ Análise de Bollinger Bands completa para {len(symbols_list_bb)} ativos")
+
+            # Filter results if needed
+            if show_only_signals:
+                signal_results = [r for r in bb_results if r['signal'] not in ['Neutro', 'N/A']]
+            else:
+                signal_results = bb_results
+
+            # Display buying opportunities (potential bottoms)
+            buy_opportunities = [r for r in signal_results if 'Compra' in r['signal']]
+            if buy_opportunities:
+                st.subheader(f"🟢 {len(buy_opportunities)} Oportunidade(s) de Compra Detectada(s)")
+
+                for result in buy_opportunities:
+                    col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
+
+                    with col1:
+                        st.write(f"**{result['symbol']}**")
+                    with col2:
+                        st.write(f"Preço: {result['current_price']:.2f}")
+                    with col3:
+                        st.write(f"Banda Inf: {result['banda_inferior']:.2f}")
+                    with col4:
+                        st.write(f"Distância: {result['distance_pct']:.2f}%")
+                    with col5:
+                        st.success("🟢 COMPRA")
+
+                    st.markdown("---")
+
+            # Display selling opportunities (potential tops)
+            sell_opportunities = [r for r in signal_results if 'Venda' in r['signal']]
+            if sell_opportunities:
+                st.subheader(f"🔴 {len(sell_opportunities)} Oportunidade(s) de Venda Detectada(s)")
+
+                for result in sell_opportunities:
+                    col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
+
+                    with col1:
+                        st.write(f"**{result['symbol']}**")
+                    with col2:
+                        st.write(f"Preço: {result['current_price']:.2f}")
+                    with col3:
+                        st.write(f"Banda Sup: {result['banda_superior']:.2f}")
+                    with col4:
+                        st.write(f"Distância: {result['distance_pct']:.2f}%")
+                    with col5:
+                        st.error("🔴 VENDA")
+
+                    st.markdown("---")
+
+            if not buy_opportunities and not sell_opportunities:
+                if show_only_signals:
+                    st.info("ℹ️ Nenhuma oportunidade de compra ou venda detectada no período analisado.")
+                else:
+                    st.info("ℹ️ Todos os ativos estão em posição neutra (dentro das bandas).")
+
+            # Summary metrics
+            st.subheader("📊 Resumo da Análise")
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                total_assets = len(bb_results)
+                st.metric("Total de Ativos", total_assets)
+
+            with col2:
+                successful_analysis = len([r for r in bb_results if r['status'] == 'Sucesso'])
+                st.metric("Análises Bem-sucedidas", successful_analysis)
+
+            with col3:
+                st.metric("Oportunidades de Compra", len(buy_opportunities))
+
+            with col4:
+                st.metric("Oportunidades de Venda", len(sell_opportunities))
+
+            # Full results table
+            st.subheader("📋 Resultados Detalhados")
+            
+            # Create summary dataframe
+            summary_df = pd.DataFrame(bb_results)
+            
+            # Format numeric columns
+            numeric_columns = ['current_price', 'banda_superior', 'banda_inferior', 'sma', 'distance_pct']
+            for col in numeric_columns:
+                if col in summary_df.columns:
+                    summary_df[col] = pd.to_numeric(summary_df[col], errors='coerce')
+                    summary_df[col] = summary_df[col].round(2)
+
+            # Rename columns for better display
+            display_columns = {
+                'symbol': 'Ativo',
+                'signal': 'Sinal',
+                'current_price': 'Preço Atual',
+                'banda_superior': 'Banda Superior',
+                'banda_inferior': 'Banda Inferior',
+                'sma': 'Média Móvel',
+                'distance_pct': 'Distância (%)',
+                'status': 'Status'
+            }
+            
+            summary_df_display = summary_df.rename(columns=display_columns)
+            st.dataframe(summary_df_display, use_container_width=True)
+
+            # Clear progress indicators
+            progress_bar.empty()
+            status_text.empty()
+
+        except Exception as e:
+            st.error(f"Erro durante a análise: {str(e)}")
+            st.write("Por favor verifique os parâmetros e tente novamente.")
+
+with tab5:
     # About tab
     st.markdown("## ℹ️ Sobre o Sistema OVECCHIA TRADING")
 
