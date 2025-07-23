@@ -366,9 +366,9 @@ with tab1:
     with col3:
         st.markdown("#### 📊 Análise de Performance")
         st.markdown("""
-        - **Taxa de Acerto:** Win rate
+        - **Taxa de Acerto:** Win Rate
         - **Retorno Total:** Performance geral
-        - **Maior Ganho/Perda:** Extremos
+        - **Maior Ganho/Perda:** Maiores variações percentuais
         - **Otimização:** Busca melhor configuração
         - **Comparação:** Múltiplos critérios
         """)
