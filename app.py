@@ -1692,11 +1692,7 @@ with tab4:
 
     # Detection sensitivity
     st.markdown("#### 🎯 Sensibilidade de Detecção")
-    col1, col2 = st.columns(2)
-    with col1:
-        show_only_signals = st.checkbox("Mostrar apenas ativos com sinais", value=True, key="only_signals_bb")
-    with col2:
-        min_distance_pct = st.number_input("Distância mínima das bandas (%)", min_value=0.1, max_value=5.0, value=1.0, step=0.1, key="min_distance")
+    min_distance_pct = st.number_input("Distância mínima das bandas (%)", min_value=0.1, max_value=5.0, value=1.0, step=0.1, key="min_distance")
 
     # Analysis button
     analyze_button_bb = st.button("🚀 INICIAR DETECÇÃO DE TOPOS E FUNDOS", type="primary", use_container_width=True, key="analyze_bb")
@@ -1797,11 +1793,8 @@ with tab4:
             # Display results
             st.success(f"✅ Análise de Bollinger Bands completa para {len(symbols_list_bb)} ativos")
 
-            # Filter results if needed
-            if show_only_signals:
-                signal_results = [r for r in bb_results if r['signal'] not in ['Neutro', 'N/A']]
-            else:
-                signal_results = bb_results
+            # Use all results
+            signal_results = bb_results
 
             # Display buying opportunities (potential bottoms)
             buy_opportunities = [r for r in signal_results if 'Compra' in r['signal']]
@@ -1846,10 +1839,7 @@ with tab4:
                     st.markdown("---")
 
             if not buy_opportunities and not sell_opportunities:
-                if show_only_signals:
-                    st.info("ℹ️ Nenhuma oportunidade de compra ou venda detectada no período analisado.")
-                else:
-                    st.info("ℹ️ Todos os ativos estão em posição neutra (dentro das bandas).")
+                st.info("ℹ️ Nenhuma oportunidade de compra ou venda detectada no período analisado.")
 
             # Summary metrics
             st.subheader("📊 Resumo da Análise")
