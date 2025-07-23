@@ -12,16 +12,16 @@ def get_market_data(symbol, start_date, end_date, interval):
     """Função principal para coletar dados do mercado usando Yahoo Finance para todos os ativos"""
     try:
         df = yf.download(symbol, start=start_date, end=end_date, interval=interval)
-
+        
         if df is None or df.empty:
             return pd.DataFrame()
-
+        
         # Handle multi-level columns if present
         if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
             df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
-
+        
         df.reset_index(inplace=True)
-
+        
         # Standardize column names
         column_mapping = {
             "Datetime": "time", 
@@ -33,9 +33,9 @@ def get_market_data(symbol, start_date, end_date, interval):
             "Volume": "volume"
         }
         df.rename(columns=column_mapping, inplace=True)
-
+        
         return df
-
+        
     except Exception as e:
         st.error(f"Erro ao coletar dados do Yahoo Finance para {symbol}: {str(e)}")
         return pd.DataFrame()
@@ -47,61 +47,37 @@ def display_returns_section(returns_data, criteria_name):
         last_returns = returns_data.tail(20).copy()
         last_returns = last_returns.sort_values('exit_time', ascending=False)
 
-        # Create mobile-friendly display for returns
+        # Create columns for returns display
         for idx, row in last_returns.iterrows():
-            # Check if mobile layout should be used
-            if st.session_state.get('mobile_layout', False):
-                # Mobile layout - single column with cards
-                return_color = "🟢" if row['return_pct'] > 0 else "🔴"
-                signal_icon = "🔵" if row['signal'] == 'Buy' else "🔴"
+            col1, col2, col3, col4, col5 = st.columns([1, 2, 2, 2, 1.5])
 
-                entry_date = row['entry_time'].strftime('%d/%m %H:%M') if hasattr(row['entry_time'], 'strftime') else str(row['entry_time'])
-                exit_date = row['exit_time'].strftime('%d/%m %H:%M') if hasattr(row['exit_time'], 'strftime') else str(row['exit_time'])
+            # Color coding for returns
+            return_color = "🟢" if row['return_pct'] > 0 else "🔴"
+            signal_icon = "🔵" if row['signal'] == 'Buy' else "🔴"
 
-                st.markdown(f"""
-                <div class="metric-card" style="margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                        <span style="font-size: 1.1rem; font-weight: bold;">{signal_icon} {row['signal']}</span>
-                        <span style="font-size: 1.2rem; font-weight: bold;">{return_color} {row['return_pct']:.2f}%</span>
-                    </div>
-                    <div style="font-size: 0.9rem; color: #666;">
-                        <div>📈 Entrada: {row['entry_price']:.2f} ({entry_date})</div>
-                        <div>📉 Saída: {row['exit_price']:.2f} ({exit_date})</div>
-                        {f'<div>🚪 {row["exit_reason"]}</div>' if 'exit_reason' in row and pd.notna(row['exit_reason']) else ''}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                # Desktop layout - multi-column
-                col1, col2, col3, col4, col5 = st.columns([1, 2, 2, 2, 1.5])
+            with col1:
+                st.write(f"{signal_icon}")
 
-                # Color coding for returns
-                return_color = "🟢" if row['return_pct'] > 0 else "🔴"
-                signal_icon = "🔵" if row['signal'] == 'Buy' else "🔴"
+            with col2:
+                st.write(f"**{row['signal']}**")
 
-                with col1:
-                    st.write(f"{signal_icon}")
+            with col3:
+                st.write(f"Entrada: {row['entry_price']:.2f}")
+                st.write(f"Saída: {row['exit_price']:.2f}")
 
-                with col2:
-                    st.write(f"**{row['signal']}**")
+            with col4:
+                entry_date = row['entry_time'].strftime('%d/%m/%Y %H:%M') if hasattr(row['entry_time'], 'strftime') else str(row['entry_time'])
+                exit_date = row['exit_time'].strftime('%d/%m/%Y %H:%M') if hasattr(row['exit_time'], 'strftime') else str(exit_time)
+                st.write(f"Entrada: {entry_date}")
+                st.write(f"Saída: {exit_date}")
 
-                with col3:
-                    st.write(f"Entrada: {row['entry_price']:.2f}")
-                    st.write(f"Saída: {row['exit_price']:.2f}")
+            with col5:
+                st.write(f"{return_color} **{row['return_pct']:.2f}%**")
+                # Show exit reason for custom criteria
+                if 'exit_reason' in row and pd.notna(row['exit_reason']):
+                    st.caption(f"Saída: {row['exit_reason']}")
 
-                with col4:
-                    entry_date = row['entry_time'].strftime('%d/%m/%Y %H:%M') if hasattr(row['entry_time'], 'strftime') else str(row['entry_time'])
-                    exit_date = row['exit_time'].strftime('%d/%m/%Y %H:%M') if hasattr(row['exit_time'], 'strftime') else str(row['exit_time'])
-                    st.write(f"Entrada: {entry_date}")
-                    st.write(f"Saída: {exit_date}")
-
-                with col5:
-                    st.write(f"{return_color} **{row['return_pct']:.2f}%**")
-                    # Show exit reason for custom criteria
-                    if 'exit_reason' in row and pd.notna(row['exit_reason']):
-                        st.caption(f"Saída: {row['exit_reason']}")
-
-                st.markdown("---")
+            st.markdown("---")
 
         # Summary statistics
         total_trades = len(returns_data)
@@ -157,7 +133,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for better styling with mobile improvements
+# Custom CSS for better styling
 st.markdown("""
 <style>
     /* Main title styling */
@@ -166,15 +142,14 @@ st.markdown("""
         background: linear-gradient(90deg, #1f77b4, #ff7f0e);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-size: clamp(1.5rem, 5vw, 3rem);
+        font-size: 3rem;
         font-weight: bold;
         margin-bottom: 1rem;
     }
 
-    /* Card styling with mobile improvements */
+    /* Card styling */
     .metric-card {
         background: white;
-        color: #333 !important;
         padding: 1rem;
         border-radius: 10px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -182,60 +157,50 @@ st.markdown("""
         margin-bottom: 1rem;
     }
 
-    .metric-card p, .metric-card h4, .metric-card h2, .metric-card li {
-        color: #333 !important;
-    }
-
-    /* Status indicators with better mobile contrast */
+    /* Status indicators */
     .status-buy {
-        background: #4CAF50;
-        color: white !important;
+        background: linear-gradient(90deg, #4CAF50, #45a049);
+        color: white;
         padding: 0.5rem 1rem;
         border-radius: 20px;
         text-align: center;
         font-weight: bold;
-        font-size: 0.9rem;
     }
 
     .status-sell {
-        background: #f44336;
-        color: white !important;
+        background: linear-gradient(90deg, #f44336, #da190b);
+        color: white;
         padding: 0.5rem 1rem;
         border-radius: 20px;
         text-align: center;
         font-weight: bold;
-        font-size: 0.9rem;
     }
 
     .status-out {
-        background: #757575;
-        color: white !important;
+        background: linear-gradient(90deg, #9E9E9E, #757575);
+        color: white;
         padding: 0.5rem 1rem;
         border-radius: 20px;
         text-align: center;
         font-weight: bold;
-        font-size: 0.9rem;
     }
 
-    /* Tab styling improvements with mobile considerations */
+    /* Tab styling improvements */
     .stTabs [data-baseweb="tab-list"] {
         gap: 2px;
         background-color: #f0f2f6;
         border-radius: 10px;
         padding: 5px;
-        overflow-x: auto;
     }
 
     .stTabs [data-baseweb="tab"] {
-        height: auto;
-        min-height: 40px;
-        white-space: nowrap;
+        height: 50px;
+        white-space: pre-wrap;
         background-color: transparent;
         border-radius: 5px;
         color: #1f77b4;
         font-weight: bold;
-        padding: 8px 12px;
-        font-size: 0.85rem;
+        padding: 10px 20px;
     }
 
     .stTabs [aria-selected="true"] {
@@ -247,49 +212,8 @@ st.markdown("""
     .parameter-section {
         margin-bottom: 1rem;
     }
-
-    /* Mobile responsive improvements */
-    @media (max-width: 768px) {
-        .main-title {
-            font-size: 1.8rem;
-        }
-
-        .metric-card {
-            padding: 0.75rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .status-buy, .status-sell, .status-out {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.8rem;
-        }
-
-        .stTabs [data-baseweb="tab"] {
-            padding: 6px 8px;
-            font-size: 0.75rem;
-        }
-
-        /* Ensure text is readable on mobile */
-        .stMarkdown p, .stMarkdown li {
-            font-size: 0.9rem;
-            line-height: 1.4;
-        }
-    }
-
-    /* Dark theme text fixes */
-    [data-theme="dark"] .metric-card {
-        background: #1e1e1e;
-        color: #fff !important;
-        border-left-color: #1f77b4;
-    }
-
-    [data-theme="dark"] .metric-card p, 
-    [data-theme="dark"] .metric-card h4, 
-    [data-theme="dark"] .metric-card h2, 
-    [data-theme="dark"] .metric-card li {
-        color: #fff !important;
-    }
-</style>""", unsafe_allow_html=True)
+</style>
+""", unsafe_allow_html=True)
 
 # Main title with custom styling
 st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING - MODELO QUANT</h1>', unsafe_allow_html=True)
@@ -709,8 +633,7 @@ with tab2:
                 entry_index = None
                 previous_state = None  # Track previous state to detect changes
 
-                for i in```python
- range(len(df)):
+                for i in range(len(df)):
                     estado = df['Estado'].iloc[i]
                     price = df['close'].iloc[i]
                     time = df['time'].iloc[i]
