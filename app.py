@@ -157,7 +157,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for better styling with mobile improvements
+# Custom CSS for better styling with enhanced mobile experience
 st.markdown("""
 <style>
     /* Main title styling */
@@ -177,9 +177,15 @@ st.markdown("""
         color: #333 !important;
         padding: 1rem;
         border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         border-left: 4px solid #1f77b4;
         margin-bottom: 1rem;
+        transition: transform 0.2s ease;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
     .metric-card p, .metric-card h4, .metric-card h2, .metric-card li {
@@ -188,99 +194,170 @@ st.markdown("""
 
     /* Status indicators with better mobile contrast */
     .status-buy {
-        background: #4CAF50;
+        background: linear-gradient(135deg, #4CAF50, #45a049);
         color: white !important;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
+        padding: 0.6rem 1.2rem;
+        border-radius: 25px;
         text-align: center;
         font-weight: bold;
         font-size: 0.9rem;
+        box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
     }
 
     .status-sell {
-        background: #f44336;
+        background: linear-gradient(135deg, #f44336, #d32f2f);
         color: white !important;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
+        padding: 0.6rem 1.2rem;
+        border-radius: 25px;
         text-align: center;
         font-weight: bold;
         font-size: 0.9rem;
+        box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
     }
 
     .status-out {
-        background: #757575;
+        background: linear-gradient(135deg, #757575, #616161);
         color: white !important;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
+        padding: 0.6rem 1.2rem;
+        border-radius: 25px;
         text-align: center;
         font-weight: bold;
         font-size: 0.9rem;
+        box-shadow: 0 2px 4px rgba(117, 117, 117, 0.3);
     }
 
     /* Tab styling improvements with mobile considerations */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 2px;
+        gap: 3px;
         background-color: #f0f2f6;
-        border-radius: 10px;
-        padding: 5px;
+        border-radius: 12px;
+        padding: 6px;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .stTabs [data-baseweb="tab"] {
         height: auto;
-        min-height: 40px;
+        min-height: 44px;
         white-space: nowrap;
         background-color: transparent;
-        border-radius: 5px;
+        border-radius: 8px;
         color: #1f77b4;
         font-weight: bold;
-        padding: 8px 12px;
+        padding: 10px 14px;
         font-size: 0.85rem;
+        transition: all 0.2s ease;
     }
 
     .stTabs [aria-selected="true"] {
-        background-color: #1f77b4;
+        background: linear-gradient(135deg, #1f77b4, #1565c0);
         color: white;
+        box-shadow: 0 2px 6px rgba(31, 119, 180, 0.3);
     }
 
     /* Parameter section styling */
     .parameter-section {
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
     }
 
     /* Mobile responsive improvements */
     @media (max-width: 768px) {
         .main-title {
             font-size: 1.8rem;
+            margin-bottom: 0.5rem;
         }
 
         .metric-card {
             padding: 0.75rem;
             margin-bottom: 0.75rem;
+            border-radius: 8px;
         }
 
         .status-buy, .status-sell, .status-out {
-            padding: 0.4rem 0.8rem;
+            padding: 0.5rem 1rem;
             font-size: 0.8rem;
+            border-radius: 20px;
         }
 
         .stTabs [data-baseweb="tab"] {
-            padding: 6px 8px;
+            padding: 8px 10px;
             font-size: 0.75rem;
+            min-height: 40px;
+        }
+
+        .stTabs [data-baseweb="tab-list"] {
+            padding: 4px;
+            gap: 2px;
         }
 
         /* Ensure text is readable on mobile */
         .stMarkdown p, .stMarkdown li {
             font-size: 0.9rem;
-            line-height: 1.4;
+            line-height: 1.5;
+        }
+
+        /* Better button spacing on mobile */
+        .stButton > button {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            border-radius: 8px;
+        }
+
+        /* Input field improvements */
+        .stTextInput > div > div > input {
+            font-size: 16px; /* Prevent zoom on iOS */
+            padding: 0.75rem;
+        }
+
+        .stNumberInput > div > div > input {
+            font-size: 16px;
+            padding: 0.75rem;
+        }
+
+        .stSelectbox > div > div > div {
+            font-size: 16px;
+        }
+
+        /* Parameter section mobile adjustments */
+        .parameter-section {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+        }
+    }
+
+    /* Extra small screens (phones in portrait) */
+    @media (max-width: 480px) {
+        .main-title {
+            font-size: 1.5rem;
+        }
+
+        .metric-card {
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stTabs [data-baseweb="tab"] {
+            font-size: 0.7rem;
+            padding: 6px 8px;
+        }
+
+        /* Make columns stack on very small screens */
+        .row-widget.stHorizontal {
+            flex-direction: column;
         }
     }
 
     /* Dark theme text fixes */
     [data-theme="dark"] .metric-card {
-        background: #1e1e1e;
+        background: #262730;
         color: #fff !important;
         border-left-color: #1f77b4;
+        border: 1px solid #404040;
     }
 
     [data-theme="dark"] .metric-card p, 
@@ -289,7 +366,23 @@ st.markdown("""
     [data-theme="dark"] .metric-card li {
         color: #fff !important;
     }
-</style>""", unsafe_allow_html=True)
+
+    [data-theme="dark"] .parameter-section {
+        background: #262730;
+        border-color: #404040;
+    }
+
+    /* Loading spinner improvements */
+    .stSpinner {
+        text-align: center;
+        margin: 2rem 0;
+    }
+
+    /* Progress bar styling */
+    .stProgress .st-bo {
+        background-color: #1f77b4;
+    }
+</style>""")
 
 # Main title with custom styling
 st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING - MODELO QUANT</h1>', unsafe_allow_html=True)
