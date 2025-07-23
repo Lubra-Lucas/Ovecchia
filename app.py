@@ -1,4 +1,3 @@
-
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -115,7 +114,7 @@ st.markdown("""
         font-weight: bold;
         margin-bottom: 1rem;
     }
-    
+
     /* Card styling */
     .metric-card {
         background: white;
@@ -125,7 +124,7 @@ st.markdown("""
         border-left: 4px solid #1f77b4;
         margin-bottom: 1rem;
     }
-    
+
     /* Status indicators */
     .status-buy {
         background: linear-gradient(90deg, #4CAF50, #45a049);
@@ -135,7 +134,7 @@ st.markdown("""
         text-align: center;
         font-weight: bold;
     }
-    
+
     .status-sell {
         background: linear-gradient(90deg, #f44336, #da190b);
         color: white;
@@ -144,7 +143,7 @@ st.markdown("""
         text-align: center;
         font-weight: bold;
     }
-    
+
     .status-out {
         background: linear-gradient(90deg, #9E9E9E, #757575);
         color: white;
@@ -153,7 +152,7 @@ st.markdown("""
         text-align: center;
         font-weight: bold;
     }
-    
+
     /* Tab styling improvements */
     .stTabs [data-baseweb="tab-list"] {
         gap: 2px;
@@ -161,7 +160,7 @@ st.markdown("""
         border-radius: 10px;
         padding: 5px;
     }
-    
+
     .stTabs [data-baseweb="tab"] {
         height: 50px;
         white-space: pre-wrap;
@@ -171,19 +170,15 @@ st.markdown("""
         font-weight: bold;
         padding: 10px 20px;
     }
-    
+
     .stTabs [aria-selected="true"] {
         background-color: #1f77b4;
         color: white;
     }
-    
+
     /* Parameter section styling */
     .parameter-section {
-        background: #f8f9fa;
-        padding: 1.5rem;
-        border-radius: 10px;
         margin-bottom: 1rem;
-        border: 1px solid #e9ecef;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -205,7 +200,7 @@ with tab1:
     """, unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.markdown("### 📊 Análise Individual")
         st.markdown("""
@@ -237,9 +232,9 @@ with tab1:
         """, unsafe_allow_html=True)
 
     st.markdown("### 🛠️ Recursos Disponíveis")
-    
+
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
         st.markdown("#### 📈 Indicadores Técnicos")
         st.markdown("""
@@ -277,7 +272,7 @@ with tab2:
 
     # Create parameter sections
     col1, col2 = st.columns([1, 1])
-    
+
     with col1:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         st.markdown("#### 💹 Configuração de Ativo")
@@ -286,17 +281,17 @@ with tab2:
             value="BTC-USD",
             help="Examples: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
         ).strip()
-        
+
         st.markdown("#### 📅 Intervalo de Data")
         default_end = datetime.now().date()
         default_start = default_end - timedelta(days=30)
-        
+
         col_date1, col_date2 = st.columns(2)
         with col_date1:
             start_date = st.date_input("Data Inicial", value=default_start, max_value=default_end)
         with col_date2:
             end_date = st.date_input("Data Final", value=default_end, min_value=start_date, max_value=default_end)
-        
+
         st.markdown("#### ⏱️ Intervalo de Tempo")
         interval_options = {
             "1 minute": "1m", "2 minutes": "2m", "5 minutes": "5m", "15 minutes": "15m",
@@ -305,52 +300,52 @@ with tab2:
         }
         interval_display = st.selectbox("Intervalo", list(interval_options.keys()), index=8)
         interval = interval_options[interval_display]
-        
+
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         st.markdown("#### ✅ Confirmação de Sinais")
         confirm_candles = st.number_input("Candles de Confirmação", min_value=0, max_value=5, value=0)
-        
+
         st.markdown("#### 📈 Médias Móveis")
         col_ma1, col_ma2 = st.columns(2)
         with col_ma1:
             sma_short = st.number_input("Média Curta", min_value=5, max_value=200, value=60, step=5)
         with col_ma2:
             sma_long = st.number_input("Média Longa", min_value=9, max_value=300, value=70, step=5)
-        
+
         st.markdown("#### 🎯 Direção de Operação")
         trading_direction = st.selectbox(
             "Direção das operações:",
             ["Ambos (Compra e Venda)", "Apenas Comprado", "Apenas Vendido"],
             index=0
         )
-        
+
         st.markdown('</div>', unsafe_allow_html=True)
 
     # Exit criteria section
     st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
     st.markdown("#### 🚪 Critérios de Saída Personalizados")
-    
+
     col_exit1, col_exit2, col_exit3 = st.columns(3)
-    
+
     with col_exit1:
         exit_criteria = st.selectbox(
             "Tipo de Saída",
             ["Mudança de Estado", "Stop Loss", "Alvo Fixo", "Tempo", "Média Móvel"],
             index=0
         )
-    
+
     with col_exit2:
         include_state_change = st.checkbox("Sair por mudança de estado?", value=True)
-    
+
     with col_exit3:
         optimize_params = st.checkbox("🎯 Otimizar Parâmetros", value=False)
 
     # Additional parameters based on exit criteria
     exit_params = {}
-    
+
     if exit_criteria == "Stop Loss" and not optimize_params:
         exit_params['stop_type'] = st.selectbox("Tipo de Stop", ["Stop Justo", "Stop Balanceado", "Stop Largo"])
     elif exit_criteria == "Alvo Fixo" and not optimize_params:
@@ -363,7 +358,7 @@ with tab2:
         exit_params['time_candles'] = st.number_input("Candles após entrada", min_value=1, max_value=1000, value=10, step=1)
     elif exit_criteria == "Média Móvel" and not optimize_params:
         exit_params['ma_period'] = st.number_input("Período da MM", min_value=5, max_value=200, value=20, step=5)
-    
+
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Analysis button
@@ -647,7 +642,7 @@ with tab2:
                         # 1. Check for exit conditions based on include_state_change setting
                         should_exit_by_state = False
                         exit_reason_state = None
-                        
+
                         if include_state_change:
                             if direction == "Ambos (Compra e Venda)":
                                 # For "Ambos", exit on state change to Stay Out OR opposite signal
@@ -729,6 +724,7 @@ with tab2:
                         current_signal = estado
                         entry_price = price
                         entry_time = time
+```python
                         entry_index = i
 
                     # Update previous state for next iteration
@@ -968,7 +964,7 @@ with tab2:
 
             # Current status display with improved styling
             st.markdown("### 📊 Status Atual do Mercado")
-            
+
             col1, col2, col3, col4 = st.columns(4)
 
             current_price = df['close'].iloc[-1]
@@ -1216,7 +1212,7 @@ with tab2:
                 buy_signals = (df['Estado'] == 'Buy').sum()
                 sell_signals = (df['Estado'] == 'Sell').sum()
                 stay_out = (df['Estado'] == 'Stay Out').sum()
-                
+
                 st.markdown("### 📊 Distribuição dos Sinais")
                 st.markdown(f"""
                 <div class="metric-card">
@@ -1233,14 +1229,14 @@ with tab3:
     # Screening tab
     st.markdown("## 🔍 Screening de Múltiplos Ativos")
     st.info("ℹ️ **Screening Mode:** O screening focará apenas na detecção de mudanças de estado dos sinais.")
-    
+
     # Screening parameters
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         st.markdown("#### 📊 Lista de Ativos")
-        
+
         # Predefined lists
         preset_lists = {
             "Criptomoedas": ["BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD",
@@ -1276,7 +1272,7 @@ with tab3:
     with col2:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         st.markdown("#### 📅 Configurações de Análise")
-        
+
         # Date range selection
         default_end_screening = datetime.now().date()
         default_start_screening = default_end_screening - timedelta(days=30)
@@ -1300,7 +1296,7 @@ with tab3:
             sma_short_screening = st.number_input("Média Curta", min_value=5, max_value=200, value=60, step=5, key="sma_short_screening")
         with col_ma2:
             sma_long_screening = st.number_input("Média Longa", min_value=9, max_value=300, value=70, step=5, key="sma_long_screening")
-        
+
         st.markdown('</div>', unsafe_allow_html=True)
 
     # Analysis button for screening
@@ -1535,9 +1531,9 @@ with tab3:
 with tab4:
     # About tab
     st.markdown("## ℹ️ Sobre o Sistema OVECCHIA TRADING")
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.markdown("### 🎯 Missão")
         st.markdown("""
@@ -1588,9 +1584,9 @@ with tab4:
         """, unsafe_allow_html=True)
 
     st.markdown("### 📈 Ativos Suportados")
-    
+
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         st.markdown("#### 🪙 Criptomoedas")
         st.markdown("- Bitcoin (BTC-USD)")
