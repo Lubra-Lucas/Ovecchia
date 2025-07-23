@@ -901,15 +901,32 @@ if analyze_button:
                     # Check if we have an active position
                     if current_signal is not None and entry_price is not None and entry_index is not None:
 
-                        # 1. Check for exit conditions (state change or opposite signal)
-                        if include_state_change and ((estado != current_signal and estado == 'Stay Out') or should_exit_on_opposite):
-                            # State changed or opposite signal - close current position immediately
+                        # 1. Check for exit conditions based on include_state_change setting
+                        should_exit_by_state = False
+                        exit_reason_state = None
+                        
+                        if include_state_change:
+                            if direction == "Ambos (Compra e Venda)":
+                                # For "Ambos", exit on state change to Stay Out OR opposite signal
+                                if estado == 'Stay Out':
+                                    should_exit_by_state = True
+                                    exit_reason_state = 'Mudança de Estado'
+                                elif estado != current_signal and estado in ['Buy', 'Sell']:
+                                    should_exit_by_state = True
+                                    exit_reason_state = 'Mudança de Estado'
+                            else:
+                                # For single direction, exit on Stay Out or opposite signal
+                                if estado == 'Stay Out' or should_exit_on_opposite:
+                                    should_exit_by_state = True
+                                    exit_reason_state = 'Mudança de Estado' if estado == 'Stay Out' else 'Sinal Oposto'
+
+                        if should_exit_by_state:
+                            # State changed - close current position immediately
                             if current_signal == 'Buy':
                                 return_pct = ((price - entry_price) / entry_price) * 100
                             else:  # Sell
                                 return_pct = ((entry_price - price) / entry_price) * 100
 
-                            exit_reason = 'Mudança de Estado' if estado == 'Stay Out' else 'Sinal Oposto'
                             custom_returns.append({
                                 'signal': current_signal,
                                 'entry_time': entry_time,
@@ -917,10 +934,10 @@ if analyze_button:
                                 'entry_price': entry_price,
                                 'exit_price': price,
                                 'return_pct': return_pct,
-                                'exit_reason': exit_reason
+                                'exit_reason': exit_reason_state
                             })
 
-                            # Start new position if criteria met
+                            # Start new position if criteria met and direction allows
                             if should_enter and previous_state != estado:
                                 current_signal = estado
                                 entry_price = price
@@ -935,8 +952,8 @@ if analyze_button:
                             previous_state = estado
                             continue
 
-                        # 2. Check custom exit criteria (only if no state change or state change is disabled)
-                        exit_price, exit_time, exit_reason = calculate_exit(
+                        # 2. Check custom exit criteria (only if no state change exit occurred)
+                        exit_price, exit_time_custom, exit_reason = calculate_exit(
                             df, entry_index, i, current_signal, entry_price, exit_criteria, exit_params
                         )
 
@@ -949,7 +966,7 @@ if analyze_button:
                             custom_returns.append({
                                 'signal': current_signal,
                                 'entry_time': entry_time,
-                                'exit_time': exit_time,
+                                'exit_time': exit_time_custom,
                                 'entry_price': entry_price,
                                 'exit_price': exit_price,
                                 'return_pct': return_pct,
