@@ -303,7 +303,7 @@ with tab2:
             "30 minutes": "30m", "60 minutes": "60m", "90 minutes": "90m", "4 hours": "4h",
             "1 day": "1d", "5 days": "5d", "1 week": "1wk", "1 month": "1mo", "3 months": "3mo"
         }
-        interval_display = st.selectbox("Selecione o Intervalo", list(interval_options.keys()), index=8)
+        interval_display = st.selectbox("Intervalo", list(interval_options.keys()), index=8)
         interval = interval_options[interval_display]
         
         st.markdown('</div>', unsafe_allow_html=True)
@@ -1239,7 +1239,7 @@ with tab3:
     
     with col1:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
-        st.markdown("#### 📊 Lista de Ativos para Screening")
+        st.markdown("#### 📊 Lista de Ativos")
         
         # Predefined lists
         preset_lists = {
@@ -1257,23 +1257,20 @@ with tab3:
         }
 
         selected_preset = st.selectbox(
-            "Lista Pré-definida:",
+            "Lista:",
             ["Customizada"] + list(preset_lists.keys())
         )
 
         if selected_preset != "Customizada":
             symbols_list = preset_lists[selected_preset]
-            st.info(f"Selecionados: {', '.join(symbols_list)}")
+            st.info(f"{len(symbols_list)} ativos selecionados")
         else:
             symbols_input = st.text_area(
-                "Digite os tickers (um por linha):",
+                "Tickers (um por linha):",
                 value="BTC-USD\nETH-USD\nPETR4.SA\nAAPL",
-                help="Digite um ticker por linha"
+                height=100
             )
             symbols_list = [s.strip() for s in symbols_input.split('\n') if s.strip()]
-
-        # Show selected symbols
-        st.write(f"**{len(symbols_list)} ativos selecionados para screening**")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
