@@ -1,3 +1,4 @@
+
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -98,7 +99,7 @@ st.set_page_config(
     page_title="OVECCHIA TRADING - MODELO QUANT",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Custom CSS for better styling
@@ -153,10 +154,33 @@ st.markdown("""
         font-weight: bold;
     }
     
-    /* Sidebar improvements */
-    .sidebar-section {
+    /* Tab styling improvements */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2px;
+        background-color: #f0f2f6;
+        border-radius: 10px;
+        padding: 5px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: transparent;
+        border-radius: 5px;
+        color: #1f77b4;
+        font-weight: bold;
+        padding: 10px 20px;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #1f77b4;
+        color: white;
+    }
+    
+    /* Parameter section styling */
+    .parameter-section {
         background: #f8f9fa;
-        padding: 1rem;
+        padding: 1.5rem;
         border-radius: 10px;
         margin-bottom: 1rem;
         border: 1px solid #e9ecef;
@@ -168,533 +192,194 @@ st.markdown("""
 st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING - MODELO QUANT</h1>', unsafe_allow_html=True)
 st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Análise Técnica e Sinais de Trading</p>', unsafe_allow_html=True)
 
-# Sidebar for inputs
-st.sidebar.markdown("### 🎯 Parâmetros de Análise")
-st.sidebar.markdown("---")
+# Create main navigation tabs
+tab1, tab2, tab3, tab4 = st.tabs(["🏠 Home", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "ℹ️ Sobre"])
 
-# Input fields in sidebar
-with st.sidebar:
-    st.markdown("#### 🔍 Modo de Análise")
-    analysis_mode = st.radio(
-        "Escolha o tipo de análise:",
-        ["Ativo Individual", "Screening de Múltiplos Ativos"]
-    )
-    st.markdown("---")
+with tab1:
+    # Home page content
+    st.markdown("""
+    <div style="background: linear-gradient(90deg, #e3f2fd, #f3e5f5); padding: 2rem; border-radius: 15px; text-align: center; margin-bottom: 2rem;">
+        <h2 style="color: #1976d2; margin-bottom: 1rem;">🚀 Bem-vindo ao Sistema de Trading Quant!</h2>
+        <p style="font-size: 1.2rem; color: #666;">Escolha uma das abas acima para começar sua análise profissional</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    if analysis_mode == "Ativo Individual":
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 📊 Análise Individual")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>🎯 Análise Detalhada de um Ativo</strong><br>
+            Configure parâmetros específicos, critérios de saída personalizados e otimização de estratégias para um ativo individual.</p>
+            <ul>
+                <li>Gráficos interativos com sinais</li>
+                <li>Múltiplos critérios de saída</li>
+                <li>Otimização automática de parâmetros</li>
+                <li>Análise de retornos detalhada</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("### 🔍 Screening Multi-Ativos")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>📈 Monitore Múltiplos Ativos Simultaneamente</strong><br>
+            Identifique rapidamente mudanças de estado em uma lista de ativos para detectar oportunidades de trading.</p>
+            <ul>
+                <li>Listas pré-definidas de ativos</li>
+                <li>Detecção de mudanças de estado</li>
+                <li>Alertas de sinais em tempo real</li>
+                <li>Resumo executivo por categoria</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("### 🛠️ Recursos Disponíveis")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("#### 📈 Indicadores Técnicos")
+        st.markdown("""
+        - **SMA (Médias Móveis):** Configuráveis
+        - **RSI (14):** Força relativa
+        - **RSL (20):** Força relativa levy
+        - **ATR (14):** Average True Range
+        - **Stop Loss:** 3 níveis baseados em ATR
+        """)
+
+    with col2:
+        st.markdown("#### 🎯 Sinais de Trading")
+        st.markdown("""
+        - **Compra:** Sinais de entrada long
+        - **Venda:** Sinais de entrada short
+        - **Stay Out:** Ficar fora do mercado
+        - **Confirmação:** Sinais consecutivos
+        - **Direções:** Long, Short ou Ambos
+        """)
+
+    with col3:
+        st.markdown("#### 📊 Análise de Performance")
+        st.markdown("""
+        - **Taxa de Acerto:** Win rate
+        - **Retorno Total:** Performance geral
+        - **Maior Ganho/Perda:** Extremos
+        - **Otimização:** Busca melhor configuração
+        - **Comparação:** Múltiplos critérios
+        """)
+
+with tab2:
+    # Individual Analysis tab
+    st.markdown("## 📊 Análise Individual de Ativo")
+    st.markdown("Configure os parâmetros para análise detalhada de um ativo específico")
+
+    # Create parameter sections
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         st.markdown("#### 💹 Configuração de Ativo")
-        # Symbol input with examples
         symbol = st.text_input(
             "Ticker",
             value="BTC-USD",
             help="Examples: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
         ).strip()
-
-    else:  # Screening mode
-        st.markdown("#### 📊 Lista de Ativos para Screening")
-        st.info("ℹ️ **Screening Mode:** O screening focará apenas na detecção de mudanças de estado dos sinais. Configurações de direção de operação e critérios de saída são específicas para análise individual.")
-
-        # Predefined lists
-        preset_lists = {
-            "Criptomoedas": ["BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD",
-                                   "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD",
-                                   "TRX-USD", "LINK-USD", "MATIC-USD", "LTC-USD", "BCH-USD",
-                                   "FIL-USD", "APT-USD", "ARB-USD", "NEAR-USD", "VET-USD"],
-            "Ações Brasileiras": ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "B3SA3.SA",
-                                 "ABEV3.SA", "BBAS3.SA", "WEGE3.SA", "PETR3.SA", "JBSS3.SA",
-                                 "ITSA4.SA", "ELET3.SA", "SUZB3.SA", "GGBR4.SA", "RENT3.SA",
-                                 "VBBR3.SA", "BRFS3.SA", "RAIL3.SA", "ELET6.SA", "CCRO3.SA"],
-            "Ações Americanas": ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "META", "NVDA", "NFLX", "AMD", "BABA"],
-            "Pares de Forex": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"],
-            "Commodities": ["GC=F", "SI=F", "CL=F", "NG=F", "HG=F", "ZC=F", "ZS=F", "KE=F", "CC=F", "KC=F"]
+        
+        st.markdown("#### 📅 Intervalo de Data")
+        default_end = datetime.now().date()
+        default_start = default_end - timedelta(days=30)
+        
+        col_date1, col_date2 = st.columns(2)
+        with col_date1:
+            start_date = st.date_input("Data Inicial", value=default_start, max_value=default_end)
+        with col_date2:
+            end_date = st.date_input("Data Final", value=default_end, min_value=start_date, max_value=default_end)
+        
+        st.markdown("#### ⏱️ Intervalo de Tempo")
+        interval_options = {
+            "1 minute": "1m", "2 minutes": "2m", "5 minutes": "5m", "15 minutes": "15m",
+            "30 minutes": "30m", "60 minutes": "60m", "90 minutes": "90m", "4 hours": "4h",
+            "1 day": "1d", "5 days": "5d", "1 week": "1wk", "1 month": "1mo", "3 months": "3mo"
         }
-
-        selected_preset = st.selectbox(
-            "Lista Pré-definida:",
-            ["Customizada"] + list(preset_lists.keys())
-        )
-
-        if selected_preset != "Customizada":
-            symbols_list = preset_lists[selected_preset]
-            st.info(f"Selecionados: {', '.join(symbols_list)}")
-        else:
-            symbols_input = st.text_area(
-                "Digite os tickers (um por linha):",
-                value="BTC-USD\nETH-USD\nPETR4.SA\nAAPL",
-                help="Digite um ticker por linha"
-            )
-            symbols_list = [s.strip() for s in symbols_input.split('\n') if s.strip()]
-
-        # Show selected symbols
-        st.write(f"**{len(symbols_list)} ativos selecionados para screening**")
-
-    # Date range selection
-    st.markdown("---")
-    st.markdown("#### 📅 Intervalo de Data")
-
-    # Default date range (last 30 days)
-    default_end = datetime.now().date()
-    default_start = default_end - timedelta(days=30)
-
-    start_date = st.date_input(
-        "Data Inicial",
-        value=default_start,
-        max_value=default_end
-    )
-
-    end_date = st.date_input(
-        "Data Final",
-        value=default_end,
-        min_value=start_date,
-        max_value=default_end
-    )
-
-    # Interval selection
-    st.markdown("#### ⏱️ Intervalo de Tempo (Timeframe)")
-    interval_options = {
-        "1 minute": "1m",
-        "2 minutes": "2m",
-        "5 minutes": "5m",
-        "15 minutes": "15m",
-        "30 minutes": "30m",
-        "60 minutes": "60m",
-        "90 minutes": "90m",
-        "4 hours": "4h",
-        "1 day": "1d",
-        "5 days": "5d",
-        "1 week": "1wk",
-        "1 month": "1mo",
-        "3 months": "3mo"
-    }
-
-    interval_display = st.selectbox(
-        "Selecione o Intervalo",
-        list(interval_options.keys()),
-        index=9  # Default to "1 day"
-    )
-    interval = interval_options[interval_display]
-
-    # Data limitations info
-    if interval in ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "4h"]:
-        st.info(
-            "ℹ️ **Limitação de Dados:** Dados intradiários (intervalos de minuto/hora) "
-            "são limitados aos últimos 60 a 730 dias, dependendo do intervalo. "
-            "Para análises históricas além desse período, use intervalos diários."
-        )
-
-    # Confirmation candles parameter
-    st.markdown("---")
-    st.markdown("#### ✅ Confirmação de Sinais")
-    confirm_candles = st.number_input(
-        "Candles de Confirmação",
-        min_value=0,
-        max_value=5,
-        value=0,
-        help="Número de candles consecutivos para confirmar o sinal"
-    )
-
-    # Moving averages configuration
-    st.markdown("#### 📈 Configuração de Médias Móveis")
-    col1, col2 = st.columns(2)
-
-    with col1:
-        sma_short = st.number_input(
-            "Média Móvel Curta",
-            min_value=5,
-            max_value=200,
-            value=60,
-            step=5,
-            help="Primeira condição para sinais de compra"
-        )
+        interval_display = st.selectbox("Selecione o Intervalo", list(interval_options.keys()), index=8)
+        interval = interval_options[interval_display]
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
-        sma_long = st.number_input(
-            "Média Móvel Longa", 
-            min_value=9,
-            max_value=300,
-            value=70,
-            step=5,
-            help="Segunda condição para sinais de compra"
-        )
-
-    if st.session_state.get('is_selecting_moving_averages', False):
-        # Display a notice about moving averages and signal generation
-        st.info(
-            "ℹ️ **Nota:** As médias móveis influenciam na quantidade e qualidade dos sinais. "
-            "Se usar médias longas, atente-se ao intervalo de data para garantir a geração de sinais de forma eficaz.")
-    else:
-        st.session_state['is_selecting_moving_averages'] = True
-
-
-    # Trading direction configuration - ONLY for individual analysis
-    if analysis_mode == "Ativo Individual":
-        st.markdown("---")
+        st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
+        st.markdown("#### ✅ Confirmação de Sinais")
+        confirm_candles = st.number_input("Candles de Confirmação", min_value=0, max_value=5, value=0)
+        
+        st.markdown("#### 📈 Médias Móveis")
+        col_ma1, col_ma2 = st.columns(2)
+        with col_ma1:
+            sma_short = st.number_input("Média Curta", min_value=5, max_value=200, value=60, step=5)
+        with col_ma2:
+            sma_long = st.number_input("Média Longa", min_value=9, max_value=300, value=70, step=5)
+        
         st.markdown("#### 🎯 Direção de Operação")
-
         trading_direction = st.selectbox(
-            "Escolha a direção das operações:",
+            "Direção das operações:",
             ["Ambos (Compra e Venda)", "Apenas Comprado", "Apenas Vendido"],
-            index=0,
-            help="Selecione se deseja operar apenas comprado, apenas vendido, ou ambas direções"
+            index=0
         )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        # Exit criteria configuration
-        st.markdown("#### 🚪 Critérios de Saída Personalizados")
-
+    # Exit criteria section
+    st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
+    st.markdown("#### 🚪 Critérios de Saída Personalizados")
+    
+    col_exit1, col_exit2, col_exit3 = st.columns(3)
+    
+    with col_exit1:
         exit_criteria = st.selectbox(
             "Tipo de Saída",
             ["Mudança de Estado", "Stop Loss", "Alvo Fixo", "Tempo", "Média Móvel"],
-            index=0,
-            help="Escolha como deseja sair das posições"
+            index=0
         )
+    
+    with col_exit2:
+        include_state_change = st.checkbox("Sair por mudança de estado?", value=True)
+    
+    with col_exit3:
+        optimize_params = st.checkbox("🎯 Otimizar Parâmetros", value=False)
 
-        # Add a checkbox to decide whether to include state change in exit criteria
-        include_state_change = st.checkbox(
-            "Sair por mudança de estado?",
-            value=True,
-            help="Selecione se a operação deve ser encerrada quando houver mudança de estado, além do critério de saída."
-        )
+    # Additional parameters based on exit criteria
+    exit_params = {}
+    
+    if exit_criteria == "Stop Loss" and not optimize_params:
+        exit_params['stop_type'] = st.selectbox("Tipo de Stop", ["Stop Justo", "Stop Balanceado", "Stop Largo"])
+    elif exit_criteria == "Alvo Fixo" and not optimize_params:
+        col_target1, col_target2 = st.columns(2)
+        with col_target1:
+            exit_params['target_pct'] = st.number_input("Alvo (%)", min_value=0.1, max_value=50.0, value=3.0, step=0.1)
+        with col_target2:
+            exit_params['stop_loss_pct'] = st.number_input("Stop Loss (%)", min_value=0.1, max_value=20.0, value=2.0, step=0.1)
+    elif exit_criteria == "Tempo" and not optimize_params:
+        exit_params['time_candles'] = st.number_input("Candles após entrada", min_value=1, max_value=1000, value=10, step=1)
+    elif exit_criteria == "Média Móvel" and not optimize_params:
+        exit_params['ma_period'] = st.number_input("Período da MM", min_value=5, max_value=200, value=20, step=5)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        # Optimization option
-        optimize_params = st.checkbox(
-            "🎯 Otimizar Parâmetros",
-            value=False,
-            help="Testa diferentes combinações de parâmetros para encontrar o melhor retorno"
-        )
+    # Analysis button
+    analyze_button_individual = st.button("🚀 INICIAR ANÁLISE INDIVIDUAL", type="primary", use_container_width=True)
 
-        # Additional parameters based on exit criteria
-        exit_params = {}
-
-        if exit_criteria == "Stop Loss":
-            if not optimize_params:
-                exit_params['stop_type'] = st.selectbox(
-                    "Tipo de Stop",
-                    ["Stop Justo", "Stop Balanceado", "Stop Largo"]
-                )
-            else:
-                st.info("🔍 Modo Otimização: Testará todos os tipos de stop (Justo, Balanceado, Largo)")
-        elif exit_criteria == "Alvo Fixo":
-            if not optimize_params:
-                col1, col2 = st.columns(2)
-                with col1:
-                    exit_params['target_pct'] = st.number_input(
-                        "Alvo Percentual (%)",
-                        min_value=0.1,
-                        max_value=50.0,
-                        value=3.0,
-                        step=0.1,
-                        help="Percentual de ganho desejado"
-                    )
-                with col2:
-                    exit_params['stop_loss_pct'] = st.number_input(
-                        "Stop Loss Limite (%)",
-                        min_value=0.1,
-                        max_value=20.0,
-                        value=2.0,
-                        step=0.1,
-                        help="Máximo percentual de perda aceito"
-                    )
-            else:
-                st.info("🔍 Modo Otimização: Testará múltiplas combinações de alvo e stop")
-                col1, col2 = st.columns(2)
-                with col1:
-                    target_range = [float(t.strip()) for t in st.text_input(
-                        "Alvos a Testar (%)",
-                        value="2.0;3.0;4.0;5.0",
-                        help="Digite os alvos separados por ponto e vírgula, ex: 1.0;2.5;5.0"
-                    ).split(';') if t.strip()]
-
-                with col2:
-                    stop_range = [float(s.strip()) for s in st.text_input(
-                        "Stops a Testar (%)",
-                        value="1.0;2.0;3.0",
-                        help="Digite os stops separados por ponto e vírgula, ex: 0.5;1.0;3.0"
-                    ).split(';') if s.strip()]
-                exit_params['target_range'] = target_range
-                exit_params['stop_range'] = stop_range
-        elif exit_criteria == "Tempo":
-            if not optimize_params:
-                exit_params['time_candles'] = st.number_input(
-                    "Candles após entrada",
-                    min_value=1,
-                    max_value=1000,
-                    value=10,
-                    step=1,
-                    help="Número de candles após a entrada para sair da posição"
-                )
-            else:
-                st.info("🔍 Modo Otimização: Testará de 1 a X candles que usuário definir")
-                max_candles = st.number_input(
-                    "Máximo de candles a testar",
-                    min_value=1,
-                    max_value=50,
-                    value=10,
-                    step=1
-                )
-                exit_params['max_candles'] = max_candles
-        elif exit_criteria == "Média Móvel":
-            if not optimize_params:
-                exit_params['ma_period'] = st.number_input(
-                    "Período da Média Móvel",
-                    min_value=5,
-                    max_value=200,
-                    value=20,
-                    step=5,
-                    help="Período para a média móvel (MM)"
-                )
-            else:
-                st.info("🔍 Modo Otimização: Testará diferentes períodos de MM")
-                ma_input = st.text_input(
-                    "Digite os períodos de MM separados por ponto e vírgula:",
-                    value="10;20;50",
-                    help="Exemplo: 10;20;50"
-                )
-                ma_range = [int(x.strip()) for x in ma_input.split(';') if x.strip()]
-                exit_params['ma_range'] = ma_range
-    else:
-        # Set default values for screening mode
-        trading_direction = "Ambos (Compra e Venda)"
-        exit_criteria = "Mudança de Estado"
-        include_state_change = True
-        optimize_params = False
-        exit_params = {}
-
-    # Analyze button
-    st.markdown("---")
-    analyze_button = st.button("🚀 INICIAR ANÁLISE", type="primary", use_container_width=True)
-
-# Main content area
-if analyze_button:
-    if analysis_mode == "Ativo Individual":
+    # Analysis logic (same as before but only for individual analysis)
+    if analyze_button_individual:
         if not symbol:
             st.error("Por favor entre com um ticker válido.")
             st.stop()
-        symbols_to_analyze = [symbol]
-    else:  # Screening mode
-        if not symbols_list:
-            st.error("Por favor selecione pelo menos um ativo para screening.")
-            st.stop()
-        symbols_to_analyze = symbols_list
 
-    # Progress indicator
-    progress_bar = st.progress(0)
-    status_text = st.empty()
+        # Progress indicator
+        progress_bar = st.progress(0)
+        status_text = st.empty()
 
-    try:
-        if analysis_mode == "Screening de Múltiplos Ativos":
-            # Screening mode
-            screening_results = []
-            total_symbols = len(symbols_to_analyze)
-
-            for idx, current_symbol in enumerate(symbols_to_analyze):
-                status_text.text(f"Analisando {current_symbol} ({idx+1}/{total_symbols})...")
-                progress_bar.progress(int((idx / total_symbols) * 100))
-
-                try:
-                    # Convert dates to strings
-                    start_str = start_date.strftime("%Y-%m-%d")
-                    end_str = end_date.strftime("%Y-%m-%d")
-
-                    # Download data for current symbol
-                    df_temp = yf.download(current_symbol, start=start_str, end=end_str, interval=interval)
-
-                    if df_temp is None or df_temp.empty:
-                        screening_results.append({
-                            'symbol': current_symbol,
-                            'status': 'Erro - Sem dados',
-                            'current_state': 'N/A',
-                            'previous_state': 'N/A',
-                            'state_change': False,
-                            'current_price': 'N/A'
-                        })
-                        continue
-
-                    # Handle multi-level columns if present
-                    if hasattr(df_temp.columns, 'nlevels') and df_temp.columns.nlevels > 1:
-                        df_temp = df_temp.xs(current_symbol, level='Ticker', axis=1, drop_level=True)
-
-                    # Ensure we have the required columns
-                    df_temp.reset_index(inplace=True)
-                    column_mapping = {
-                        "Datetime": "time", 
-                        "Date": "time", 
-                        "Open": "open", 
-                        "High": "high", 
-                        "Low": "low", 
-                        "Close": "close",
-                        "Volume": "volume"
-                    }
-                    df_temp.rename(columns=column_mapping, inplace=True)
-
-                    # Calculate indicators (simplified for screening)
-                    df_temp[f'SMA_{sma_short}'] = df_temp['close'].rolling(window=sma_short).mean()
-                    df_temp[f'SMA_{sma_long}'] = df_temp['close'].rolling(window=sma_long).mean()
-                    df_temp['SMA_20'] = df_temp['close'].rolling(window=20).mean()
-
-                    # RSI calculation
-                    delta = df_temp['close'].diff()
-                    gain = np.where(delta > 0, delta, 0)
-                    loss = np.where(delta < 0, -delta, 0)
-                    avg_gain = pd.Series(gain, index=df_temp.index).rolling(window=14).mean()
-                    avg_loss = pd.Series(loss, index=df_temp.index).rolling(window=14).mean()
-                    rs = avg_gain / avg_loss
-                    df_temp['RSI_14'] = 100 - (100 / (1 + rs))
-
-                    # RSL calculation
-                    df_temp['RSL_20'] = df_temp['close'] / df_temp['SMA_20']
-
-                    # Signal generation
-                    df_temp['Signal'] = 'Stay Out'
-                    for i in range(1, len(df_temp)):
-                        rsi_up = df_temp['RSI_14'].iloc[i] > df_temp['RSI_14'].iloc[i-1]
-                        rsi_down = df_temp['RSI_14'].iloc[i] < df_temp['RSI_14'].iloc[i-1]
-                        rsl = df_temp['RSL_20'].iloc[i]
-                        rsl_prev = df_temp['RSL_20'].iloc[i-1]
-
-                        rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
-                        rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
-
-                        if (
-                            df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_short}'].iloc[i]
-                            and df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_long}'].iloc[i]
-                            and rsi_up and rsl_buy
-                        ):
-                            df_temp.at[i, 'Signal'] = 'Buy'
-                        elif (
-                            df_temp['close'].iloc[i] < df_temp[f'SMA_{sma_short}'].iloc[i]
-                            and rsi_down and rsl_sell
-                        ):
-                            df_temp.at[i, 'Signal'] = 'Sell'
-
-                    # State persistence with confirmation delay
-                    df_temp['Estado'] = 'Stay Out'
-
-                    for i in range(len(df_temp)):
-                        if i == 0:
-                            # Primeiro candle sempre Stay Out
-                            continue
-
-                        # Estado anterior
-                        estado_anterior = df_temp['Estado'].iloc[i - 1]
-
-                        # Verificar se houve mudança de sinal há confirm_candles períodos atrás
-                        if confirm_candles == 0:
-                            # Sem confirmação - aplicar sinal imediatamente
-                            sinal_atual = df_temp['Signal'].iloc[i]
-                            if sinal_atual != 'Stay Out':
-                                df_temp.loc[df_temp.index[i], 'Estado'] = sinal_atual
-                            else:
-                                df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
-                        else:
-                            # Com confirmação - aplicar sinal de confirm_candles períodos atrás
-                            if i > confirm_candles:
-                                # Verificar o sinal de confirm_candles períodos atrás
-                                sinal_passado = df_temp['Signal'].iloc[i - confirm_candles]
-                                if sinal_passado != 'Stay Out':
-                                    df_temp.loc[df_temp.index[i], 'Estado'] = sinal_passado
-                                else:
-                                    df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
-                            else:
-                                # Ainda não temos candles suficientes, manter estado anterior
-                                df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
-
-                    # Check for state change
-                    current_state = df_temp['Estado'].iloc[-1]
-                    previous_state = df_temp['Estado'].iloc[-2] if len(df_temp) > 1 else current_state
-                    state_change = current_state != previous_state
-                    current_price = df_temp['close'].iloc[-1]
-
-                    screening_results.append({
-                        'symbol': current_symbol,
-                        'status': 'Sucesso',
-                        'current_state': current_state,
-                        'previous_state': previous_state,
-                        'state_change': state_change,
-                        'current_price': current_price
-                    })
-
-                except Exception as e:
-                    screening_results.append({
-                        'symbol': current_symbol,
-                        'status': f'Erro: {str(e)[:50]}...',
-                        'current_state': 'N/A',
-                        'previous_state': 'N/A',
-                        'state_change': False,
-                        'current_price': 'N/A'
-                    })
-
-            progress_bar.progress(100)
-            status_text.text("Screening Completo!")
-
-            # Display screening results
-            st.success(f"✅ Screening completo para {len(symbols_to_analyze)} ativos")
-
-            # Filter and display assets with state changes
-            state_changes = [r for r in screening_results if r['state_change']]
-
-            if state_changes:
-                st.subheader(f"🚨 {len(state_changes)} Ativo(s) com Mudança de Estado Detectada!")
-
-                for result in state_changes:
-                    col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
-
-                    state_icon = "🔵" if result['current_state'] == "Buy" else "🔴" if result['current_state'] == "Sell" else "⚫"
-                    prev_icon = "🔵" if result['previous_state'] == "Buy" else "🔴" if result['previous_state'] == "Sell" else "⚫"
-
-                    with col1:
-                        st.write(f"**{result['symbol']}**")
-                    with col2:
-                        st.write(f"Preço: {result['current_price']:.2f}")
-                    with col3:
-                        st.write(f"De: {prev_icon} {result['previous_state']}")
-                    with col4:
-                        st.write(f"Para: {state_icon} {result['current_state']}")
-                    with col5:
-                        if result['current_state'] == 'Buy':
-                            st.success("🟢 COMPRA")
-                        elif result['current_state'] == 'Sell':
-                            st.error("🔴 VENDA")
-                        else:
-                            st.info("⚫ FORA")
-
-                    st.markdown("---")
-            else:
-                st.info("ℹ️ Nenhum ativo com mudança de estado detectada no período analisado.")
-
-            # Summary table of all assets
-            st.subheader("📊 Resumo Geral do Screening")
-
-            # Create summary dataframe
-            summary_df = pd.DataFrame(screening_results)
-
-            # Display metrics
-            col1, col2, col3, col4 = st.columns(4)
-
-            with col1:
-                total_assets = len(summary_df)
-                st.metric("Total de Ativos", total_assets)
-
-            with col2:
-                successful_analysis = len(summary_df[summary_df['status'] == 'Sucesso'])
-                st.metric("Análises Bem-sucedidas", successful_analysis)
-
-            with col3:
-                buy_signals = len(summary_df[summary_df['current_state'] == 'Buy'])
-                st.metric("Sinais de Compra", buy_signals)
-
-            with col4:
-                sell_signals = len(summary_df[summary_df['current_state'] == 'Sell'])
-                st.metric("Sinais de Venda", sell_signals)
-
-            # Display full table
-            st.dataframe(summary_df, use_container_width=True)
-
-            # Clear progress indicators
-            progress_bar.empty()
-            status_text.empty()
-
-        else:
-            # Individual analysis mode (existing code)
+        try:
             # Fetch data
             status_text.text("Coletando dados de mercado...")
             progress_bar.progress(20)
@@ -742,7 +427,7 @@ if analyze_button:
 
             progress_bar.progress(60)
 
-        # Calculate technical indicators
+            # Calculate technical indicators
             # Moving averages (customizable)
             df[f'SMA_{sma_short}'] = df['close'].rolling(window=sma_short).mean()
             df[f'SMA_{sma_long}'] = df['close'].rolling(window=sma_long).mean()
@@ -1330,7 +1015,7 @@ if analyze_button:
             st.markdown("<br>", unsafe_allow_html=True)
 
             # Create the interactive chart
-            titulo_grafico = f"LUBRA TRADING - {symbol_label} - Timeframe: {interval.upper()}"
+            titulo_grafico = f"OVECCHIA TRADING - {symbol_label} - Timeframe: {interval.upper()}"
 
             fig = make_subplots(
                 rows=2, cols=1,
@@ -1540,49 +1225,417 @@ if analyze_button:
                     <p><strong>⚫ Fora do Mercado:</strong> {stay_out}</p>
                 </div>
                 """, unsafe_allow_html=True)
-    except Exception as e:
-        st.error(f"An error occurred during analysis: {str(e)}")
-        st.write("Please check your inputs and try again.")
+        except Exception as e:
+            st.error(f"An error occurred during analysis: {str(e)}")
+            st.write("Please check your inputs and try again.")
 
-else:
-    # Initial state - show instructions with better styling
-    st.markdown("""
-    <div style="background: linear-gradient(90deg, #e3f2fd, #f3e5f5); padding: 2rem; border-radius: 15px; text-align: center; margin-bottom: 2rem;">
-        <h2 style="color: #1976d2; margin-bottom: 1rem;">🚀 Bem-vindo ao Sistema de Trading Quant!</h2>
-        <p style="font-size: 1.2rem; color: #666;">Configure os parâmetros na barra lateral e inicie sua análise profissional</p>
-    </div>
-    """, unsafe_allow_html=True)
-
+with tab3:
+    # Screening tab
+    st.markdown("## 🔍 Screening de Múltiplos Ativos")
+    st.info("ℹ️ **Screening Mode:** O screening focará apenas na detecção de mudanças de estado dos sinais.")
+    
+    # Screening parameters
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("### 📋 Como Usar")
+        st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
+        st.markdown("#### 📊 Lista de Ativos para Screening")
+        
+        # Predefined lists
+        preset_lists = {
+            "Criptomoedas": ["BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD",
+                                   "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD",
+                                   "TRX-USD", "LINK-USD", "MATIC-USD", "LTC-USD", "BCH-USD",
+                                   "FIL-USD", "APT-USD", "ARB-USD", "NEAR-USD", "VET-USD"],
+            "Ações Brasileiras": ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "B3SA3.SA",
+                                 "ABEV3.SA", "BBAS3.SA", "WEGE3.SA", "PETR3.SA", "JBSS3.SA",
+                                 "ITSA4.SA", "ELET3.SA", "SUZB3.SA", "GGBR4.SA", "RENT3.SA",
+                                 "VBBR3.SA", "BRFS3.SA", "RAIL3.SA", "ELET6.SA", "CCRO3.SA"],
+            "Ações Americanas": ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "META", "NVDA", "NFLX", "AMD", "BABA"],
+            "Pares de Forex": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"],
+            "Commodities": ["GC=F", "SI=F", "CL=F", "NG=F", "HG=F", "ZC=F", "ZS=F", "KE=F", "CC=F", "KC=F"]
+        }
+
+        selected_preset = st.selectbox(
+            "Lista Pré-definida:",
+            ["Customizada"] + list(preset_lists.keys())
+        )
+
+        if selected_preset != "Customizada":
+            symbols_list = preset_lists[selected_preset]
+            st.info(f"Selecionados: {', '.join(symbols_list)}")
+        else:
+            symbols_input = st.text_area(
+                "Digite os tickers (um por linha):",
+                value="BTC-USD\nETH-USD\nPETR4.SA\nAAPL",
+                help="Digite um ticker por linha"
+            )
+            symbols_list = [s.strip() for s in symbols_input.split('\n') if s.strip()]
+
+        # Show selected symbols
+        st.write(f"**{len(symbols_list)} ativos selecionados para screening**")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col2:
+        st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
+        st.markdown("#### 📅 Configurações de Análise")
+        
+        # Date range selection
+        default_end_screening = datetime.now().date()
+        default_start_screening = default_end_screening - timedelta(days=30)
+
+        col_date1, col_date2 = st.columns(2)
+        with col_date1:
+            start_date_screening = st.date_input("Data Inicial", value=default_start_screening, max_value=default_end_screening, key="start_screening")
+        with col_date2:
+            end_date_screening = st.date_input("Data Final", value=default_end_screening, min_value=start_date_screening, max_value=default_end_screening, key="end_screening")
+
+        # Interval selection
+        interval_display_screening = st.selectbox("Intervalo de Tempo", list(interval_options.keys()), index=8, key="interval_screening")
+        interval_screening = interval_options[interval_display_screening]
+
+        # Confirmation candles parameter
+        confirm_candles_screening = st.number_input("Candles de Confirmação", min_value=0, max_value=5, value=0, key="confirm_screening")
+
+        # Moving averages configuration
+        col_ma1, col_ma2 = st.columns(2)
+        with col_ma1:
+            sma_short_screening = st.number_input("Média Curta", min_value=5, max_value=200, value=60, step=5, key="sma_short_screening")
+        with col_ma2:
+            sma_long_screening = st.number_input("Média Longa", min_value=9, max_value=300, value=70, step=5, key="sma_long_screening")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Analysis button for screening
+    analyze_button_screening = st.button("🚀 INICIAR SCREENING", type="primary", use_container_width=True)
+
+    # Screening analysis logic
+    if analyze_button_screening:
+        if not symbols_list:
+            st.error("Por favor selecione pelo menos um ativo para screening.")
+            st.stop()
+
+        # Progress indicator
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        try:
+            # Screening mode
+            screening_results = []
+            total_symbols = len(symbols_list)
+
+            for idx, current_symbol in enumerate(symbols_list):
+                status_text.text(f"Analisando {current_symbol} ({idx+1}/{total_symbols})...")
+                progress_bar.progress(int((idx / total_symbols) * 100))
+
+                try:
+                    # Convert dates to strings
+                    start_str = start_date_screening.strftime("%Y-%m-%d")
+                    end_str = end_date_screening.strftime("%Y-%m-%d")
+
+                    # Download data for current symbol
+                    df_temp = yf.download(current_symbol, start=start_str, end=end_str, interval=interval_screening)
+
+                    if df_temp is None or df_temp.empty:
+                        screening_results.append({
+                            'symbol': current_symbol,
+                            'status': 'Erro - Sem dados',
+                            'current_state': 'N/A',
+                            'previous_state': 'N/A',
+                            'state_change': False,
+                            'current_price': 'N/A'
+                        })
+                        continue
+
+                    # Handle multi-level columns if present
+                    if hasattr(df_temp.columns, 'nlevels') and df_temp.columns.nlevels > 1:
+                        df_temp = df_temp.xs(current_symbol, level='Ticker', axis=1, drop_level=True)
+
+                    # Ensure we have the required columns
+                    df_temp.reset_index(inplace=True)
+                    column_mapping = {
+                        "Datetime": "time", 
+                        "Date": "time", 
+                        "Open": "open", 
+                        "High": "high", 
+                        "Low": "low", 
+                        "Close": "close",
+                        "Volume": "volume"
+                    }
+                    df_temp.rename(columns=column_mapping, inplace=True)
+
+                    # Calculate indicators (simplified for screening)
+                    df_temp[f'SMA_{sma_short_screening}'] = df_temp['close'].rolling(window=sma_short_screening).mean()
+                    df_temp[f'SMA_{sma_long_screening}'] = df_temp['close'].rolling(window=sma_long_screening).mean()
+                    df_temp['SMA_20'] = df_temp['close'].rolling(window=20).mean()
+
+                    # RSI calculation
+                    delta = df_temp['close'].diff()
+                    gain = np.where(delta > 0, delta, 0)
+                    loss = np.where(delta < 0, -delta, 0)
+                    avg_gain = pd.Series(gain, index=df_temp.index).rolling(window=14).mean()
+                    avg_loss = pd.Series(loss, index=df_temp.index).rolling(window=14).mean()
+                    rs = avg_gain / avg_loss
+                    df_temp['RSI_14'] = 100 - (100 / (1 + rs))
+
+                    # RSL calculation
+                    df_temp['RSL_20'] = df_temp['close'] / df_temp['SMA_20']
+
+                    # Signal generation
+                    df_temp['Signal'] = 'Stay Out'
+                    for i in range(1, len(df_temp)):
+                        rsi_up = df_temp['RSI_14'].iloc[i] > df_temp['RSI_14'].iloc[i-1]
+                        rsi_down = df_temp['RSI_14'].iloc[i] < df_temp['RSI_14'].iloc[i-1]
+                        rsl = df_temp['RSL_20'].iloc[i]
+                        rsl_prev = df_temp['RSL_20'].iloc[i-1]
+
+                        rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
+                        rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
+
+                        if (
+                            df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_short_screening}'].iloc[i]
+                            and df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_long_screening}'].iloc[i]
+                            and rsi_up and rsl_buy
+                        ):
+                            df_temp.at[i, 'Signal'] = 'Buy'
+                        elif (
+                            df_temp['close'].iloc[i] < df_temp[f'SMA_{sma_short_screening}'].iloc[i]
+                            and rsi_down and rsl_sell
+                        ):
+                            df_temp.at[i, 'Signal'] = 'Sell'
+
+                    # State persistence with confirmation delay
+                    df_temp['Estado'] = 'Stay Out'
+
+                    for i in range(len(df_temp)):
+                        if i == 0:
+                            # Primeiro candle sempre Stay Out
+                            continue
+
+                        # Estado anterior
+                        estado_anterior = df_temp['Estado'].iloc[i - 1]
+
+                        # Verificar se houve mudança de sinal há confirm_candles períodos atrás
+                        if confirm_candles_screening == 0:
+                            # Sem confirmação - aplicar sinal imediatamente
+                            sinal_atual = df_temp['Signal'].iloc[i]
+                            if sinal_atual != 'Stay Out':
+                                df_temp.loc[df_temp.index[i], 'Estado'] = sinal_atual
+                            else:
+                                df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
+                        else:
+                            # Com confirmação - aplicar sinal de confirm_candles períodos atrás
+                            if i > confirm_candles_screening:
+                                # Verificar o sinal de confirm_candles períodos atrás
+                                sinal_passado = df_temp['Signal'].iloc[i - confirm_candles_screening]
+                                if sinal_passado != 'Stay Out':
+                                    df_temp.loc[df_temp.index[i], 'Estado'] = sinal_passado
+                                else:
+                                    df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
+                            else:
+                                # Ainda não temos candles suficientes, manter estado anterior
+                                df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
+
+                    # Check for state change
+                    current_state = df_temp['Estado'].iloc[-1]
+                    previous_state = df_temp['Estado'].iloc[-2] if len(df_temp) > 1 else current_state
+                    state_change = current_state != previous_state
+                    current_price = df_temp['close'].iloc[-1]
+
+                    screening_results.append({
+                        'symbol': current_symbol,
+                        'status': 'Sucesso',
+                        'current_state': current_state,
+                        'previous_state': previous_state,
+                        'state_change': state_change,
+                        'current_price': current_price
+                    })
+
+                except Exception as e:
+                    screening_results.append({
+                        'symbol': current_symbol,
+                        'status': f'Erro: {str(e)[:50]}...',
+                        'current_state': 'N/A',
+                        'previous_state': 'N/A',
+                        'state_change': False,
+                        'current_price': 'N/A'
+                    })
+
+            progress_bar.progress(100)
+            status_text.text("Screening Completo!")
+
+            # Display screening results
+            st.success(f"✅ Screening completo para {len(symbols_list)} ativos")
+
+            # Filter and display assets with state changes
+            state_changes = [r for r in screening_results if r['state_change']]
+
+            if state_changes:
+                st.subheader(f"🚨 {len(state_changes)} Ativo(s) com Mudança de Estado Detectada!")
+
+                for result in state_changes:
+                    col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
+
+                    state_icon = "🔵" if result['current_state'] == "Buy" else "🔴" if result['current_state'] == "Sell" else "⚫"
+                    prev_icon = "🔵" if result['previous_state'] == "Buy" else "🔴" if result['previous_state'] == "Sell" else "⚫"
+
+                    with col1:
+                        st.write(f"**{result['symbol']}**")
+                    with col2:
+                        st.write(f"Preço: {result['current_price']:.2f}")
+                    with col3:
+                        st.write(f"De: {prev_icon} {result['previous_state']}")
+                    with col4:
+                        st.write(f"Para: {state_icon} {result['current_state']}")
+                    with col5:
+                        if result['current_state'] == 'Buy':
+                            st.success("🟢 COMPRA")
+                        elif result['current_state'] == 'Sell':
+                            st.error("🔴 VENDA")
+                        else:
+                            st.info("⚫ FORA")
+
+                    st.markdown("---")
+            else:
+                st.info("ℹ️ Nenhum ativo com mudança de estado detectada no período analisado.")
+
+            # Summary table of all assets
+            st.subheader("📊 Resumo Geral do Screening")
+
+            # Create summary dataframe
+            summary_df = pd.DataFrame(screening_results)
+
+            # Display metrics
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                total_assets = len(summary_df)
+                st.metric("Total de Ativos", total_assets)
+
+            with col2:
+                successful_analysis = len(summary_df[summary_df['status'] == 'Sucesso'])
+                st.metric("Análises Bem-sucedidas", successful_analysis)
+
+            with col3:
+                buy_signals = len(summary_df[summary_df['current_state'] == 'Buy'])
+                st.metric("Sinais de Compra", buy_signals)
+
+            with col4:
+                sell_signals = len(summary_df[summary_df['current_state'] == 'Sell'])
+                st.metric("Sinais de Venda", sell_signals)
+
+            # Display full table
+            st.dataframe(summary_df, use_container_width=True)
+
+            # Clear progress indicators
+            progress_bar.empty()
+            status_text.empty()
+
+        except Exception as e:
+            st.error(f"An error occurred during screening: {str(e)}")
+            st.write("Please check your inputs and try again.")
+
+with tab4:
+    # About tab
+    st.markdown("## ℹ️ Sobre o Sistema OVECCHIA TRADING")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 🎯 Missão")
         st.markdown("""
         <div class="metric-card">
-            <ol>
-                <li><strong>🎯 Insira o Símbolo do Ativo</strong><br>Use símbolos padrão (ex: BTC-USD, AAPL, PETR4.SA)</li><br>
-                <li><strong>📅 Defina o Período de Análise</strong><br>Escolha o intervalo de datas desejado</li><br>
-                <li><strong>⏱️ Selecione o Intervalo de Tempo</strong><br>Escolha o timeframe para análise</li><br>
-                <li><strong>✅ Configure a Confirmação</strong><br>Defina quantos sinais consecutivos necessários</li><br>
-                <li><strong>🚀 Clique em Analisar</strong><br>Gere sua análise profissional</li>
-            </ol>
+            <p>O Sistema OVECCHIA TRADING foi desenvolvido para democratizar o acesso a análises técnicas avançadas, 
+            oferecendo ferramentas profissionais de trading quantitativo de forma acessível e intuitiva.</p>
         </div>
         """, unsafe_allow_html=True)
 
-    with col2:
-        st.markdown("### 🔍 Funcionalidades")
+        st.markdown("### 🔬 Metodologia")
         st.markdown("""
         <div class="metric-card">
+            <p><strong>Sistema baseado em múltiplos indicadores:</strong></p>
             <ul>
-                <li><strong>📈 Indicadores Técnicos</strong><br>SMA (20, 60, 70), RSI (14), RSL (20), ATR (14)</li><br>
-                <li><strong>🎯 Sinais de Trading</strong><br>Compra, Venda e Ficar de Fora com confirmação</li><br>
-                <li><strong>🛡️ Níveis de Stop Loss</strong><br>Três níveis baseados no ATR</li><br>
-                <li><strong>📊 Gráficos Interativos</strong><br>Zoom, arrastar e hover para detalhes</li><br>
-                <li><strong>📡 Dados em Tempo Real</strong><br>API do Yahoo Finance</li>
+                <li><strong>RSI (Relative Strength Index):</strong> Medição da força do movimento</li>
+                <li><strong>RSL (Relative Strength Levy):</strong> Força relativa personalizada</li>
+                <li><strong>SMA (Simple Moving Average):</strong> Médias móveis configuráveis</li>
+                <li><strong>ATR (Average True Range):</strong> Para cálculo de stop loss</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
 
+    with col2:
+        st.markdown("### 📊 Recursos Disponíveis")
+        st.markdown("""
+        <div class="metric-card">
+            <ul>
+                <li><strong>Análise Individual:</strong> Estudo detalhado de um ativo</li>
+                <li><strong>Screening Multi-Ativos:</strong> Monitoramento de carteiras</li>
+                <li><strong>Otimização Automática:</strong> Busca pelos melhores parâmetros</li>
+                <li><strong>Múltiplos Timeframes:</strong> De 1 minuto a 3 meses</li>
+                <li><strong>Critérios de Saída:</strong> Stop Loss, Alvo Fixo, Tempo, MM</li>
+                <li><strong>Direções de Trading:</strong> Long, Short ou Ambos</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 🛡️ Gerenciamento de Risco")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>Sistema de Stop Loss Baseado em ATR:</strong></p>
+            <ul>
+                <li><strong>Stop Justo:</strong> 2.0x ATR (mais agressivo)</li>
+                <li><strong>Stop Balanceado:</strong> 2.5x ATR (equilibrado)</li>
+                <li><strong>Stop Largo:</strong> 3.5x ATR (mais conservador)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("### 📈 Ativos Suportados")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown("#### 🪙 Criptomoedas")
+        st.markdown("- Bitcoin (BTC-USD)")
+        st.markdown("- Ethereum (ETH-USD)")
+        st.markdown("- + 18 outras principais")
+
+    with col2:
+        st.markdown("#### 🇧🇷 Ações Brasileiras")
+        st.markdown("- Petrobras (PETR4.SA)")
+        st.markdown("- Vale (VALE3.SA)")
+        st.markdown("- + 18 outras principais")
+
+    with col3:
+        st.markdown("#### 🇺🇸 Ações Americanas")
+        st.markdown("- Apple (AAPL)")
+        st.markdown("- Microsoft (MSFT)")
+        st.markdown("- + 8 outras principais")
+
+    with col4:
+        st.markdown("#### 💱 Forex & Commodities")
+        st.markdown("- EUR/USD")
+        st.markdown("- Ouro (GC=F)")
+        st.markdown("- + Outros pares e commodities")
+
+    st.markdown("### ⚠️ Disclaimer")
+    st.markdown("""
+    <div style="background: #fff3cd; padding: 1rem; border-radius: 10px; border-left: 4px solid #ffc107;">
+        <p><strong>⚠️ AVISO IMPORTANTE:</strong></p>
+        <p>Este sistema é desenvolvido para fins educacionais e de pesquisa. As análises e sinais gerados 
+        <strong>NÃO constituem recomendações de investimento</strong>. Trading e investimentos envolvem riscos 
+        significativos e você pode perder parte ou todo o seu capital investido.</p>
+        <p><strong>Sempre consulte um profissional qualificado antes de tomar decisões de investimento.</strong></p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("### 👨‍💻 Desenvolvido por")
+    st.markdown("""
+    <div style="background: linear-gradient(90deg, #e3f2fd, #f3e5f5); padding: 1rem; border-radius: 10px; text-align: center;">
+        <h3 style="color: #1976d2; margin: 0;">OVECCHIA TRADING</h3>
+        <p style="margin: 0; color: #666;">Sistema Avançado de Análise Técnica Quantitativa</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.markdown("---")
 st.markdown("""
