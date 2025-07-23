@@ -6,39 +6,143 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import warnings
+import requests
 warnings.filterwarnings('ignore')
 
-def get_market_data(symbol, start_date, end_date, interval):
-    """Função principal para coletar dados do mercado usando Yahoo Finance para todos os ativos"""
+def is_crypto_symbol(symbol):
+    """Detecta se o símbolo é uma criptomoeda baseado no padrão -USD"""
+    crypto_patterns = ['-USD', '-USDT', '-BTC', '-ETH']
+    return any(pattern in symbol.upper() for pattern in crypto_patterns)
+
+def convert_yf_to_binance_symbol(symbol):
+    """Converte símbolo do Yahoo Finance para formato Binance"""
+    # Remove sufixos comuns e converte para formato Binance
+    symbol = symbol.upper().replace('-USD', 'USDT')
+    return symbol
+
+def convert_interval_to_binance(interval):
+    """Converte intervalo do yfinance para formato Binance"""
+    interval_map = {
+        '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m',
+        '60m': '1h', '1h': '1h', '4h': '4h',
+        '1d': '1d', '1wk': '1w', '1mo': '1M'
+    }
+    return interval_map.get(interval, '1d')
+
+def get_binance_data(symbol, start_date, end_date, interval):
+    """Coleta dados da API da Binance para criptomoedas"""
     try:
-        df = yf.download(symbol, start=start_date, end=end_date, interval=interval)
+        binance_symbol = convert_yf_to_binance_symbol(symbol)
+        binance_interval = convert_interval_to_binance(interval)
         
-        if df is None or df.empty:
+        # Converter datas para timestamp
+        start_timestamp = int(pd.Timestamp(start_date).timestamp() * 1000)
+        end_timestamp = int(pd.Timestamp(end_date).timestamp() * 1000)
+        
+        # Coletar dados em chunks se necessário (máx 1000 candles por requisição)
+        all_data = []
+        current_start = start_timestamp
+        
+        while current_start < end_timestamp:
+            # Requisição para a API da Binance
+            url = "https://api.binance.com/api/v3/klines"
+            params = {
+                'symbol': binance_symbol,
+                'interval': binance_interval,
+                'startTime': current_start,
+                'endTime': end_timestamp,
+                'limit': 1000
+            }
+            
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            if not data:
+                break
+                
+            all_data.extend(data)
+            
+            # Atualizar timestamp para próxima iteração
+            current_start = data[-1][6] + 1  # Close time + 1ms
+            
+            # Se recebemos menos de 1000 candles, chegamos ao fim
+            if len(data) < 1000:
+                break
+        
+        if not all_data:
             return pd.DataFrame()
         
-        # Handle multi-level columns if present
-        if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
-            df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
+        # Conversão para DataFrame
+        columns = [
+            "Open time", "Open", "High", "Low", "Close", "Volume",
+            "Close time", "Quote asset volume", "Number of trades",
+            "Taker buy base volume", "Taker buy quote volume", "Ignore"
+        ]
         
-        df.reset_index(inplace=True)
+        df = pd.DataFrame(all_data, columns=columns)
         
-        # Standardize column names
-        column_mapping = {
-            "Datetime": "time", 
-            "Date": "time", 
-            "Open": "open", 
+        # Conversão de colunas para os tipos corretos
+        df["Open time"] = pd.to_datetime(df["Open time"], unit="ms")
+        df["Close time"] = pd.to_datetime(df["Close time"], unit="ms")
+        numeric_cols = ["Open", "High", "Low", "Close", "Volume"]
+        df[numeric_cols] = df[numeric_cols].astype(float)
+        
+        # Padronizar nomes das colunas para compatibilidade
+        df = df.rename(columns={
+            "Open time": "time",
+            "Open": "open",
             "High": "high", 
-            "Low": "low", 
+            "Low": "low",
             "Close": "close",
             "Volume": "volume"
-        }
-        df.rename(columns=column_mapping, inplace=True)
+        })
+        
+        # Selecionar apenas colunas principais
+        df = df[["time", "open", "high", "low", "close", "volume"]]
         
         return df
         
     except Exception as e:
-        st.error(f"Erro ao coletar dados do Yahoo Finance para {symbol}: {str(e)}")
+        st.error(f"Erro ao coletar dados da Binance para {symbol}: {str(e)}")
         return pd.DataFrame()
+
+def get_market_data(symbol, start_date, end_date, interval):
+    """Função principal para coletar dados do mercado usando a fonte apropriada"""
+    if is_crypto_symbol(symbol):
+        # Usar API da Binance para criptomoedas
+        return get_binance_data(symbol, start_date, end_date, interval)
+    else:
+        # Usar Yahoo Finance para outros ativos
+        try:
+            df = yf.download(symbol, start=start_date, end=end_date, interval=interval)
+            
+            if df is None or df.empty:
+                return pd.DataFrame()
+            
+            # Handle multi-level columns if present
+            if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
+                df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
+            
+            df.reset_index(inplace=True)
+            
+            # Standardize column names
+            column_mapping = {
+                "Datetime": "time", 
+                "Date": "time", 
+                "Open": "open", 
+                "High": "high", 
+                "Low": "low", 
+                "Close": "close",
+                "Volume": "volume"
+            }
+            df.rename(columns=column_mapping, inplace=True)
+            
+            return df
+            
+        except Exception as e:
+            st.error(f"Erro ao coletar dados do Yahoo Finance para {symbol}: {str(e)}")
+            return pd.DataFrame()
 
 def display_returns_section(returns_data, criteria_name):
     """Helper function to display returns section"""
