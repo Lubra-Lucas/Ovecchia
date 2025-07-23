@@ -238,11 +238,11 @@ with tab1:
     with col1:
         st.markdown("#### 📈 Indicadores Técnicos")
         st.markdown("""
-        - **SMA (Médias Móveis):** Configuráveis
-        - **RSI (14):** Força relativa
-        - **RSL (20):** Força relativa levy
+        - **SMA (Médias Móveis):** Personalizadas
+        - **RSI (14):** Relative Strength Index
+        - **RSL (20):** Relative Strength Levy
         - **ATR (14):** Average True Range
-        - **Stop Loss:** 3 níveis baseados em ATR
+        - **Stop Loss:** 3 níveis para diferentes perfis de investidores
         """)
 
     with col2:
@@ -1545,13 +1545,8 @@ with tab4:
         st.markdown("### 🔬 Metodologia")
         st.markdown("""
         <div class="metric-card">
-            <p><strong>Sistema baseado em múltiplos indicadores:</strong></p>
-            <ul>
-                <li><strong>RSI (Relative Strength Index):</strong> Medição da força do movimento</li>
-                <li><strong>RSL (Relative Strength Levy):</strong> Força relativa personalizada</li>
-                <li><strong>SMA (Simple Moving Average):</strong> Médias móveis configuráveis</li>
-                <li><strong>ATR (Average True Range):</strong> Para cálculo de stop loss</li>
-            </ul>
+            <p><strong>Sistema avançado que combina múltiplos indicadores técnicos e financeiros com inteligência artificial:</strong></p>
+            <p>Utiliza-se de técnicas modernas para identificar oportunidades de negociação, determinar pontos de entrada e saída mais eficientes, assegurando uma gestão de risco sofisticada e adaptada às condições de mercado.</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1573,11 +1568,12 @@ with tab4:
         st.markdown("### 🛡️ Gerenciamento de Risco")
         st.markdown("""
         <div class="metric-card">
-            <p><strong>Sistema de Stop Loss Baseado em ATR:</strong></p>
+            <p><strong>Sistema de Stop Loss Baseado em Métricas Matemáticas:</strong></p>
+            <p>Oferecemos diferentes níveis de stop para atender a diversos perfis de investidores:</p>
             <ul>
-                <li><strong>Stop Justo:</strong> 2.0x ATR (mais agressivo)</li>
-                <li><strong>Stop Balanceado:</strong> 2.5x ATR (equilibrado)</li>
-                <li><strong>Stop Largo:</strong> 3.5x ATR (mais conservador)</li>
+                <li><strong>Stop Justo:</strong> para investidores mais agressivos</li>
+                <li><strong>Stop Balanceado:</strong> uma abordagem equilibrada</li>
+                <li><strong>Stop Largo:</strong> para investidores mais conservadores</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1590,25 +1586,29 @@ with tab4:
         st.markdown("#### 🪙 Criptomoedas")
         st.markdown("- Bitcoin (BTC-USD)")
         st.markdown("- Ethereum (ETH-USD)")
-        st.markdown("- + 18 outras principais")
+        st.markdown("- Exemplos: Binance Coin (BNB-USD), Cardano (ADA-USD)")
+        st.markdown("- Todos os listados no Yahoo Finance")
 
     with col2:
         st.markdown("#### 🇧🇷 Ações Brasileiras")
         st.markdown("- Petrobras (PETR4.SA)")
         st.markdown("- Vale (VALE3.SA)")
-        st.markdown("- + 18 outras principais")
+        st.markdown("- Exemplos: Itaú Unibanco (ITUB4.SA), Bradesco (BBDC4.SA)")
+        st.markdown("- Todas as listadas no Yahoo Finance")
 
     with col3:
         st.markdown("#### 🇺🇸 Ações Americanas")
         st.markdown("- Apple (AAPL)")
         st.markdown("- Microsoft (MSFT)")
-        st.markdown("- + 8 outras principais")
+        st.markdown("- Exemplos: Google (GOOGL), Amazon (AMZN)")
+        st.markdown("- Todas as listadas no Yahoo Finance")
 
     with col4:
         st.markdown("#### 💱 Forex & Commodities")
         st.markdown("- EUR/USD")
         st.markdown("- Ouro (GC=F)")
-        st.markdown("- + Outros pares e commodities")
+        st.markdown("- Exemplos: GBP/USD, Petróleo bruto (CL=F)")
+        st.markdown("- Todos os listados no Yahoo Finance")
 
     st.markdown("### ⚠️ Disclaimer")
     st.markdown("""
