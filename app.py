@@ -1628,7 +1628,7 @@ with tab3:
 
 with tab4:
     # Bollinger Bands Detection tab
-    st.markdown("## 📊 Detecção de Topos e Fundos com Bollinger Bands")
+    st.markdown("## 📊 Detecção de Topos e Fundos")
     st.markdown("Identifique oportunidades de compra e venda baseadas na posição dos preços em relação às Bandas de Bollinger")
 
     # Parameters section
@@ -1692,7 +1692,7 @@ with tab4:
 
     # Detection sensitivity
     st.markdown("#### 🎯 Sensibilidade de Detecção")
-    min_distance_pct = st.number_input("Distância mínima das bandas (%)", min_value=0.1, max_value=5.0, value=1.0, step=0.1, key="min_distance")
+    min_distance_pct = st.number_input("Distância mínima das bandas (%)", min_value=0.1, max_value=5.0, value=0.1, step=0.1, key="min_distance")
 
     # Analysis button
     analyze_button_bb = st.button("🚀 INICIAR DETECÇÃO DE TOPOS E FUNDOS", type="primary", use_container_width=True, key="analyze_bb")
@@ -1929,6 +1929,7 @@ with tab5:
                 <li><strong>Múltiplos Timeframes:</strong> De 1 minuto a 3 meses</li>
                 <li><strong>Critérios de Saída:</strong> Stop Loss, Alvo Fixo, Tempo, MM</li>
                 <li><strong>Direções de Trading:</strong> Long, Short ou Ambos</li>
+                <li><strong>Detecção de Topos e Fundos:</strong> Identificação de reversões potenciais</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1980,7 +1981,7 @@ with tab5:
 
     st.markdown("### ⚠️ Disclaimer")
     st.markdown("""
-    <div style="background: #fff3cd; padding: 1rem; border-radius: 10px; border-left: 4px solid #ffc107;">
+ <div style="background: linear-gradient(90deg, #e3f2fd, #f3e5f5); padding: 1rem; border-radius: 10px; border-left: 4px solid #ffc107; color: black;">
         <p><strong>⚠️ AVISO IMPORTANTE:</strong></p>
         <p>Este sistema é desenvolvido para fins educacionais e de pesquisa. As análises e sinais gerados 
         <strong>NÃO constituem recomendações de investimento</strong>. Trading e investimentos envolvem riscos 
