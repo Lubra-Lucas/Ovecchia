@@ -709,8 +709,7 @@ with tab2:
                 entry_index = None
                 previous_state = None  # Track previous state to detect changes
 
-                for i in```python
- range(len(df)):
+                for i in range(len(df)):
                     estado = df['Estado'].iloc[i]
                     price = df['close'].iloc[i]
                     time = df['time'].iloc[i]
