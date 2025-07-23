@@ -195,37 +195,17 @@ with st.sidebar:
 
         # Predefined lists
         preset_lists = {
-            "Criptomoedas Top 10": ["BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD",
+            "Criptomoedas": ["BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD",
                                    "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD",
                                    "TRX-USD", "LINK-USD", "MATIC-USD", "LTC-USD", "BCH-USD",
-                                   "ICP-USD", "TON11419-USD", "ATOM-USD", "ETC-USD", "XLM-USD",
-                                   "FIL-USD", "HBAR-USD", "APT-USD", "ARB-USD", "INJ-USD",
-                                   "NEAR-USD", "VET-USD", "RNDR-USD", "OP-USD", "IMX-USD",
-                                   "SAND-USD", "AXS-USD", "THETA-USD", "RUNE-USD", "AAVE-USD",
-                                   "EGLD-USD", "GRT-USD", "STX-USD", "MKR-USD", "KAS-USD",
-                                   "FTM-USD", "FLOW-USD", "CHZ-USD", "TWT-USD", "XEC-USD",
-                                   "BSV-USD", "KAVA-USD", "SNX-USD", "USDC-USD", "USDT-USD",
-                                   "DAI-USD", "CRV-USD", "ENS-USD", "PEPE-USD", "LDO-USD",
-                                   "RPL-USD", "DYDX-USD", "GMT-USD", "LUNC-USD", "MINA-USD",
-                                   "ZEC-USD", "CAKE-USD", "BAT-USD", "ZIL-USD", "CELO-USD",
-                                   "1INCH-USD", "WAVES-USD", "ANKR-USD", "COMP-USD", "GLMR-USD",
-                                   "BAL-USD", "QNT-USD", "CRO-USD", "SKL-USD", "ENJ-USD",
-                                   "XYM-USD", "NEXO-USD", "SUSHI-USD", "YFI-USD", "ALGO-USD",
-                                   "BTT-USD", "DASH-USD", "ZEN-USD", "RVN-USD", "OMG-USD",
-                                   "SRM-USD", "ICX-USD", "IOST-USD", "ONT-USD", "DENT-USD",
-                                   "REQ-USD", "XNO-USD", "NANO-USD", "GALA-USD", "WOO-USD",
-                                   "CVC-USD", "POLYX-USD", "BAND-USD", "STMX-USD", "POWR-USD",
-                                   "JOE-USD", "ASTR-USD", "BORA-USD", "REEF-USD", "PLA-USD"],
-            "Ações Brasileiras": ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "MGLU3.SA",
-                                 "ABEV3.SA", "JBSS3.SA", "WEGE3.SA", "RENT3.SA", "LREN3.SA",
-                                 "BBAS3.SA", "GGBR4.SA", "BBSE3.SA", "CMIG4.SA", "CSAN3.SA",
-                                 "ELET3.SA", "ELET6.SA", "B3SA3.SA", "SUZB3.SA", "RAIL3.SA",
-                                 "CPLE6.SA", "HYPE3.SA", "BRFS3.SA", "NTCO3.SA", "BRKM5.SA",
-                                 "UGPA3.SA", "HAPV3.SA", "GOLL4.SA", "VBBR3.SA", "ENEV3.SA",
-                                 "AZUL4.SA", "CCRO3.SA", "TOTS3.SA", "TIMS3.SA", "PRIO3.SA",
-                                 "RRRP3.SA", "SMTO3.SA", "ASAI3.SA", "ALPA4.SA", "CRFB3.SA",],
+                                   "FIL-USD", "APT-USD", "ARB-USD", "NEAR-USD", "VET-USD"],
+            "Ações Brasileiras": ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "B3SA3.SA",
+                                 "ABEV3.SA", "BBAS3.SA", "WEGE3.SA", "PETR3.SA", "JBSS3.SA",
+                                 "ITSA4.SA", "ELET3.SA", "SUZB3.SA", "GGBR4.SA", "RENT3.SA",
+                                 "VBBR3.SA", "BRFS3.SA", "RAIL3.SA", "ELET6.SA", "CCRO3.SA"],
             "Ações Americanas": ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "META", "NVDA", "NFLX", "AMD", "BABA"],
-            "Pares de Forex": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"]
+            "Pares de Forex": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"],
+            "Commodities": ["GC=F", "SI=F", "CL=F", "NG=F", "HG=F", "ZC=F", "ZS=F", "KE=F", "CC=F", "KC=F"]
         }
 
         selected_preset = st.selectbox(
@@ -462,11 +442,12 @@ with st.sidebar:
             )
         else:
             st.info("🔍 Modo Otimização: Testará diferentes períodos de MM")
-            ma_range = st.multiselect(
-                "Períodos de MM a Testar",
-                [10, 20, 30, 50, 60, 70, 80, 90, 100],
-                default=[10, 20, 50]
+            ma_input = st.text_input(
+                "Digite os períodos de MM separados por ponto e vírgula:",
+                value="10;20;50",
+                help="Exemplo: 10;20;50"
             )
+            ma_range = [int(x.strip()) for x in ma_input.split(';') if x.strip()]
             exit_params['ma_range'] = ma_range
 
     # Analyze button
@@ -986,7 +967,7 @@ if analyze_button:
                                 # For single direction, exit on Stay Out or opposite signal
                                 if estado == 'Stay Out' or should_exit_on_opposite:
                                     should_exit_by_state = True
-                                    exit_reason_state = 'Mudança de Estado' if estado == 'Stay Out' else 'Sinal Oposto'
+                                    exit_reason_state = 'Mudança de Estado' if estado == 'Stay Out' else 'Mudança de Estado'
 
                         if should_exit_by_state:
                             # State changed - close current position immediately
