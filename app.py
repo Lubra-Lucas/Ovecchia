@@ -724,7 +724,6 @@ with tab2:
                         current_signal = estado
                         entry_price = price
                         entry_time = time
-```python
                         entry_index = i
 
                     # Update previous state for next iteration
