@@ -192,6 +192,7 @@ with st.sidebar:
 
     else:  # Screening mode
         st.markdown("#### 📊 Lista de Ativos para Screening")
+        st.info("ℹ️ **Screening Mode:** O screening focará apenas na detecção de mudanças de estado dos sinais. Configurações de direção de operação e critérios de saída são específicas para análise individual.")
 
         # Predefined lists
         preset_lists = {
@@ -325,130 +326,138 @@ with st.sidebar:
         st.session_state['is_selecting_moving_averages'] = True
 
 
-    # Trading direction configuration
-    st.markdown("---")
-    st.markdown("#### 🎯 Direção de Operação")
+    # Trading direction configuration - ONLY for individual analysis
+    if analysis_mode == "Ativo Individual":
+        st.markdown("---")
+        st.markdown("#### 🎯 Direção de Operação")
 
-    trading_direction = st.selectbox(
-        "Escolha a direção das operações:",
-        ["Ambos (Compra e Venda)", "Apenas Comprado", "Apenas Vendido"],
-        index=0,
-        help="Selecione se deseja operar apenas comprado, apenas vendido, ou ambas direções"
-    )
+        trading_direction = st.selectbox(
+            "Escolha a direção das operações:",
+            ["Ambos (Compra e Venda)", "Apenas Comprado", "Apenas Vendido"],
+            index=0,
+            help="Selecione se deseja operar apenas comprado, apenas vendido, ou ambas direções"
+        )
 
-    # Exit criteria configuration
-    st.markdown("#### 🚪 Critérios de Saída Personalizados")
+        # Exit criteria configuration
+        st.markdown("#### 🚪 Critérios de Saída Personalizados")
 
-    exit_criteria = st.selectbox(
-        "Tipo de Saída",
-        ["Mudança de Estado", "Stop Loss", "Alvo Fixo", "Tempo", "Média Móvel"],
-        index=0,
-        help="Escolha como deseja sair das posições"
-    )
+        exit_criteria = st.selectbox(
+            "Tipo de Saída",
+            ["Mudança de Estado", "Stop Loss", "Alvo Fixo", "Tempo", "Média Móvel"],
+            index=0,
+            help="Escolha como deseja sair das posições"
+        )
 
-    # Add a checkbox to decide whether to include state change in exit criteria
-    include_state_change = st.checkbox(
-        "Sair por mudança de estado?",
-        value=True,
-        help="Selecione se a operação deve ser encerrada quando houver mudança de estado, além do critério de saída."
-    )
+        # Add a checkbox to decide whether to include state change in exit criteria
+        include_state_change = st.checkbox(
+            "Sair por mudança de estado?",
+            value=True,
+            help="Selecione se a operação deve ser encerrada quando houver mudança de estado, além do critério de saída."
+        )
 
-    # Optimization option
-    optimize_params = st.checkbox(
-        "🎯 Otimizar Parâmetros",
-        value=False,
-        help="Testa diferentes combinações de parâmetros para encontrar o melhor retorno"
-    )
+        # Optimization option
+        optimize_params = st.checkbox(
+            "🎯 Otimizar Parâmetros",
+            value=False,
+            help="Testa diferentes combinações de parâmetros para encontrar o melhor retorno"
+        )
 
-    # Additional parameters based on exit criteria
-    exit_params = {}
+        # Additional parameters based on exit criteria
+        exit_params = {}
 
-    if exit_criteria == "Stop Loss":
-        if not optimize_params:
-            exit_params['stop_type'] = st.selectbox(
-                "Tipo de Stop",
-                ["Stop Justo", "Stop Balanceado", "Stop Largo"]
-            )
-        else:
-            st.info("🔍 Modo Otimização: Testará todos os tipos de stop (Justo, Balanceado, Largo)")
-    elif exit_criteria == "Alvo Fixo":
-        if not optimize_params:
-            col1, col2 = st.columns(2)
-            with col1:
-                exit_params['target_pct'] = st.number_input(
-                    "Alvo Percentual (%)",
-                    min_value=0.1,
-                    max_value=50.0,
-                    value=3.0,
-                    step=0.1,
-                    help="Percentual de ganho desejado"
+        if exit_criteria == "Stop Loss":
+            if not optimize_params:
+                exit_params['stop_type'] = st.selectbox(
+                    "Tipo de Stop",
+                    ["Stop Justo", "Stop Balanceado", "Stop Largo"]
                 )
-            with col2:
-                exit_params['stop_loss_pct'] = st.number_input(
-                    "Stop Loss Limite (%)",
-                    min_value=0.1,
-                    max_value=20.0,
-                    value=2.0,
-                    step=0.1,
-                    help="Máximo percentual de perda aceito"
-                )
-        else:
-            st.info("🔍 Modo Otimização: Testará múltiplas combinações de alvo e stop")
-            col1, col2 = st.columns(2)
-            with col1:
-                target_range = [float(t.strip()) for t in st.text_input(
-                    "Alvos a Testar (%)",
-                    value="2.0;3.0;4.0;5.0",
-                    help="Digite os alvos separados por ponto e vírgula, ex: 1.0;2.5;5.0"
-                ).split(';') if t.strip()]
+            else:
+                st.info("🔍 Modo Otimização: Testará todos os tipos de stop (Justo, Balanceado, Largo)")
+        elif exit_criteria == "Alvo Fixo":
+            if not optimize_params:
+                col1, col2 = st.columns(2)
+                with col1:
+                    exit_params['target_pct'] = st.number_input(
+                        "Alvo Percentual (%)",
+                        min_value=0.1,
+                        max_value=50.0,
+                        value=3.0,
+                        step=0.1,
+                        help="Percentual de ganho desejado"
+                    )
+                with col2:
+                    exit_params['stop_loss_pct'] = st.number_input(
+                        "Stop Loss Limite (%)",
+                        min_value=0.1,
+                        max_value=20.0,
+                        value=2.0,
+                        step=0.1,
+                        help="Máximo percentual de perda aceito"
+                    )
+            else:
+                st.info("🔍 Modo Otimização: Testará múltiplas combinações de alvo e stop")
+                col1, col2 = st.columns(2)
+                with col1:
+                    target_range = [float(t.strip()) for t in st.text_input(
+                        "Alvos a Testar (%)",
+                        value="2.0;3.0;4.0;5.0",
+                        help="Digite os alvos separados por ponto e vírgula, ex: 1.0;2.5;5.0"
+                    ).split(';') if t.strip()]
 
-            with col2:
-                stop_range = [float(s.strip()) for s in st.text_input(
-                    "Stops a Testar (%)",
-                    value="1.0;2.0;3.0",
-                    help="Digite os stops separados por ponto e vírgula, ex: 0.5;1.0;3.0"
-                ).split(';') if s.strip()]
-            exit_params['target_range'] = target_range
-            exit_params['stop_range'] = stop_range
-    elif exit_criteria == "Tempo":
-        if not optimize_params:
-            exit_params['time_candles'] = st.number_input(
-                "Candles após entrada",
-                min_value=1,
-                max_value=1000,
-                value=10,
-                step=1,
-                help="Número de candles após a entrada para sair da posição"
-            )
-        else:
-            st.info("🔍 Modo Otimização: Testará de 1 a X candles que usuário definir")
-            max_candles = st.number_input(
-                "Máximo de candles a testar",
-                min_value=1,
-                max_value=50,
-                value=10,
-                step=1
-            )
-            exit_params['max_candles'] = max_candles
-    elif exit_criteria == "Média Móvel":
-        if not optimize_params:
-            exit_params['ma_period'] = st.number_input(
-                "Período da Média Móvel",
-                min_value=5,
-                max_value=200,
-                value=20,
-                step=5,
-                help="Período para a média móvel (MM)"
-            )
-        else:
-            st.info("🔍 Modo Otimização: Testará diferentes períodos de MM")
-            ma_input = st.text_input(
-                "Digite os períodos de MM separados por ponto e vírgula:",
-                value="10;20;50",
-                help="Exemplo: 10;20;50"
-            )
-            ma_range = [int(x.strip()) for x in ma_input.split(';') if x.strip()]
-            exit_params['ma_range'] = ma_range
+                with col2:
+                    stop_range = [float(s.strip()) for s in st.text_input(
+                        "Stops a Testar (%)",
+                        value="1.0;2.0;3.0",
+                        help="Digite os stops separados por ponto e vírgula, ex: 0.5;1.0;3.0"
+                    ).split(';') if s.strip()]
+                exit_params['target_range'] = target_range
+                exit_params['stop_range'] = stop_range
+        elif exit_criteria == "Tempo":
+            if not optimize_params:
+                exit_params['time_candles'] = st.number_input(
+                    "Candles após entrada",
+                    min_value=1,
+                    max_value=1000,
+                    value=10,
+                    step=1,
+                    help="Número de candles após a entrada para sair da posição"
+                )
+            else:
+                st.info("🔍 Modo Otimização: Testará de 1 a X candles que usuário definir")
+                max_candles = st.number_input(
+                    "Máximo de candles a testar",
+                    min_value=1,
+                    max_value=50,
+                    value=10,
+                    step=1
+                )
+                exit_params['max_candles'] = max_candles
+        elif exit_criteria == "Média Móvel":
+            if not optimize_params:
+                exit_params['ma_period'] = st.number_input(
+                    "Período da Média Móvel",
+                    min_value=5,
+                    max_value=200,
+                    value=20,
+                    step=5,
+                    help="Período para a média móvel (MM)"
+                )
+            else:
+                st.info("🔍 Modo Otimização: Testará diferentes períodos de MM")
+                ma_input = st.text_input(
+                    "Digite os períodos de MM separados por ponto e vírgula:",
+                    value="10;20;50",
+                    help="Exemplo: 10;20;50"
+                )
+                ma_range = [int(x.strip()) for x in ma_input.split(';') if x.strip()]
+                exit_params['ma_range'] = ma_range
+    else:
+        # Set default values for screening mode
+        trading_direction = "Ambos (Compra e Venda)"
+        exit_criteria = "Mudança de Estado"
+        include_state_change = True
+        optimize_params = False
+        exit_params = {}
 
     # Analyze button
     st.markdown("---")
