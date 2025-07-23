@@ -101,24 +101,88 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Main title
-st.title("OVECCHIA TRADING - MODELO QUANT ")
-st.markdown("---")
+# Custom CSS for better styling
+st.markdown("""
+<style>
+    /* Main title styling */
+    .main-title {
+        text-align: center;
+        background: linear-gradient(90deg, #1f77b4, #ff7f0e);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 3rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+    
+    /* Card styling */
+    .metric-card {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-left: 4px solid #1f77b4;
+        margin-bottom: 1rem;
+    }
+    
+    /* Status indicators */
+    .status-buy {
+        background: linear-gradient(90deg, #4CAF50, #45a049);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        text-align: center;
+        font-weight: bold;
+    }
+    
+    .status-sell {
+        background: linear-gradient(90deg, #f44336, #da190b);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        text-align: center;
+        font-weight: bold;
+    }
+    
+    .status-out {
+        background: linear-gradient(90deg, #9E9E9E, #757575);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        text-align: center;
+        font-weight: bold;
+    }
+    
+    /* Sidebar improvements */
+    .sidebar-section {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        border: 1px solid #e9ecef;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Main title with custom styling
+st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING - MODELO QUANT</h1>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Análise Técnica e Sinais de Trading</p>', unsafe_allow_html=True)
 
 # Sidebar for inputs
-st.sidebar.header("Parâmetros de Análise")
+st.sidebar.markdown("### 🎯 Parâmetros de Análise")
+st.sidebar.markdown("---")
 
 # Input fields in sidebar
 with st.sidebar:
-    st.subheader("Modo de Análise")
-
+    st.markdown("#### 🔍 Modo de Análise")
     analysis_mode = st.radio(
         "Escolha o tipo de análise:",
         ["Ativo Individual", "Screening de Múltiplos Ativos"]
     )
+    st.markdown("---")
 
     if analysis_mode == "Ativo Individual":
-        st.subheader("Configuração de Ativo")
+        st.markdown("#### 💹 Configuração de Ativo")
         # Symbol input with examples
         symbol = st.text_input(
             "Ticker",
@@ -127,7 +191,7 @@ with st.sidebar:
         ).strip()
 
     else:  # Screening mode
-        st.subheader("Lista de Ativos para Screening")
+        st.markdown("#### 📊 Lista de Ativos para Screening")
 
         # Predefined lists
         preset_lists = {
@@ -184,7 +248,8 @@ with st.sidebar:
         st.write(f"**{len(symbols_list)} ativos selecionados para screening**")
 
     # Date range selection
-    st.subheader("Intervalo de Data")
+    st.markdown("---")
+    st.markdown("#### 📅 Intervalo de Data")
 
     # Default date range (last 30 days)
     default_end = datetime.now().date()
@@ -204,7 +269,7 @@ with st.sidebar:
     )
 
     # Interval selection
-    st.subheader("Intervalo de Tempo (Timeframe)")
+    st.markdown("#### ⏱️ Intervalo de Tempo (Timeframe)")
     interval_options = {
         "1 minute": "1m",
         "2 minutes": "2m",
@@ -237,7 +302,8 @@ with st.sidebar:
         )
 
     # Confirmation candles parameter
-    st.subheader("Confirmação de Sinais")
+    st.markdown("---")
+    st.markdown("#### ✅ Confirmação de Sinais")
     confirm_candles = st.number_input(
         "Candles de Confirmação",
         min_value=0,
@@ -247,7 +313,7 @@ with st.sidebar:
     )
 
     # Moving averages configuration
-    st.subheader("Configuração de Médias Móveis")
+    st.markdown("#### 📈 Configuração de Médias Móveis")
     col1, col2 = st.columns(2)
 
     with col1:
@@ -280,7 +346,8 @@ with st.sidebar:
 
 
     # Trading direction configuration
-    st.subheader("Direção de Operação")
+    st.markdown("---")
+    st.markdown("#### 🎯 Direção de Operação")
 
     trading_direction = st.selectbox(
         "Escolha a direção das operações:",
@@ -290,7 +357,7 @@ with st.sidebar:
     )
 
     # Exit criteria configuration
-    st.subheader("Critérios de Saída Personalizados")
+    st.markdown("#### 🚪 Critérios de Saída Personalizados")
 
     exit_criteria = st.selectbox(
         "Tipo de Saída",
@@ -403,7 +470,8 @@ with st.sidebar:
             exit_params['ma_range'] = ma_range
 
     # Analyze button
-    analyze_button = st.button("🔍 Analisar", type="primary", use_container_width=True)
+    st.markdown("---")
+    analyze_button = st.button("🚀 INICIAR ANÁLISE", type="primary", use_container_width=True)
 
 # Main content area
 if analyze_button:
@@ -1223,7 +1291,9 @@ if analyze_button:
             else:
                 st.success(f"✅ Análise completa para  {symbol_label}")
 
-            # Current status display
+            # Current status display with improved styling
+            st.markdown("### 📊 Status Atual do Mercado")
+            
             col1, col2, col3, col4 = st.columns(4)
 
             current_price = df['close'].iloc[-1]
@@ -1232,19 +1302,42 @@ if analyze_button:
             current_rsl = df['RSL_20'].iloc[-1]
 
             with col1:
-                st.metric("Current Price", f"{current_price:.2f}")
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h4 style="margin: 0; color: #1f77b4;">💰 Preço Atual</h4>
+                    <h2 style="margin: 0; color: #333;">{current_price:.2f}</h2>
+                </div>
+                """, unsafe_allow_html=True)
 
             with col2:
-                signal_color = "🔵" if current_signal == "Buy" else "🔴" if current_signal == "Sell" else "⚫"
-                st.metric("Current Signal", f"{signal_color} {current_signal}")
+                signal_class = "status-buy" if current_signal == "Buy" else "status-sell" if current_signal == "Sell" else "status-out"
+                signal_icon = "🔵" if current_signal == "Buy" else "🔴" if current_signal == "Sell" else "⚫"
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h4 style="margin: 0; color: #1f77b4;">🎯 Sinal Atual</h4>
+                    <div class="{signal_class}">{signal_icon} {current_signal}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             with col3:
-                st.metric("RSI (14)", f"{current_rsi:.2f}")
+                rsi_color = "#4CAF50" if current_rsi > 50 else "#f44336"
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h4 style="margin: 0; color: #1f77b4;">📈 RSI (14)</h4>
+                    <h2 style="margin: 0; color: {rsi_color};">{current_rsi:.2f}</h2>
+                </div>
+                """, unsafe_allow_html=True)
 
             with col4:
-                st.metric("RSL (20)", f"{current_rsl:.3f}")
+                rsl_color = "#4CAF50" if current_rsl > 1 else "#f44336"
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h4 style="margin: 0; color: #1f77b4;">📊 RSL (20)</h4>
+                    <h2 style="margin: 0; color: {rsl_color};">{current_rsl:.3f}</h2>
+                </div>
+                """, unsafe_allow_html=True)
 
-            st.markdown("---")
+            st.markdown("<br>", unsafe_allow_html=True)
 
             # Create the interactive chart
             titulo_grafico = f"LUBRA TRADING - {symbol_label} - Timeframe: {interval.upper()}"
@@ -1351,7 +1444,9 @@ if analyze_button:
             st.plotly_chart(fig, use_container_width=True)
 
             # Returns Analysis Section
-            st.subheader("📈 Análise de Retornos")
+            st.markdown("---")
+            st.markdown("## 📈 Análise de Retornos")
+            st.markdown("Análise detalhada dos retornos baseada nos diferentes critérios de saída")
 
             # Create tabs for different return calculations
             direction_label = trading_direction.replace("Ambos (Compra e Venda)", "Ambos").replace("Apenas ", "")
@@ -1427,51 +1522,82 @@ if analyze_button:
                         st.info("Nenhum resultado de otimização disponível.")
 
             st.markdown("---")
-            # Technical analysis summary
-            st.subheader("Informações Relevantes ")
+            # Technical analysis summary with improved layout
+            st.markdown("## 📋 Informações Técnicas")
 
-            # Apenas uma coluna com os dados relevantes
-            col = st.container()
+            col1, col2 = st.columns(2)
 
-            with col:
-                st.write("**Níveis de Stop Loss:**")
-                st.write(f"• Stop Justo: {df['Stop_Justo'].iloc[-1]:.2f}")
-                st.write(f"• Stop Balanceado: {df['Stop_Balanceado'].iloc[-1]:.2f}")
-                st.write(f"• Stop Largo: {df['Stop_Largo'].iloc[-1]:.2f}")
+            with col1:
+                st.markdown("### 🛡️ Níveis de Stop Loss")
+                st.markdown(f"""
+                <div class="metric-card">
+                    <p><strong>🔴 Stop Justo:</strong> {df['Stop_Justo'].iloc[-1]:.2f}</p>
+                    <p><strong>🟡 Stop Balanceado:</strong> {df['Stop_Balanceado'].iloc[-1]:.2f}</p>
+                    <p><strong>🟢 Stop Largo:</strong> {df['Stop_Largo'].iloc[-1]:.2f}</p>
+                </div>
+                """, unsafe_allow_html=True)
 
-                st.write("**Distribuição dos Sinais:**")
+            with col2:
                 buy_signals = (df['Estado'] == 'Buy').sum()
                 sell_signals = (df['Estado'] == 'Sell').sum()
                 stay_out = (df['Estado'] == 'Stay Out').sum()
-                st.write(f"• Sinais de Compra (Buy): {buy_signals}")
-                st.write(f"• Sinais de Venda (Sell): {sell_signals}")
-                st.write(f"• Fora do Mercado (Stay Out): {stay_out}")
+                
+                st.markdown("### 📊 Distribuição dos Sinais")
+                st.markdown(f"""
+                <div class="metric-card">
+                    <p><strong>🔵 Sinais de Compra:</strong> {buy_signals}</p>
+                    <p><strong>🔴 Sinais de Venda:</strong> {sell_signals}</p>
+                    <p><strong>⚫ Fora do Mercado:</strong> {stay_out}</p>
+                </div>
+                """, unsafe_allow_html=True)
     except Exception as e:
         st.error(f"An error occurred during analysis: {str(e)}")
         st.write("Please check your inputs and try again.")
 
 else:
-    # Initial state - show instructions
-    st.info("👈 Configure os parâmetros de trading na barra lateral e clique em 'Analisar' para iniciar a análise.")
+    # Initial state - show instructions with better styling
+    st.markdown("""
+    <div style="background: linear-gradient(90deg, #e3f2fd, #f3e5f5); padding: 2rem; border-radius: 15px; text-align: center; margin-bottom: 2rem;">
+        <h2 style="color: #1976d2; margin-bottom: 1rem;">🚀 Bem-vindo ao Sistema de Trading Quant!</h2>
+        <p style="font-size: 1.2rem; color: #666;">Configure os parâmetros na barra lateral e inicie sua análise profissional</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.subheader("📋 Como Usar")
-    st.write("""
-    1. **Insira o Símbolo do Ativo**: Use os símbolos padrão (ex: BTC-USD, AAPL, PETR4.SA)  
-    2. **Defina o Período de Análise**: Escolha o intervalo de datas que deseja analisar  
-    3. **Selecione o Intervalo de Tempo**: Escolha o timeframe para sua análise  
-    4. **Configure a Confirmação**: Defina quantos sinais consecutivos são necessários para validação  
-    5. **Clique em Analisar**: Gere sua análise de trading
-    """)
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 📋 Como Usar")
+        st.markdown("""
+        <div class="metric-card">
+            <ol>
+                <li><strong>🎯 Insira o Símbolo do Ativo</strong><br>Use símbolos padrão (ex: BTC-USD, AAPL, PETR4.SA)</li><br>
+                <li><strong>📅 Defina o Período de Análise</strong><br>Escolha o intervalo de datas desejado</li><br>
+                <li><strong>⏱️ Selecione o Intervalo de Tempo</strong><br>Escolha o timeframe para análise</li><br>
+                <li><strong>✅ Configure a Confirmação</strong><br>Defina quantos sinais consecutivos necessários</li><br>
+                <li><strong>🚀 Clique em Analisar</strong><br>Gere sua análise profissional</li>
+            </ol>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.subheader("🔍 Funcionalidades")
-    st.write("""
-    - **Indicadores Técnicos**: SMA (20, 60, 70), RSI (14), RSL (20), ATR (14)  
-    - **Sinais de Trading**: Compra, Venda e Ficar de Fora, com lógica de confirmação  
-    - **Níveis de Stop Loss**: Três níveis diferentes baseados no ATR  
-    - **Gráficos Interativos**: Zoom, arrastar e visualização ao passar o mouse para mais detalhes  
-    - **Dados em Tempo Real**: Fornecidos pela API do Yahoo Finance
-    """)
+    with col2:
+        st.markdown("### 🔍 Funcionalidades")
+        st.markdown("""
+        <div class="metric-card">
+            <ul>
+                <li><strong>📈 Indicadores Técnicos</strong><br>SMA (20, 60, 70), RSI (14), RSL (20), ATR (14)</li><br>
+                <li><strong>🎯 Sinais de Trading</strong><br>Compra, Venda e Ficar de Fora com confirmação</li><br>
+                <li><strong>🛡️ Níveis de Stop Loss</strong><br>Três níveis baseados no ATR</li><br>
+                <li><strong>📊 Gráficos Interativos</strong><br>Zoom, arrastar e hover para detalhes</li><br>
+                <li><strong>📡 Dados em Tempo Real</strong><br>API do Yahoo Finance</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 st.markdown("---")
-st.markdown("*OVECCHIA TRADING - MODELO QUANT - Para fins educacionais apenas. Não é uma recomendação financeira.*")
+st.markdown("""
+<div style="background: #f8f9fa; padding: 1rem; border-radius: 10px; text-align: center; margin-top: 2rem;">
+    <p style="color: #666; margin: 0;"><strong>OVECCHIA TRADING - MODELO QUANT</strong></p>
+    <p style="color: #999; font-size: 0.9rem; margin: 0;">⚠️ Para fins educacionais apenas. Não constitui recomendação financeira.</p>
+</div>
+""", unsafe_allow_html=True)
