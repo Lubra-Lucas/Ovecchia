@@ -157,25 +157,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Mobile detection based on viewport width
-mobile_detection_script = """
-<script>
-function checkMobile() {
-    const isMobile = window.innerWidth <= 768;
-    window.parent.postMessage({type: 'mobile_layout', value: isMobile}, '*');
-}
-checkMobile();
-window.addEventListener('resize', checkMobile);
-</script>
-"""
-
-# Initialize mobile layout state
-if 'mobile_layout' not in st.session_state:
-    st.session_state.mobile_layout = False
-
-# JavaScript for mobile detection
-st.components.v1.html(mobile_detection_script, height=0)
-
 # Custom CSS for better styling with mobile improvements
 st.markdown("""
 <style>
@@ -292,46 +273,6 @@ st.markdown("""
         .stMarkdown p, .stMarkdown li {
             font-size: 0.9rem;
             line-height: 1.4;
-        }
-
-        /* Mobile chart improvements */
-        .js-plotly-plot .plotly .modebar {
-            left: 50% !important;
-            transform: translateX(-50%);
-            top: 10px !important;
-        }
-
-        .js-plotly-plot .plotly .modebar-btn {
-            width: 28px !important;
-            height: 28px !important;
-        }
-
-        /* Better touch targets for mobile */
-        .stButton > button {
-            min-height: 44px;
-            font-size: 0.9rem;
-        }
-
-        .stSelectbox > div > div {
-            min-height: 44px;
-        }
-
-        .stNumberInput > div > div > input {
-            min-height: 44px;
-        }
-
-        /* Optimize plot container for mobile */
-        .stPlotlyChart {
-            margin: 0 -1rem;
-        }
-
-        /* Better mobile scrolling for dataframes */
-        .stDataFrame {
-            font-size: 0.8rem;
-        }
-
-        .stDataFrame table {
-            font-size: 0.75rem;
         }
     }
 
@@ -1252,61 +1193,16 @@ with tab2:
                             ticktext=['Venda', 'Ficar de Fora', 'Compra'], row=2, col=1)
             fig.update_xaxes(showgrid=False, row=2, col=1)
 
-            # Mobile responsive height - detect mobile layout
-            is_mobile = st.session_state.get('mobile_layout', False)
-            chart_height = 450 if is_mobile else 700
-            
-            # Update layout with mobile optimizations
+            # Update layout
             fig.update_layout(
-                title=dict(
-                    text=titulo_grafico, 
-                    x=0.5, 
-                    font=dict(size=16 if is_mobile else 18)
-                ),
+                title=dict(text=titulo_grafico, x=0.5, font=dict(size=18)),
                 template="plotly_white",
                 hovermode="x unified",
-                height=chart_height,
-                # Mobile-specific improvements
-                margin=dict(l=10, r=10, t=80, b=40) if is_mobile else dict(l=50, r=50, t=100, b=50),
-                # Better mobile interaction
-                dragmode='pan' if is_mobile else 'zoom',
-                # Improve legend for mobile
-                legend=dict(
-                    orientation="h" if is_mobile else "v",
-                    yanchor="bottom" if is_mobile else "top",
-                    y=1.02 if is_mobile else 1,
-                    xanchor="center" if is_mobile else "right",
-                    x=0.5 if is_mobile else 1,
-                    font=dict(size=10 if is_mobile else 12)
-                )
+                height=700
             )
-            
-            # Mobile-specific axis updates
-            if is_mobile:
-                fig.update_xaxes(
-                    tickangle=45,
-                    tickfont=dict(size=10),
-                    title_font=dict(size=10)
-                )
-                fig.update_yaxes(
-                    tickfont=dict(size=10),
-                    title_font=dict(size=10)
-                )
 
-            # Mobile-optimized chart configuration
-            plot_config = {
-                'displayModeBar': True,
-                'displaylogo': False,
-                'modeBarButtonsToRemove': ['select2d', 'lasso2d', 'autoScale2d'] if is_mobile else [],
-                'modeBarButtonsToAdd': ['pan2d'] if is_mobile else [],
-                'scrollZoom': True,
-                'doubleClick': 'reset',
-                'showTips': False,
-                'responsive': True
-            }
-            
             # Display the chart
-            st.plotly_chart(fig, use_container_width=True, config=plot_config)
+            st.plotly_chart(fig, use_container_width=True)
 
             # Returns Analysis Section
             st.markdown("---")
