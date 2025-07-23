@@ -159,54 +159,7 @@ with st.sidebar:
                                  "CPLE6.SA", "HYPE3.SA", "BRFS3.SA", "NTCO3.SA", "BRKM5.SA",
                                  "UGPA3.SA", "HAPV3.SA", "GOLL4.SA", "VBBR3.SA", "ENEV3.SA",
                                  "AZUL4.SA", "CCRO3.SA", "TOTS3.SA", "TIMS3.SA", "PRIO3.SA",
-                                 "RRRP3.SA", "SMTO3.SA", "ASAI3.SA", "ALPA4.SA", "CRFB3.SA",
-                                 "CSNA3.SA", "MRFG3.SA", "KLBN11.SA", "ARZZ3.SA", "BEEF3.SA",
-                                 "BRML3.SA", "CYRE3.SA", "EZTC3.SA", "CVCB3.SA", "PETZ3.SA",
-                                 "SOMA3.SA", "DXCO3.SA", "VIIA3.SA", "YDUQ3.SA", "COGN3.SA",
-                                 "LWSA3.SA", "BPAC11.SA", "PARD3.SA", "VIVT3.SA", "TAEE11.SA",
-                                 "TRPL4.SA", "CEAB3.SA", "ENBR3.SA", "EQTL3.SA", "FLRY3.SA",
-                                 "NEOE3.SA", "ALSO3.SA", "PCAR3.SA", "MRVE3.SA", "MULT3.SA",
-                                 "MEAL3.SA", "MOVI3.SA", "CASH3.SA", "BRSR6.SA", "CPFE3.SA",
-                                 "EMBR3.SA", "SANB11.SA", "SEQL3.SA", "RECV3.SA", "PNVL3.SA",
-                                 "TEND3.SA", "BMOB3.SA", "POSI3.SA", "IGTI11.SA", "SMFT3.SA",
-                                 "ENGI11.SA", "CMIN3.SA", "CEEE6.SA", "MDIA3.SA", "USIM5.SA",
-                                 "BRAP4.SA", "OIBR3.SA", "OIBR4.SA", "SAPR11.SA", "TRIS3.SA",
-                                 "VIVA3.SA", "LVTC3.SA", "AGRO3.SA", "AMER3.SA", "CAML3.SA",
-                                 "JALL3.SA", "FESA4.SA", "DEXP3.SA", "ESPA3.SA", "AERI3.SA",
-                                 "SHOW3.SA", "SOJA3.SA", "MDNE3.SA", "TTEN3.SA", "MATD3.SA",
-                                 "ALLD3.SA", "RDOR3.SA", "LOGG3.SA", "GRND3.SA", "CBEE3.SA",
-                                 "RAPT4.SA", "FHER3.SA", "CEGR3.SA", "JHSF3.SA", "DIRR3.SA",
-                                 "INEP3.SA", "INEP4.SA", "VULC3.SA", "PRNR3.SA", "PTBL3.SA",
-                                 "BLAU3.SA", "CTNM4.SA", "CATA3.SA", "BTTL3.SA", "GSHP3.SA",
-                                 "CEBR6.SA", "LIPR3.SA", "FRAS3.SA", "MGEL3.SA", "MBLY3.SA",
-                                 "PDGR3.SA", "HBRE3.SA", "RCSL3.SA", "RCSL4.SA", "VSPT3.SA",
-                                 "APER3.SA", "MTRE3.SA", "TRAD3.SA", "TFCO4.SA", "OPCT3.SA",
-                                 "PNVL4.SA", "IGBR3.SA", "BMIN3.SA", "LEVE3.SA", "TECN3.SA",
-                                 "TASA3.SA", "TASA4.SA", "MODL3.SA", "MODL11.SA", "MODL4.SA",
-                                 "SNSY5.SA", "IGSN3.SA", "RSID3.SA", "CGRA4.SA", "CGRA3.SA",
-                                 "MNPR3.SA", "CSAB3.SA", "CSAB4.SA", "VIVA3.SA", "BRSR3.SA",
-                                 "GEPA3.SA", "GEPA4.SA", "GSFI3.SA", "BDLL4.SA", "BDLL3.SA",
-                                 "TELB3.SA", "TELB4.SA", "TEKA4.SA", "TEKA3.SA", "FRIO3.SA",
-                                 "RANI3.SA", "UNIP6.SA", "UNIP5.SA", "UNIP3.SA", "MGSA3.SA",
-                                 "MTSA4.SA", "INEP3.SA", "MTIG4.SA", "HOOT4.SA", "MTIG3.SA",
-                                 "RSUL4.SA", "FNCN3.SA", "DTCY3.SA", "DEXP4.SA", "SNSY3.SA",
-                                 "CTSA4.SA", "CTSA3.SA", "CTSA8.SA", "PMAM3.SA", "VITT3.SA",
-                                 "EVEN3.SA", "GFSA3.SA", "CSED3.SA", "ORVR3.SA", "VITT3.SA",
-                                 "BRGE11.SA", "BRGE12.SA", "BRGE3.SA", "BRGE5.SA", "BRGE6.SA",
-                                 "RNEW11.SA", "RNEW3.SA", "RNEW4.SA", "LOGN3.SA", "BAZA3.SA",
-                                 "POMO3.SA", "POMO4.SA", "CGAS3.SA", "CGAS5.SA", "TEKA4.SA",
-                                 "BRIT3.SA", "MERC4.SA", "MERC3.SA", "AFLT3.SA", "PATI3.SA",
-                                 "PATI4.SA", "MTIG3.SA", "APTI4.SA", "RPAD3.SA", "RPAD5.SA",
-                                 "RPAD6.SA", "INEP4.SA", "SNSY5.SA", "MTIG4.SA", "BRIV3.SA",
-                                 "BRIV4.SA", "BMEB3.SA", "BMEB4.SA", "BAHI3.SA", "BRKM3.SA",
-                                 "BAHI11.SA", "BGIP3.SA", "BGIP4.SA", "NORD3.SA", "GPIV33.SA",
-                                 "EMAE4.SA", "EMAE3.SA", "WLMM3.SA", "WLMM4.SA", "JOPA3.SA",
-                                 "JOPA4.SA", "RPMG3.SA", "BICB3.SA", "BICB4.SA", "CTKA3.SA",
-                                 "CTKA4.SA", "NINJ3.SA", "MNDL3.SA", "GPAR3.SA", "EUCA3.SA",
-                                 "EUCA4.SA", "INEP3.SA", "INEP4.SA", "BRGE7.SA", "BPNM4.SA",
-                                 "CTNM3.SA", "TPIS3.SA", "VLID3.SA", "BMKS3.SA", "SOJA3.SA",
-                                 "KRSA3.SA", "SYNE3.SA", "IFCM3.SA", "CGRA4.SA", "CGRA3.SA",
-                                 "BRSR5.SA", "ALUP11.SA", "ALUP3.SA", "ALUP4.SA", "BPRG11.SA"],
+                                 "RRRP3.SA", "SMTO3.SA", "ASAI3.SA", "ALPA4.SA", "CRFB3.SA",],
             "Ações Americanas": ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "META", "NVDA", "NFLX", "AMD", "BABA"],
             "Pares de Forex": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"]
         }
@@ -231,7 +184,7 @@ with st.sidebar:
         st.write(f"**{len(symbols_list)} ativos selecionados para screening**")
 
     # Date range selection
-    st.subheader("Date Range")
+    st.subheader("Intervalo de Data")
 
     # Default date range (last 30 days)
     default_end = datetime.now().date()
@@ -260,7 +213,6 @@ with st.sidebar:
         "30 minutes": "30m",
         "60 minutes": "60m",
         "90 minutes": "90m",
-        "1 hour": "1h",
         "4 hours": "4h",
         "1 day": "1d",
         "5 days": "5d",
@@ -279,9 +231,9 @@ with st.sidebar:
     # Data limitations info
     if interval in ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "4h"]:
         st.info(
-            "ℹ️ **Data Limitation:** Intraday data (minute/hour intervals) "
-            "is limited to the last 60-730 days depending on the interval. "
-            "For historical analysis beyond this period, use daily intervals."
+            "ℹ️ **Limitação de Dados:** Dados intradiários (intervalos de minuto/hora) "
+            "são limitados aos últimos 60 a 730 dias, dependendo do intervalo. "
+            "Para análises históricas além desse período, use intervalos diários."
         )
 
     # Confirmation candles parameter
@@ -311,27 +263,21 @@ with st.sidebar:
     with col2:
         sma_long = st.number_input(
             "Média Móvel Longa", 
-            min_value=10,
+            min_value=9,
             max_value=300,
             value=70,
             step=5,
             help="Segunda condição para sinais de compra"
         )
 
-    # Stop loss selection
-    st.subheader("Stop Loss")
-    stop_options = {
-        "Stop Justo (2.0x ATR)": "Stop_Justo",
-        "Stop Balanceado (2.5x ATR)": "Stop_Balanceado", 
-        "Stop Largo (3.5x ATR)": "Stop_Largo"
-    }
+    if st.session_state.get('is_selecting_moving_averages', False):
+        # Display a notice about moving averages and signal generation
+        st.info(
+            "ℹ️ **Nota:** As médias móveis influenciam na quantidade e qualidade dos sinais. "
+            "Se usar médias longas, atente-se ao intervalo de data para garantir a geração de sinais de forma eficaz.")
+    else:
+        st.session_state['is_selecting_moving_averages'] = True
 
-    selected_stop_display = st.selectbox(
-        "Selecione o tipo de Stop Loss",
-        list(stop_options.keys()),
-        index=0
-    )
-    selected_stop = stop_options[selected_stop_display]
 
     # Trading direction configuration
     st.subheader("Direção de Operação")
@@ -350,7 +296,7 @@ with st.sidebar:
         "Tipo de Saída",
         ["Mudança de Estado", "Stop Loss", "Alvo Fixo", "Tempo", "Média Móvel"],
         index=0,
-        help="Escolha como calcular a saída das posições"
+        help="Escolha como deseja sair das posições"
     )
 
     # Optimization option
@@ -396,17 +342,18 @@ with st.sidebar:
             st.info("🔍 Modo Otimização: Testará múltiplas combinações de alvo e stop")
             col1, col2 = st.columns(2)
             with col1:
-                target_range = st.multiselect(
+                target_range = [float(t.strip()) for t in st.text_input(
                     "Alvos a Testar (%)",
-                    [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0, 7.0, 8.0, 10.0],
-                    default=[2.0, 3.0, 4.0, 5.0]
-                )
+                    value="2.0;3.0;4.0;5.0",
+                    help="Digite os alvos separados por ponto e vírgula, ex: 1.0;2.5;5.0"
+                ).split(';') if t.strip()]
+
             with col2:
-                stop_range = st.multiselect(
+                stop_range = [float(s.strip()) for s in st.text_input(
                     "Stops a Testar (%)",
-                    [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0],
-                    default=[1.0, 2.0, 3.0]
-                )
+                    value="1.0;2.0;3.0",
+                    help="Digite os stops separados por ponto e vírgula, ex: 0.5;1.0;3.0"
+                ).split(';') if s.strip()]
             exit_params['target_range'] = target_range
             exit_params['stop_range'] = stop_range
     elif exit_criteria == "Tempo":
@@ -420,10 +367,10 @@ with st.sidebar:
                 help="Número de candles após a entrada para sair da posição"
             )
         else:
-            st.info("🔍 Modo Otimização: Testará de 1 a 10 candles")
+            st.info("🔍 Modo Otimização: Testará de 1 a X candles que usuário definir")
             max_candles = st.number_input(
                 "Máximo de candles a testar",
-                min_value=5,
+                min_value=1,
                 max_value=50,
                 value=10,
                 step=1
@@ -1281,7 +1228,7 @@ if analyze_button:
                 shared_xaxes=True,
                 vertical_spacing=0.03,
                 row_heights=[0.75, 0.25],
-                subplot_titles=("Price Chart with Signals", "Signal Indicator")
+                subplot_titles=("Gráfico do Preço com Sinais", "Indicador de Sinais")
             )
 
             # Add price line with color coding
@@ -1305,19 +1252,20 @@ if analyze_button:
                 showlegend=False
             ), row=1, col=1)
 
-            # Add selected stop loss trace
+            # Add all stop loss traces
             stop_colors = {
                 "Stop_Justo": "orange",
-                "Stop_Balanceado": "gray", 
+                "Stop_Balanceado": "gray",
                 "Stop_Largo": "green"
             }
 
-            fig.add_trace(go.Scatter(
-                x=df['time'], y=df[selected_stop],
-                mode="lines", name=selected_stop_display,
-                line=dict(color=stop_colors[selected_stop], width=2, dash="dot"),
-                hovertemplate=f"<b>{selected_stop_display}:</b> %{{y:.2f}}<extra></extra>"
-            ), row=1, col=1)
+            for stop_type, color in stop_colors.items():
+                fig.add_trace(go.Scatter(
+                    x=df['time'], y=df[stop_type],
+                    mode="lines", name=stop_type.replace("_", " "),
+                    line=dict(color=color, width=2, dash="dot"),
+                    hovertemplate=f"<b>{stop_type.replace('_', ' ')}:</b> %{{y:.2f}}<extra></extra>"
+                ), row=1, col=1)
 
             # Add signal indicator
             fig.add_trace(go.Scatter(
@@ -1334,19 +1282,19 @@ if analyze_button:
             fig.add_trace(go.Scatter(
                 x=[None], y=[None], mode='lines',
                 line=dict(color='blue', width=2),
-                name='Buy Signal'
+                name='Sinal de Compra'
             ), row=1, col=1)
 
             fig.add_trace(go.Scatter(
                 x=[None], y=[None], mode='lines',
                 line=dict(color='red', width=2),
-                name='Sell Signal'
+                name='Sinal de Venda'
             ), row=1, col=1)
 
             fig.add_trace(go.Scatter(
                 x=[None], y=[None], mode='lines',
                 line=dict(color='black', width=2),
-                name='Stay Out'
+                name='Ficar de Fora'
             ), row=1, col=1)
 
             # Add reference line for signal indicator
@@ -1362,7 +1310,7 @@ if analyze_button:
 
             # Update layout
             fig.update_yaxes(range=[-0.1, 1.1], tickvals=[0, 0.5, 1], 
-                            ticktext=['Sell', 'Stay Out', 'Buy'], row=2, col=1)
+                            ticktext=['Venda', 'Ficar de Fora', 'Compra'], row=2, col=1)
             fig.update_xaxes(showgrid=False, row=2, col=1)
 
             # Update layout
@@ -1472,15 +1420,6 @@ if analyze_button:
                 st.write(f"• Sinais de Compra (Buy): {buy_signals}")
                 st.write(f"• Sinais de Venda (Sell): {sell_signals}")
                 st.write(f"• Fora do Mercado (Stay Out): {stay_out}")
-
-            # Data table option
-            if st.checkbox("Show Raw Data"):
-                st.subheader("📋 Raw Data")
-                display_columns = ['time', 'open', 'high', 'low', 'close', 'SMA_20', 'SMA_60', 'SMA_70', 
-                                 'RSI_14', 'RSL_20', 'Signal', 'Estado', 'ATR']
-                available_columns = [col for col in display_columns if col in df.columns]
-                st.dataframe(df[available_columns].tail(50), use_container_width=True)
-
     except Exception as e:
         st.error(f"An error occurred during analysis: {str(e)}")
         st.write("Please check your inputs and try again.")
