@@ -235,19 +235,8 @@ class OvecchiaTradingBot:
         try:
             import plotly.graph_objects as go
             from plotly.subplots import make_subplots
-            import plotly.io as pio
             import tempfile
             import os
-            
-            # Configurar o engine de renderização para funcionar no Replit
-            try:
-                import kaleido
-                pio.kaleido.scope.default_width = 1200
-                pio.kaleido.scope.default_height = 600
-            except ImportError:
-                logger.warning("Kaleido não disponível, tentando alternativa")
-                # Usar engine alternativo se Kaleido não estiver disponível
-                pio.renderers.default = "svg"
             
             # Define período baseado no timeframe
             if timeframe in ['1m', '5m', '15m', '30m']:
@@ -348,23 +337,7 @@ class OvecchiaTradingBot:
             chart_filename = f"chart_{symbol}_{int(datetime.now().timestamp())}.png"
             chart_path = os.path.join(temp_dir, chart_filename)
             
-            # Tentar salvar a imagem com diferentes métodos
-            try:
-                fig.write_image(chart_path, width=1200, height=600, scale=2, engine="kaleido")
-            except Exception as img_error:
-                logger.warning(f"Erro com Kaleido: {img_error}")
-                try:
-                    # Tentar com engine alternativo
-                    fig.write_image(chart_path, width=1200, height=600, scale=1, engine="auto")
-                except Exception as img_error2:
-                    logger.error(f"Erro ao salvar imagem: {img_error2}")
-                    # Como último recurso, salvar como HTML e informar o usuário
-                    html_path = chart_path.replace('.png', '.html')
-                    fig.write_html(html_path)
-                    return {
-                        'success': False, 
-                        'error': 'Erro na geração de imagem. Tente novamente em alguns minutos.'
-                    }
+            fig.write_image(chart_path, width=1200, height=600, scale=2)
 
             # Preparar informações atuais
             current_price = df['close'].iloc[-1]
@@ -397,57 +370,7 @@ class OvecchiaTradingBot:
 
         except Exception as e:
             logger.error(f"Erro ao gerar gráfico para {symbol}: {str(e)}")
-            
-            # Se falhar na geração de gráfico, retornar análise em texto
-            try:
-                # Ainda tentar coletar os dados para análise textual
-                if timeframe in ['1m', '5m', '15m', '30m']:
-                    days = 7
-                elif timeframe in ['1h', '4h']:
-                    days = 30
-                else:
-                    days = 180
-                    
-                end_date = datetime.now().date()
-                start_date = end_date - timedelta(days=days)
-                
-                df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
-                                        end_date.strftime("%Y-%m-%d"), timeframe)
-                
-                if not df.empty:
-                    df = self.calculate_indicators_and_signals(df, strategy_type)
-                    
-                    current_price = df['close'].iloc[-1]
-                    current_state = df['Estado'].iloc[-1]
-                    current_rsi = df['RSI_14'].iloc[-1] if 'RSI_14' in df.columns else 'N/A'
-                    previous_state = df['Estado'].iloc[-2] if len(df) > 1 else current_state
-                    state_change = "✅ MUDANÇA" if current_state != previous_state else "➖ SEM MUDANÇA"
-                    
-                    text_analysis = f"""📊 <b>ANÁLISE - {symbol}</b> (Texto)
-
-🎯 <b>Estratégia:</b> {strategy_type}
-⏰ <b>Timeframe:</b> {timeframe.upper()}
-💰 <b>Preço Atual:</b> {current_price:.2f}
-
-📈 <b>Estado Atual:</b> {current_state}
-📊 <b>Estado Anterior:</b> {previous_state}
-🔄 <b>Mudança:</b> {state_change}
-
-📉 <b>RSI (14):</b> {current_rsi if isinstance(current_rsi, str) else f"{current_rsi:.2f}"}
-
-⚠️ <i>Gráfico indisponível temporariamente</i>
-🤖 <i>OVECCHIA TRADING BOT</i>"""
-                    
-                    return {
-                        'success': True,
-                        'chart_path': None,
-                        'caption': text_analysis,
-                        'text_only': True
-                    }
-            except:
-                pass
-                
-            return {'success': False, 'error': f'Erro ao gerar análise: Sistema temporariamente indisponível'}
+            return {'success': False, 'error': f'Erro ao gerar análise: {str(e)}'}
 
 # Initialize bot instance
 trading_bot = OvecchiaTradingBot()
@@ -726,22 +649,18 @@ def analise_command(message):
         chart_result = trading_bot.generate_analysis_chart(symbol, strategy, timeframe)
         
         if chart_result['success']:
-            if chart_result.get('text_only', False):
-                # Enviar apenas texto quando gráfico não disponível
-                bot.reply_to(message, chart_result['caption'], parse_mode='HTML')
-            else:
-                # Enviar gráfico normal
-                with open(chart_result['chart_path'], 'rb') as chart_file:
-                    bot.send_photo(
-                        message.chat.id, 
-                        chart_file,
-                        caption=chart_result['caption'],
-                        parse_mode='HTML'
-                    )
-                
-                # Limpar arquivo temporário
-                import os
-                os.remove(chart_result['chart_path'])
+            # Enviar gráfico
+            with open(chart_result['chart_path'], 'rb') as chart_file:
+                bot.send_photo(
+                    message.chat.id, 
+                    chart_file,
+                    caption=chart_result['caption'],
+                    parse_mode='HTML'
+                )
+            
+            # Limpar arquivo temporário
+            import os
+            os.remove(chart_result['chart_path'])
             
             logger.info(f"Análise enviada para {user_name}: {symbol}")
         else:
