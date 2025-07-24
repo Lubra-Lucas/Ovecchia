@@ -32,7 +32,7 @@ waitForPort = 5000
 [[workflows.workflow]]
 name = "Streamlit + Bot"
 author = 45300270
-mode = "parallel"
+mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
