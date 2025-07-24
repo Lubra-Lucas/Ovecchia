@@ -469,8 +469,6 @@ with tab2:
         else:  # Balanceado
             sma_short = 60
             sma_long = 70
-        
-        st.info(f"📊 Configuração atual: Média Curta = {sma_short}, Média Longa = {sma_long}")
 
         st.markdown("#### 🎯 Direção de Operação")
         trading_direction = st.selectbox(
@@ -1460,8 +1458,6 @@ with tab3:
         else:  # Balanceado
             sma_short_screening = 60
             sma_long_screening = 70
-        
-        st.info(f"📊 Configuração atual: Média Curta = {sma_short_screening}, Média Longa = {sma_long_screening}")
 
         st.markdown('</div>', unsafe_allow_html=True)
 
