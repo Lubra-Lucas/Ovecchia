@@ -1731,15 +1731,7 @@ with tab4:
         interval_display_bb = st.selectbox("Intervalo de Tempo", list(interval_options.keys()), index=8, key="interval_bb")
         interval_bb = interval_options[interval_display_bb]
 
-        # Bollinger Bands parameters
-        bb_period = st.number_input("Período das Bandas de Bollinger", min_value=10, max_value=50, value=20, step=1, key="bb_period")
-        bb_std = st.number_input("Desvio Padrão (Multiplicador)", min_value=1.0, max_value=3.0, value=2.0, step=0.1, key="bb_std")
-
         st.markdown('</div>', unsafe_allow_html=True)
-
-    # Detection sensitivity
-    st.markdown("#### 🎯 Sensibilidade de Detecção")
-    min_distance_pct = st.number_input("Distância mínima das bandas (%)", min_value=0.1, max_value=5.0, value=0.1, step=0.1, key="min_distance")
 
     # Analysis button
     analyze_button_bb = st.button("🚀 INICIAR DETECÇÃO DE TOPOS E FUNDOS", type="primary", use_container_width=True, key="analyze_bb")
@@ -1783,7 +1775,11 @@ with tab4:
                         })
                         continue
 
-                    # Calculate Bollinger Bands
+                    # Calculate Bollinger Bands with fixed parameters
+                    bb_period = 20
+                    bb_std = 2.0
+                    min_distance_pct = 0.0
+                    
                     sma = df_temp['close'].rolling(window=bb_period).mean()
                     std = df_temp['close'].rolling(window=bb_period).std()
                     banda_superior = sma + (bb_std * std)
@@ -1802,14 +1798,12 @@ with tab4:
                     # Check if price is below lower band (potential bottom/buy signal)
                     if current_price < current_banda_inferior:
                         distance_pct = ((current_banda_inferior - current_price) / current_price) * 100
-                        if distance_pct >= min_distance_pct:
-                            signal = 'Possível Fundo (Compra)'
+                        signal = 'Possível Fundo (Compra)'
 
                     # Check if price is above upper band (potential top/sell signal)
                     elif current_price > current_banda_superior:
                         distance_pct = ((current_price - current_banda_superior) / current_price) * 100
-                        if distance_pct >= min_distance_pct:
-                            signal = 'Possível Topo (Venda)'
+                        signal = 'Possível Topo (Venda)'
 
                     bb_results.append({
                         'symbol': current_symbol,
@@ -1909,29 +1903,21 @@ with tab4:
             # Full results table
             st.subheader("📋 Resultados Detalhados")
             
-            # Create summary dataframe
+            # Create summary dataframe with only essential columns
             summary_df = pd.DataFrame(bb_results)
             
-            # Format numeric columns
-            numeric_columns = ['current_price', 'banda_superior', 'banda_inferior', 'sma', 'distance_pct']
-            for col in numeric_columns:
-                if col in summary_df.columns:
-                    summary_df[col] = pd.to_numeric(summary_df[col], errors='coerce')
-                    summary_df[col] = summary_df[col].round(2)
-
+            # Select only required columns
+            essential_columns = ['symbol', 'status', 'signal']
+            summary_df_display = summary_df[essential_columns].copy()
+            
             # Rename columns for better display
             display_columns = {
                 'symbol': 'Ativo',
-                'signal': 'Sinal',
-                'current_price': 'Preço Atual',
-                'banda_superior': 'Banda Superior',
-                'banda_inferior': 'Banda Inferior',
-                'sma': 'Média Móvel',
-                'distance_pct': 'Distância (%)',
-                'status': 'Status'
+                'status': 'Status',
+                'signal': 'Sinal'
             }
             
-            summary_df_display = summary_df.rename(columns=display_columns)
+            summary_df_display = summary_df_display.rename(columns=display_columns)
             st.dataframe(summary_df_display, use_container_width=True)
 
             # Clear progress indicators
