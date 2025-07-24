@@ -1727,9 +1727,15 @@ with tab4:
         with col_date2:
             end_date_bb = st.date_input("Data Final", value=default_end_bb, min_value=start_date_bb, max_value=default_end_bb, key="end_bb")
 
-        # Interval selection
-        interval_display_bb = st.selectbox("Intervalo de Tempo", list(interval_options.keys()), index=8, key="interval_bb")
-        interval_bb = interval_options[interval_display_bb]
+        # Interval selection - Limited options for BB analysis
+        bb_interval_options = {
+            "1 hour": "1h",
+            "4 hours": "4h", 
+            "1 day": "1d",
+            "1 week": "1wk"
+        }
+        interval_display_bb = st.selectbox("Intervalo de Tempo", list(bb_interval_options.keys()), index=2, key="interval_bb")
+        interval_bb = bb_interval_options[interval_display_bb]
 
         st.markdown('</div>', unsafe_allow_html=True)
 
