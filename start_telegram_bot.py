@@ -2,15 +2,31 @@
 import os
 import sys
 import subprocess
+import asyncio
 
 def install_dependencies():
     """Install required dependencies"""
     try:
+        print("📦 Instalando dependências...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "python-telegram-bot==20.7"])
         print("✅ Dependências instaladas com sucesso!")
         return True
     except subprocess.CalledProcessError as e:
         print(f"❌ Erro ao instalar dependências: {e}")
+        return False
+
+async def test_bot_connection():
+    """Test bot connection before starting"""
+    try:
+        from telegram import Bot
+        bot_token = '8487471783:AAElQBvIhVcbtVmEoPEdnuafMUR4mwGJh1k'
+        bot = Bot(token=bot_token)
+        
+        me = await bot.get_me()
+        print(f"✅ Bot conectado: @{me.username}")
+        return True
+    except Exception as e:
+        print(f"❌ Erro na conexão: {e}")
         return False
 
 def start_bot():
@@ -26,12 +42,27 @@ def start_bot():
     if not install_dependencies():
         return False
     
+    # Test connection
+    print("🔄 Testando conexão com Telegram...")
+    try:
+        connection_ok = asyncio.run(test_bot_connection())
+        if not connection_ok:
+            return False
+    except Exception as e:
+        print(f"❌ Erro no teste de conexão: {e}")
+        return False
+    
     # Start the bot
     try:
+        print("🚀 Iniciando bot...")
         import telegram_bot
         telegram_bot.main()
     except ImportError as e:
         print(f"❌ Erro ao importar o bot: {e}")
+        return False
+    except SyntaxError as e:
+        print(f"❌ Erro de sintaxe no bot: {e}")
+        print("🔧 Verifique o arquivo telegram_bot.py")
         return False
     except Exception as e:
         print(f"❌ Erro ao iniciar o bot: {e}")

@@ -296,6 +296,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         alert_types = user_data.get('alert_types', [])
         alerts_enabled = user_data.get('alerts_enabled', False)
         
+        alert_types_text = ""
+        if 'mudanca_estado' in alert_types:
+            alert_types_text += "• Mudanças de Estado\n"
+        if 'topos_fundos' in alert_types:
+            alert_types_text += "• Topos e Fundos\n"
+        
         status_text = f"""
 📊 **Status dos seus Alertas**
 
@@ -304,8 +310,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🔔 **Alertas Ativos:** {'✅ Sim' if alerts_enabled else '❌ Não'}
 
 **Tipos de Alerta:**
-{('• Mudanças de Estado\\n' if 'mudanca_estado' in alert_types else '') + 
- ('• Topos e Fundos\\n' if 'topos_fundos' in alert_types else '')}
+{alert_types_text}
 
 **Ativos:** {', '.join(symbols) if symbols else 'Nenhum configurado'}
         """
