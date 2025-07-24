@@ -38,6 +38,15 @@ mode = "sequential"
 task = "shell.exec"
 args = "python start_telegram_bot.py"
 
+[[workflows.workflow]]
+name = "Test Bot"
+author = 45300270
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python quick_test.py"
+
 [[ports]]
 localPort = 5000
 externalPort = 80

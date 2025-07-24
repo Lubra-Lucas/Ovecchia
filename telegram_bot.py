@@ -191,18 +191,18 @@ def analyze_bollinger_bands(symbol):
 # Bot command handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start command handler"""
-    keyboard = [
-        [InlineKeyboardButton("🔄 Verificar Mudança de Estado", callback_data='screening')],
-        [InlineKeyboardButton("📊 Verificar Topos e Fundos", callback_data='topobottom')],
-        [InlineKeyboardButton("🎯 Ambos", callback_data='both')],
-        [InlineKeyboardButton("⚙️ Configurações", callback_data='settings')],
-        [InlineKeyboardButton("📋 Status", callback_data='status')]
-    ]
-    
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    welcome_text = """
-🤖 **Bem-vindo ao OVECCHIA TRADING Bot!**
+    try:
+        keyboard = [
+            [InlineKeyboardButton("🔄 Verificar Mudança de Estado", callback_data='screening')],
+            [InlineKeyboardButton("📊 Verificar Topos e Fundos", callback_data='topobottom')],
+            [InlineKeyboardButton("🎯 Ambos", callback_data='both')],
+            [InlineKeyboardButton("⚙️ Configurações", callback_data='settings')],
+            [InlineKeyboardButton("📋 Status", callback_data='status')]
+        ]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        welcome_text = """🤖 **Bem-vindo ao OVECCHIA TRADING Bot!**
 📱 **Bot: @Ovecchia_bot**
 
 Receba alertas automáticos sobre:
@@ -210,10 +210,17 @@ Receba alertas automáticos sobre:
 • 📊 Detecção de topos e fundos
 • 🎯 Oportunidades de trading
 
-O que você gostaria de fazer?
-    """
-    
-    await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode='Markdown')
+O que você gostaria de fazer?"""
+        
+        await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode='Markdown')
+        
+        # Log para debug
+        user = update.effective_user
+        print(f"✅ Comando /start executado por {user.username or user.first_name} (ID: {user.id})")
+        
+    except Exception as e:
+        print(f"❌ Erro no comando start: {e}")
+        await update.message.reply_text("❌ Erro interno. Tente novamente em alguns segundos.")
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle button callbacks"""
@@ -322,15 +329,20 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle text messages"""
-    users = load_users()
-    user_id = str(update.effective_user.id)
-    
-    if user_id not in users:
-        await update.message.reply_text("Use /start para começar!")
-        return
-    
-    text = update.message.text.upper()
-    symbols = [s.strip() for s in text.replace(',', ' ').split() if s.strip()]
+    try:
+        users = load_users()
+        user_id = str(update.effective_user.id)
+        user = update.effective_user
+        
+        # Log para debug
+        print(f"📨 Mensagem recebida de {user.username or user.first_name} (ID: {user_id}): {update.message.text}")
+        
+        if user_id not in users:
+            await update.message.reply_text("Use /start para começar!")
+            return
+        
+        text = update.message.text.upper()
+        symbols = [s.strip() for s in text.replace(',', ' ').split() if s.strip()]
     
     # Validate symbols
     valid_symbols = []
@@ -453,24 +465,38 @@ def main():
         print("❌ TELEGRAM_BOT_TOKEN não encontrado nas variáveis de ambiente!")
         return
     
-    # Create application
-    application = Application.builder().token(BOT_TOKEN).build()
-    
-    # Add handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("stop", stop_alerts))
-    application.add_handler(CallbackQueryHandler(button_callback))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    # Schedule periodic alerts (every 5 minutes for testing)
-    job_queue = application.job_queue
-    job_queue.run_repeating(send_alerts, interval=300, first=30)  # 300 seconds = 5 minutes
-    
-    print("🤖 Bot iniciado! Pressione Ctrl+C para parar.")
-    
-    # Run the bot
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    try:
+        # Create application with job queue explicitly enabled
+        application = Application.builder().token(BOT_TOKEN).build()
+        
+        # Add handlers
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(CommandHandler("help", help_command))
+        application.add_handler(CommandHandler("stop", stop_alerts))
+        application.add_handler(CallbackQueryHandler(button_callback))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        
+        # Initialize job queue properly
+        if application.job_queue:
+            application.job_queue.run_repeating(send_alerts, interval=300, first=30)
+            print("✅ Job queue configurado para alertas automáticos")
+        else:
+            print("⚠️ Job queue não disponível - alertas manuais apenas")
+        
+        print("🤖 Bot iniciado e pronto para receber mensagens!")
+        print("📱 Teste enviando /start para @Ovecchia_bot")
+        
+        # Run the bot with proper error handling
+        application.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True,
+            close_loop=False
+        )
+        
+    except Exception as e:
+        print(f"❌ Erro crítico na inicialização do bot: {e}")
+        import traceback
+        print(traceback.format_exc())
 
 if __name__ == '__main__':
     main()
