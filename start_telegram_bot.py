@@ -19,7 +19,7 @@ def start_bot():
     os.environ['TELEGRAM_BOT_TOKEN'] = '8487471783:AAElQBvIhVcbtVmEoPEdnuafMUR4mwGJh1k'
     
     print("✅ Token do bot configurado automaticamente!")
-    print("🤖 Bot: @OvecchiaTrading_bot")
+    print("🤖 Bot: @Ovecchia_bot")
     
     # Install dependencies
     if not install_dependencies():

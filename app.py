@@ -2002,7 +2002,7 @@ with tab5:
         st.markdown("#### 🤖 Bot Configurado")
         st.markdown("""
         <div class="metric-card">
-            <p><strong>✅ Bot Ativo:</strong> @OvecchiaTrading_bot</p>
+            <p><strong>✅ Bot Ativo:</strong> @Ovecchia_Trading_bot</p>
             <p><strong>🔧 Status:</strong> Configurado e pronto para uso</p>
             <p><strong>🎯 Token:</strong> Configurado automaticamente pelo sistema</p>
         </div>
