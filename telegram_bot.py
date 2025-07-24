@@ -18,7 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Bot configuration
-BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')  # Get from environment variable
+BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '8487471783:AAElQBvIhVcbtVmEoPEdnuafMUR4mwGJh1k')
 USERS_FILE = 'telegram_users.json'
 
 # User data storage

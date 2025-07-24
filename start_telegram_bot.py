@@ -15,15 +15,11 @@ def install_dependencies():
 
 def start_bot():
     """Start the Telegram bot"""
-    # Check if token is set
-    token = os.getenv('TELEGRAM_BOT_TOKEN')
-    if not token:
-        print("❌ Token do bot não configurado!")
-        print("📋 Para configurar:")
-        print("1. Crie um bot com @BotFather no Telegram")
-        print("2. Configure a variável de ambiente TELEGRAM_BOT_TOKEN")
-        print("3. Execute este script novamente")
-        return False
+    # Set the bot token as environment variable
+    os.environ['TELEGRAM_BOT_TOKEN'] = '8487471783:AAElQBvIhVcbtVmEoPEdnuafMUR4mwGJh1k'
+    
+    print("✅ Token do bot configurado automaticamente!")
+    print("🤖 Bot: @OvecchiaTrading_bot")
     
     # Install dependencies
     if not install_dependencies():
