@@ -440,12 +440,37 @@ with tab2:
         st.markdown("#### ✅ Confirmação de Sinais")
         confirm_candles = st.number_input("Candles de Confirmação", min_value=0, max_value=5, value=0)
 
-        st.markdown("#### 📈 Médias Móveis")
-        col_ma1, col_ma2 = st.columns(2)
-        with col_ma1:
-            sma_short = st.number_input("Média Curta", min_value=5, max_value=200, value=60, step=5)
-        with col_ma2:
-            sma_long = st.number_input("Média Longa", min_value=9, max_value=300, value=70, step=5)
+        st.markdown("#### 📈 Estratégia de Sinais")
+        st.markdown("""
+        <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
+            <p style="margin: 0; font-size: 0.85rem; color: #333;">
+                <strong>ℹ️ Guia de Estratégias:</strong><br>
+                • <strong>Agressivo:</strong> Maior quantidade de sinais (mais oportunidades, maior risco)<br>
+                • <strong>Balanceado:</strong> Quantidade média de sinais (equilíbrio entre oportunidade e confiabilidade)<br>
+                • <strong>Conservador:</strong> Poucos sinais, mas mais confiáveis (menor risco, menos oportunidades)
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        strategy_type = st.radio(
+            "Tipo de Estratégia:",
+            ["Balanceado", "Agressivo", "Conservador"],
+            index=0,
+            help="Escolha a estratégia baseada no seu perfil de risco e frequência desejada de sinais"
+        )
+        
+        # Definir parâmetros baseado na estratégia selecionada
+        if strategy_type == "Agressivo":
+            sma_short = 10
+            sma_long = 21
+        elif strategy_type == "Conservador":
+            sma_short = 140
+            sma_long = 200
+        else:  # Balanceado
+            sma_short = 60
+            sma_long = 70
+        
+        st.info(f"📊 Configuração atual: Média Curta = {sma_short}, Média Longa = {sma_long}")
 
         st.markdown("#### 🎯 Direção de Operação")
         trading_direction = st.selectbox(
