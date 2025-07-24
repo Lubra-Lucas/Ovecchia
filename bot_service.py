@@ -5,7 +5,6 @@ import os
 import sys
 import subprocess
 import asyncio
-from telegram_bot import main as run_bot
 
 class BotService:
     def __init__(self):
@@ -31,41 +30,54 @@ class BotService:
             subprocess.check_call([sys.executable, "-m", "pip", "install", "python-telegram-bot==20.7"])
             print("✅ Dependências instaladas!")
         
-        # Iniciar bot em thread separada
-        self.bot_thread = threading.Thread(target=self._run_bot, daemon=True)
-        self.bot_thread.start()
-        self.is_running = True
-        print("🤖 Serviço do bot iniciado em background!")
-        print("📱 Bot ativo e pronto para receber mensagens!")
-        print("🔗 Acesse: https://t.me/Ovecchia_bot")
-        return True
-    
-    def _run_bot(self):
-        """Executa o bot em loop"""
+        # Iniciar bot usando subprocess para evitar imports circulares
         try:
-            print("🚀 Iniciando polling do bot...")
-            run_bot()
+            print("🚀 Iniciando bot como processo separado...")
+            self.bot_process = subprocess.Popen(
+                [sys.executable, "start_telegram_bot.py"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            # Aguardar um pouco para verificar se iniciou corretamente
+            time.sleep(3)
+            
+            if self.bot_process.poll() is None:  # Processo ainda rodando
+                self.is_running = True
+                print("🤖 Serviço do bot iniciado com sucesso!")
+                print("📱 Bot ativo e pronto para receber mensagens!")
+                print("🔗 Acesse: https://t.me/Ovecchia_bot")
+                return True
+            else:
+                # Processo falhou
+                stdout, stderr = self.bot_process.communicate()
+                print(f"❌ Falha ao iniciar bot: {stderr}")
+                return False
+                
         except Exception as e:
-            print(f"❌ Erro no bot: {e}")
-            import traceback
-            print(traceback.format_exc())
-            self.is_running = False
+            print(f"❌ Erro ao iniciar bot: {e}")
+            return False
     
     def stop_bot_service(self):
         """Para o serviço do bot"""
         self.is_running = False
-        if self.bot_process:
+        if self.bot_process and self.bot_process.poll() is None:
             self.bot_process.terminate()
+            try:
+                self.bot_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.bot_process.kill()
         print("⏹️ Serviço do bot parado!")
     
     def get_status(self):
         """Retorna o status do bot"""
-        thread_alive = self.bot_thread.is_alive() if self.bot_thread else False
+        process_alive = self.bot_process and self.bot_process.poll() is None
         return {
-            'running': self.is_running,
-            'thread_alive': thread_alive,
+            'running': self.is_running and process_alive,
+            'process_alive': process_alive,
             'bot_username': '@Ovecchia_bot',
-            'status_text': '🟢 Ativo e respondendo' if (self.is_running and thread_alive) else '🔴 Inativo'
+            'status_text': '🟢 Ativo e respondendo' if (self.is_running and process_alive) else '🔴 Inativo'
         }
 
 # Instância global do serviço

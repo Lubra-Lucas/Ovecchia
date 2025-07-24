@@ -71,11 +71,14 @@ def start_bot():
         print("🔗 https://t.me/Ovecchia_bot")
         print("\n" + "="*50)
         
+        # Import telegram_bot here to avoid circular imports
         import telegram_bot
         telegram_bot.main()
         
     except ImportError as e:
         print(f"❌ Erro ao importar telegram_bot: {e}")
+        import traceback
+        print(traceback.format_exc())
         return False
     except KeyboardInterrupt:
         print("\n⏹️ Bot parado pelo usuário")

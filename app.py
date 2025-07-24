@@ -1999,13 +1999,16 @@ with tab5:
         bot_status = get_telegram_status()
         
         # Show current status
-        if bot_status['running'] and bot_status['thread_alive']:
+        if bot_status['running'] and bot_status.get('process_alive', False):
             st.success(f"✅ Bot Status: {bot_status['status_text']}")
         else:
             st.warning("⚠️ Bot não está ativo. Clique em 'Iniciar Serviço' para ativar.")
             
-    except ImportError:
-        st.error("❌ Módulo bot_service não encontrado")
+    except ImportError as e:
+        st.error(f"❌ Erro no módulo bot_service: {e}")
+        bot_status = {'running': False}
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar bot_service: {e}")
         bot_status = {'running': False}
     
     # Bot settings
