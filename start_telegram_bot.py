@@ -54,9 +54,14 @@ def start_bot():
     
     # Start the bot
     try:
-        print("🚀 Iniciando bot...")
+        print("🚀 Iniciando bot e mantendo ativo...")
+        print("📱 Bot pronto para receber mensagens!")
+        print("💬 Envie /start no Telegram para testar")
+        
         import telegram_bot
+        # This will keep the bot running indefinitely
         telegram_bot.main()
+        
     except ImportError as e:
         print(f"❌ Erro ao importar o bot: {e}")
         return False
@@ -64,8 +69,13 @@ def start_bot():
         print(f"❌ Erro de sintaxe no bot: {e}")
         print("🔧 Verifique o arquivo telegram_bot.py")
         return False
+    except KeyboardInterrupt:
+        print("⏹️ Bot parado pelo usuário")
+        return True
     except Exception as e:
-        print(f"❌ Erro ao iniciar o bot: {e}")
+        print(f"❌ Erro ao executar o bot: {e}")
+        import traceback
+        print(traceback.format_exc())
         return False
 
 if __name__ == "__main__":

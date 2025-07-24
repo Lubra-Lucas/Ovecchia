@@ -1968,7 +1968,7 @@ with tab5:
             <h4 style="color: #1f77b4;">📋 Passo a Passo:</h4>
             <ol>
                 <li><strong>Abra o Telegram</strong> no seu celular</li>
-                <li><strong>Procure por:</strong> @OvecchiaTrading_bot</li>
+                <li><strong>Procure por:</strong> @Ovecchia_bot</li>
                 <li><strong>Inicie uma conversa</strong> enviando /start</li>
                 <li><strong>Configure seus alertas</strong> seguindo as instruções do bot</li>
                 <li><strong>Receba notificações</strong> automáticas em tempo real</li>
@@ -1993,7 +1993,20 @@ with tab5:
     # Bot configuration section
     st.markdown("### ⚙️ Configuração do Bot")
     
-    st.info("ℹ️ **Status do Bot:** Para ativar os alertas, o bot precisa estar rodando no servidor. Use a seção abaixo para configurar e iniciar o serviço.")
+    # Import bot service
+    try:
+        from bot_service import get_telegram_status, start_telegram_service, stop_telegram_service
+        bot_status = get_telegram_status()
+        
+        # Show current status
+        if bot_status['running'] and bot_status['thread_alive']:
+            st.success(f"✅ Bot Status: {bot_status['status_text']}")
+        else:
+            st.warning("⚠️ Bot não está ativo. Clique em 'Iniciar Serviço' para ativar.")
+            
+    except ImportError:
+        st.error("❌ Módulo bot_service não encontrado")
+        bot_status = {'running': False}
     
     # Bot settings
     col1, col2 = st.columns(2)
@@ -2002,7 +2015,7 @@ with tab5:
         st.markdown("#### 🤖 Bot Configurado")
         st.markdown("""
         <div class="metric-card">
-            <p><strong>✅ Bot Ativo:</strong> @Ovecchia_Trading_bot</p>
+            <p><strong>✅ Bot:</strong> @Ovecchia_bot</p>
             <p><strong>🔧 Status:</strong> Configurado e pronto para uso</p>
             <p><strong>🎯 Token:</strong> Configurado automaticamente pelo sistema</p>
         </div>
@@ -2012,7 +2025,7 @@ with tab5:
         monitoring_interval = st.selectbox(
             "Intervalo de Verificação:",
             ["5 minutos", "15 minutos", "30 minutos", "1 hora"],
-            index=1
+            index=0
         )
         
     with col2:
@@ -2037,17 +2050,26 @@ with tab5:
     
     with col1:
         if st.button("🚀 Iniciar Serviço de Alertas", type="primary", use_container_width=True):
-            st.success("✅ Serviço de alertas configurado e pronto!")
-            st.info("📱 Procure por @Ovecchia_bot no Telegram e envie /start")
-            st.info("🔗 Link direto: https://t.me/Ovecchia_bot")
-            st.info("🔧 O bot está rodando em background no servidor")
+            with st.spinner("Iniciando serviço do bot..."):
+                try:
+                    success = start_telegram_service()
+                    if success:
+                        st.success("✅ Serviço de alertas iniciado com sucesso!")
+                        st.info("📱 Procure por @Ovecchia_bot no Telegram e envie /start")
+                        st.info("🔗 Link direto: https://t.me/Ovecchia_bot")
+                        st.info("🔧 O bot está rodando em background e respondendo mensagens")
+                        st.rerun()
+                    else:
+                        st.warning("⚠️ Bot já estava rodando")
+                except Exception as e:
+                    st.error(f"❌ Erro ao iniciar serviço: {e}")
     
     with col2:
         if st.button("🧪 Testar Conexão", use_container_width=True):
             with st.spinner("Testando conexão com o bot..."):
                 try:
                     import subprocess
-                    result = subprocess.run(["python", "test_bot.py"], capture_output=True, text=True, timeout=10)
+                    result = subprocess.run([sys.executable, "test_bot.py"], capture_output=True, text=True, timeout=10)
                     if result.returncode == 0:
                         st.success("✅ Bot está online e respondendo!")
                         st.code(result.stdout)
@@ -2059,9 +2081,26 @@ with tab5:
     
     with col3:
         if st.button("📊 Status do Serviço", use_container_width=True):
-            st.success("✅ Bot: @Ovecchia_bot")
-            st.info("🤖 Token configurado automaticamente")
-            st.info("⚡ Alertas a cada 5 minutos (modo teste)")
+            try:
+                current_status = get_telegram_status()
+                st.info("📊 **Status Atual:**")
+                st.write(f"🤖 Bot: @Ovecchia_bot")
+                st.write(f"🔧 Rodando: {'✅ Sim' if current_status['running'] else '❌ Não'}")
+                st.write(f"🧵 Thread Ativa: {'✅ Sim' if current_status['thread_alive'] else '❌ Não'}")
+                st.write(f"📱 Status: {current_status['status_text']}")
+            except Exception as e:
+                st.error(f"❌ Erro ao obter status: {e}")
+    
+    # Stop button (if bot is running)
+    try:
+        if get_telegram_status()['running']:
+            st.markdown("---")
+            if st.button("⏹️ Parar Serviço do Bot", use_container_width=True):
+                stop_telegram_service()
+                st.success("⏹️ Serviço do bot foi parado")
+                st.rerun()
+    except:
+        pass
 
     # Commands reference
     st.markdown("### 📖 Comandos do Bot")
