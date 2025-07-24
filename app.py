@@ -2075,7 +2075,7 @@ with tab5:
             • Distância da banda: 2.3%<br><br>
             🔴 POSSÍVEL TOPO (VENDA):<br>
             • VALE3.SA: R$ 72.80<br>
-            • Distância da banda: 1.8%
+            • Distância : 1.8%
         </div>
     </div>
     """, unsafe_allow_html=True)
