@@ -1,14 +1,15 @@
 
 #!/usr/bin/env python3
-import asyncio
+import telebot
 import logging
 import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from telegram import Update, BotCommand
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 import warnings
+import threading
+import time
+
 warnings.filterwarnings('ignore')
 
 # Configure logging
@@ -20,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 # Bot token
 BOT_TOKEN = "8487471783:AAElQBvIhVcbtVmEoPEdnuafMUR4mwGJh1k"
+
+# Initialize bot
+bot = telebot.TeleBot(BOT_TOKEN)
 
 class OvecchiaTradingBot:
     def __init__(self):
@@ -226,14 +230,15 @@ class OvecchiaTradingBot:
 
         return results
 
-# Initialize bot
-bot = OvecchiaTradingBot()
+# Initialize bot instance
+trading_bot = OvecchiaTradingBot()
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Comando /start"""
+# Command handlers
+@bot.message_handler(commands=['start'])
+def start_command(message):
     try:
-        user_id = update.effective_user.id
-        user_name = update.effective_user.first_name
+        user_name = message.from_user.first_name
+        user_id = message.from_user.id
         logger.info(f"Comando /start recebido de {user_name} (ID: {user_id})")
         
         welcome_message = """
@@ -254,19 +259,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 🚀 Use /screening para começar!
         """
-        await update.message.reply_text(welcome_message, parse_mode='Markdown')
+        bot.reply_to(message, welcome_message, parse_mode='Markdown')
         logger.info(f"Mensagem de boas-vindas enviada para {user_name}")
     except Exception as e:
         logger.error(f"Erro no comando /start: {str(e)}")
-        await update.message.reply_text("❌ Erro interno. Tente novamente mais tarde.")
+        bot.reply_to(message, "❌ Erro interno. Tente novamente mais tarde.")
 
-async def screening_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Comando /screening"""
+@bot.message_handler(commands=['screening'])
+def screening_command(message):
     try:
-        user_name = update.effective_user.first_name
+        user_name = message.from_user.first_name
         logger.info(f"Comando /screening recebido de {user_name}")
         
-        message = """
+        # Parse arguments
+        args = message.text.split()[1:]  # Remove /screening from the list
+        
+        if not args:
+            help_message = """
 🔍 *SCREENING DE ATIVOS*
 
 📝 *Como usar:*
@@ -284,64 +293,65 @@ async def screening_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 • Cripto: BTC-USD, ETH-USD, etc.
 • Ações BR: PETR4.SA, VALE3.SA, etc.
 • Ações US: AAPL, GOOGL, etc.
-        """
+            """
+            bot.reply_to(message, help_message, parse_mode='Markdown')
+            return
 
-        # Se há argumentos, processar screening
-        if context.args:
-            await update.message.reply_text("🔄 Processando screening...", parse_mode='Markdown')
-            
-            strategy = "Balanceado"
-            symbols = context.args
+        bot.reply_to(message, "🔄 Processando screening...", parse_mode='Markdown')
+        
+        strategy = "Balanceado"
+        symbols = args
 
-            # Verificar se o primeiro argumento é uma estratégia
-            if context.args[0].lower() in ['agressiva', 'balanceada', 'conservadora']:
-                strategy_map = {
-                    'agressiva': 'Agressivo',
-                    'balanceada': 'Balanceado',
-                    'conservadora': 'Conservador'
-                }
-                strategy = strategy_map[context.args[0].lower()]
-                symbols = context.args[1:]
+        # Verificar se o primeiro argumento é uma estratégia
+        if args[0].lower() in ['agressiva', 'balanceada', 'conservadora']:
+            strategy_map = {
+                'agressiva': 'Agressivo',
+                'balanceada': 'Balanceado',
+                'conservadora': 'Conservador'
+            }
+            strategy = strategy_map[args[0].lower()]
+            symbols = args[1:]
 
-            if not symbols:
-                await update.message.reply_text("❌ Por favor, forneça pelo menos um ativo para análise.", parse_mode='Markdown')
-                return
+        if not symbols:
+            bot.reply_to(message, "❌ Por favor, forneça pelo menos um ativo para análise.", parse_mode='Markdown')
+            return
 
-            logger.info(f"Realizando screening para {len(symbols)} ativos com estratégia {strategy}")
+        logger.info(f"Realizando screening para {len(symbols)} ativos com estratégia {strategy}")
 
-            # Realizar screening
-            results = bot.perform_screening(symbols, strategy)
+        # Realizar screening
+        results = trading_bot.perform_screening(symbols, strategy)
 
-            if results:
-                response = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia\n\n"
+        if results:
+            response = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia\n\n"
 
-                for result in results:
-                    state_icon = "🟢" if result['current_state'] == "Buy" else "🔴" if result['current_state'] == "Sell" else "⚫"
-                    prev_icon = "🟢" if result['previous_state'] == "Buy" else "🔴" if result['previous_state'] == "Sell" else "⚫"
+            for result in results:
+                state_icon = "🟢" if result['current_state'] == "Buy" else "🔴" if result['current_state'] == "Sell" else "⚫"
+                prev_icon = "🟢" if result['previous_state'] == "Buy" else "🔴" if result['previous_state'] == "Sell" else "⚫"
 
-                    response += f"{state_icon} *{result['symbol']}*\n"
-                    response += f"💰 Preço: {result['current_price']:.2f}\n"
-                    response += f"📈 {prev_icon} {result['previous_state']} → {state_icon} {result['current_state']}\n\n"
+                response += f"{state_icon} *{result['symbol']}*\n"
+                response += f"💰 Preço: {result['current_price']:.2f}\n"
+                response += f"📈 {prev_icon} {result['previous_state']} → {state_icon} {result['current_state']}\n\n"
 
-                await update.message.reply_text(response, parse_mode='Markdown')
-                logger.info(f"Screening enviado para {user_name}: {len(results)} alertas")
-            else:
-                await update.message.reply_text("ℹ️ Nenhuma mudança de estado detectada nos ativos analisados.", parse_mode='Markdown')
-                logger.info(f"Nenhum alerta encontrado para {user_name}")
+            bot.reply_to(message, response, parse_mode='Markdown')
+            logger.info(f"Screening enviado para {user_name}: {len(results)} alertas")
         else:
-            await update.message.reply_text(message, parse_mode='Markdown')
+            bot.reply_to(message, "ℹ️ Nenhuma mudança de estado detectada nos ativos analisados.", parse_mode='Markdown')
+            logger.info(f"Nenhum alerta encontrado para {user_name}")
             
     except Exception as e:
         logger.error(f"Erro no comando /screening: {str(e)}")
-        await update.message.reply_text("❌ Erro ao processar screening. Tente novamente.")
+        bot.reply_to(message, "❌ Erro ao processar screening. Tente novamente.")
 
-async def topos_fundos_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Comando /topos_fundos"""
+@bot.message_handler(commands=['topos_fundos'])
+def topos_fundos_command(message):
     try:
-        user_name = update.effective_user.first_name
+        user_name = message.from_user.first_name
         logger.info(f"Comando /topos_fundos recebido de {user_name}")
         
-        message = """
+        args = message.text.split()[1:]  # Remove /topos_fundos from the list
+        
+        if not args:
+            help_message = """
 📊 *DETECÇÃO DE TOPOS E FUNDOS*
 
 📝 *Como usar:*
@@ -355,48 +365,47 @@ async def topos_fundos_command(update: Update, context: ContextTypes.DEFAULT_TYP
 • Possíveis topos (oportunidades de venda)
 • Baseado em Bollinger Bands
 • Timeframe: 1 dia
-        """
+            """
+            bot.reply_to(message, help_message, parse_mode='Markdown')
+            return
 
-        if context.args:
-            symbols = context.args
-            await update.message.reply_text(f"🔄 Analisando topos e fundos para {len(symbols)} ativos...", parse_mode='Markdown')
+        symbols = args
+        bot.reply_to(message, f"🔄 Analisando topos e fundos para {len(symbols)} ativos...", parse_mode='Markdown')
 
-            # Detectar topos e fundos
-            results = bot.detect_tops_bottoms(symbols)
+        # Detectar topos e fundos
+        results = trading_bot.detect_tops_bottoms(symbols)
 
-            if results:
-                response = "📊 *DETECÇÃO DE TOPOS E FUNDOS*\n\n⏰ Timeframe: 1 dia\n\n"
+        if results:
+            response = "📊 *DETECÇÃO DE TOPOS E FUNDOS*\n\n⏰ Timeframe: 1 dia\n\n"
 
-                buy_opportunities = [r for r in results if 'Compra' in r['signal']]
-                sell_opportunities = [r for r in results if 'Venda' in r['signal']]
+            buy_opportunities = [r for r in results if 'Compra' in r['signal']]
+            sell_opportunities = [r for r in results if 'Venda' in r['signal']]
 
-                if buy_opportunities:
-                    response += "🟢 *POSSÍVEIS FUNDOS (COMPRA):*\n"
-                    for result in buy_opportunities:
-                        response += f"• *{result['symbol']}*: {result['current_price']:.2f}\n"
-                        response += f"  📊 Distância: {result['distance_pct']:.2f}%\n\n"
+            if buy_opportunities:
+                response += "🟢 *POSSÍVEIS FUNDOS (COMPRA):*\n"
+                for result in buy_opportunities:
+                    response += f"• *{result['symbol']}*: {result['current_price']:.2f}\n"
+                    response += f"  📊 Distância: {result['distance_pct']:.2f}%\n\n"
 
-                if sell_opportunities:
-                    response += "🔴 *POSSÍVEIS TOPOS (VENDA):*\n"
-                    for result in sell_opportunities:
-                        response += f"• *{result['symbol']}*: {result['current_price']:.2f}\n"
-                        response += f"  📊 Distância: {result['distance_pct']:.2f}%\n\n"
+            if sell_opportunities:
+                response += "🔴 *POSSÍVEIS TOPOS (VENDA):*\n"
+                for result in sell_opportunities:
+                    response += f"• *{result['symbol']}*: {result['current_price']:.2f}\n"
+                    response += f"  📊 Distância: {result['distance_pct']:.2f}%\n\n"
 
-                await update.message.reply_text(response, parse_mode='Markdown')
-                logger.info(f"Topos e fundos enviados para {user_name}: {len(results)} oportunidades")
-            else:
-                await update.message.reply_text("ℹ️ Nenhuma oportunidade de topo ou fundo detectada nos ativos analisados.", parse_mode='Markdown')
+            bot.reply_to(message, response, parse_mode='Markdown')
+            logger.info(f"Topos e fundos enviados para {user_name}: {len(results)} oportunidades")
         else:
-            await update.message.reply_text(message, parse_mode='Markdown')
+            bot.reply_to(message, "ℹ️ Nenhuma oportunidade de topo ou fundo detectada nos ativos analisados.", parse_mode='Markdown')
             
     except Exception as e:
         logger.error(f"Erro no comando /topos_fundos: {str(e)}")
-        await update.message.reply_text("❌ Erro ao processar topos e fundos. Tente novamente.")
+        bot.reply_to(message, "❌ Erro ao processar topos e fundos. Tente novamente.")
 
-async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Comando /status"""
+@bot.message_handler(commands=['status'])
+def status_command(message):
     try:
-        logger.info(f"Comando /status recebido de {update.effective_user.first_name}")
+        logger.info(f"Comando /status recebido de {message.from_user.first_name}")
         
         status_message = """
 📊 *STATUS DO BOT*
@@ -416,15 +425,15 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 • Detecção topos/fundos ✅
 • Alertas em tempo real ✅
         """
-        await update.message.reply_text(status_message, parse_mode='Markdown')
+        bot.reply_to(message, status_message, parse_mode='Markdown')
     except Exception as e:
         logger.error(f"Erro no comando /status: {str(e)}")
-        await update.message.reply_text("❌ Erro ao verificar status.")
+        bot.reply_to(message, "❌ Erro ao verificar status.")
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Comando /help"""
+@bot.message_handler(commands=['help'])
+def help_command(message):
     try:
-        logger.info(f"Comando /help recebido de {update.effective_user.first_name}")
+        logger.info(f"Comando /help recebido de {message.from_user.first_name}")
         
         help_message = """
 🤖 *AJUDA - OVECCHIA TRADING BOT*
@@ -454,85 +463,57 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 • Ações US: AAPL, GOOGL, MSFT, TSLA
 • Forex: EURUSD=X, GBPUSD=X
         """
-        await update.message.reply_text(help_message, parse_mode='Markdown')
+        bot.reply_to(message, help_message, parse_mode='Markdown')
     except Exception as e:
         logger.error(f"Erro no comando /help: {str(e)}")
-        await update.message.reply_text("❌ Erro ao exibir ajuda.")
+        bot.reply_to(message, "❌ Erro ao exibir ajuda.")
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle regular text messages"""
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
     try:
-        user_message = update.message.text.lower()
-        user_name = update.effective_user.first_name
+        user_message = message.text.lower()
+        user_name = message.from_user.first_name
         
         logger.info(f"Mensagem recebida de {user_name}: {user_message}")
         
         if any(word in user_message for word in ['oi', 'olá', 'hello', 'hi']):
-            await update.message.reply_text("👋 Olá! Use /help para ver os comandos disponíveis.")
+            bot.reply_to(message, "👋 Olá! Use /help para ver os comandos disponíveis.")
         elif 'ajuda' in user_message:
-            await help_command(update, context)
+            help_command(message)
         else:
-            await update.message.reply_text("🤖 Use /help para ver os comandos disponíveis.")
+            bot.reply_to(message, "🤖 Use /help para ver os comandos disponíveis.")
             
     except Exception as e:
         logger.error(f"Erro ao processar mensagem: {str(e)}")
 
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Log errors caused by Updates."""
-    logger.error(f"Update {update} caused error {context.error}")
-
-async def main() -> None:
-    """Main function to run the bot"""
+def run_bot():
+    """Função para rodar o bot"""
     try:
         logger.info("🤖 Iniciando OVECCHIA TRADING BOT...")
-        
-        # Create application
-        application = Application.builder().token(BOT_TOKEN).build()
-
-        # Add command handlers
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CommandHandler("screening", screening_command))
-        application.add_handler(CommandHandler("topos_fundos", topos_fundos_command))
-        application.add_handler(CommandHandler("status", status_command))
-        application.add_handler(CommandHandler("help", help_command))
-        
-        # Add message handler for regular text
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-        
-        # Add error handler
-        application.add_error_handler(error_handler)
-
-        # Set bot commands for the menu
-        commands = [
-            BotCommand("start", "Iniciar o bot"),
-            BotCommand("screening", "Screening de múltiplos ativos"),
-            BotCommand("topos_fundos", "Detectar topos e fundos"),
-            BotCommand("status", "Ver status do bot"),
-            BotCommand("help", "Ajuda com comandos")
-        ]
-
-        await application.bot.set_my_commands(commands)
-        
-        logger.info("🤖 Bot iniciado com sucesso!")
         print("🤖 OVECCHIA TRADING BOT ONLINE!")
         
-        # Run the bot
-        await application.run_polling(
-            timeout=10,
-            drop_pending_updates=True,
-            pool_timeout=30,
-            connect_timeout=60,
-            read_timeout=60,
-            write_timeout=60
-        )
+        # Configurar comandos do bot
+        bot.set_my_commands([
+            telebot.types.BotCommand("start", "Iniciar o bot"),
+            telebot.types.BotCommand("screening", "Screening de múltiplos ativos"),
+            telebot.types.BotCommand("topos_fundos", "Detectar topos e fundos"),
+            telebot.types.BotCommand("status", "Ver status do bot"),
+            telebot.types.BotCommand("help", "Ajuda com comandos")
+        ])
+        
+        logger.info("🤖 Bot iniciado com sucesso!")
+        
+        # Rodar o bot
+        bot.polling(none_stop=True, interval=2, timeout=30)
         
     except Exception as e:
         logger.error(f"Erro crítico no bot: {str(e)}")
         print(f"❌ Erro ao iniciar bot: {str(e)}")
+        time.sleep(5)  # Aguardar antes de tentar novamente
 
 if __name__ == '__main__':
     try:
-        asyncio.run(main())
+        run_bot()
     except KeyboardInterrupt:
         logger.info("Bot interrompido pelo usuário")
         print("🛑 Bot interrompido")

@@ -6,14 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import warnings
-import threading
-import asyncio
-import subprocess
-import sys
-import os
 warnings.filterwarnings('ignore')
-
-# Observação: Bot Telegram roda automaticamente em paralelo com o Streamlit
 
 def get_market_data(symbol, start_date, end_date, interval):
     """Função principal para coletar dados do mercado usando Yahoo Finance para todos os ativos"""

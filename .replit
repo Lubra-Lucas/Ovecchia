@@ -9,7 +9,7 @@ deploymentTarget = "autoscale"
 run = ["streamlit", "run", "app.py", "--server.port", "5000"]
 
 [workflows]
-runButton = "Streamlit + Bot"
+runButton = "Streamlit + Bot Telebot"
 
 [[workflows.workflow]]
 name = "Project"
@@ -46,6 +46,19 @@ args = "python telegram_bot.py"
 name = "Telegram Bot Only"
 author = 45300270
 mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python telegram_bot.py"
+
+[[workflows.workflow]]
+name = "Streamlit + Bot Telebot"
+author = 45300270
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "streamlit run app.py --server.port 5000 --server.address 0.0.0.0"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
