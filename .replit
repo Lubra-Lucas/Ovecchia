@@ -9,7 +9,7 @@ deploymentTarget = "autoscale"
 run = ["streamlit", "run", "app.py", "--server.port", "5000"]
 
 [workflows]
-runButton = "Project"
+runButton = "Streamlit App"
 
 [[workflows.workflow]]
 name = "Project"
@@ -28,6 +28,15 @@ author = "agent"
 task = "shell.exec"
 args = "uv add yfinance plotly && streamlit run app.py --server.port 5000"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Streamlit App"
+author = 45300270
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "streamlit run app.py --server.address=0.0.0.0 --server.port=5000 --server.headless=true --server.enableCORS=false --server.enableWebsocketCompression=false"
 
 [[ports]]
 localPort = 5000
