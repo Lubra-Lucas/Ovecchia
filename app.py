@@ -1676,7 +1676,7 @@ with tab3:
 with tab4:
     # Bollinger Bands Detection tab
     st.markdown("## 📊 Detecção de Topos e Fundos")
-    st.markdown("Identifique oportunidades de compra e venda baseadas na posição dos preços em relação às Bandas de Bollinger")
+    st.markdown("Identifique oportunidades de compra e venda baseadas em métricas matemáticas")
 
     # Parameters section
     col1, col2 = st.columns([1, 1])
@@ -1832,12 +1832,11 @@ with tab4:
             status_text.text("Detecção Completa!")
 
             # Display results
-            st.success(f"✅ Análise de Bollinger Bands completa para {len(symbols_list_bb)} ativos")
+            st.success(f"✅ Análise de Topos e Fundos completa para {len(symbols_list_bb)} ativos")
 
             # Use all results
             signal_results = bb_results
-
-            # Display buying opportunities (potential bottoms)
+            # Display buying opportunities (potential bottoms) with a note on distance
             buy_opportunities = [r for r in signal_results if 'Compra' in r['signal']]
             if buy_opportunities:
                 st.subheader(f"🟢 {len(buy_opportunities)} Oportunidade(s) de Compra Detectada(s)")
@@ -1850,15 +1849,17 @@ with tab4:
                     with col2:
                         st.write(f"Preço: {result['current_price']:.2f}")
                     with col3:
-                        st.write(f"Banda Inf: {result['banda_inferior']:.2f}")
-                    with col4:
                         st.write(f"Distância: {result['distance_pct']:.2f}%")
+                    with col4:
+                        col4.empty()
                     with col5:
                         st.success("🟢 COMPRA")
 
                     st.markdown("---")
 
-            # Display selling opportunities (potential tops)
+                st.info("ℹ️ Nota: Quanto maior a distância do ativo, maior a possibilidade de reversão.")
+
+            # Display selling opportunities (potential tops) with a note on distance
             sell_opportunities = [r for r in signal_results if 'Venda' in r['signal']]
             if sell_opportunities:
                 st.subheader(f"🔴 {len(sell_opportunities)} Oportunidade(s) de Venda Detectada(s)")
@@ -1871,13 +1872,15 @@ with tab4:
                     with col2:
                         st.write(f"Preço: {result['current_price']:.2f}")
                     with col3:
-                        st.write(f"Banda Sup: {result['banda_superior']:.2f}")
-                    with col4:
                         st.write(f"Distância: {result['distance_pct']:.2f}%")
+                    with col4:
+                        col4.empty()
                     with col5:
                         st.error("🔴 VENDA")
 
                     st.markdown("---")
+
+                st.info("ℹ️ Nota: Quanto maior a distância do ativo, maior a possibilidade de reversão.")
 
             if not buy_opportunities and not sell_opportunities:
                 st.info("ℹ️ Nenhuma oportunidade de compra ou venda detectada no período analisado.")
