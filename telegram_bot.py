@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 import asyncio
 import logging
@@ -291,7 +292,7 @@ async def screening_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 response += f"💰 Preço: {result['current_price']:.2f}\n"
                 response += f"📈 {prev_icon} {result['previous_state']} → {state_icon} {result['current_state']}\n\n"
             
-            await update.message.reply_text(response, parse_mode='MarkdownV2')
+            await update.message.reply_text(response, parse_mode='Markdown')
         else:
             await update.message.reply_text("ℹ️ Nenhuma mudança de estado detectada nos ativos analisados.", parse_mode='Markdown')
     else:
@@ -330,18 +331,18 @@ async def topos_fundos_command(update: Update, context: ContextTypes.DEFAULT_TYP
             sell_opportunities = [r for r in results if 'Venda' in r['signal']]
             
             if buy_opportunities:
-                response += "🟢 *POSSÍVEIS FUNDOS \(COMPRA\):*\n"
+                response += "🟢 *POSSÍVEIS FUNDOS (COMPRA):*\n"
                 for result in buy_opportunities:
                     response += f"• *{result['symbol']}*: {result['current_price']:.2f}\n"
                     response += f"  📊 Distância: {result['distance_pct']:.2f}%\n\n"
             
             if sell_opportunities:
-                response += "🔴 *POSSÍVEIS TOPOS \(VENDA\):*\n"
+                response += "🔴 *POSSÍVEIS TOPOS (VENDA):*\n"
                 for result in sell_opportunities:
                     response += f"• *{result['symbol']}*: {result['current_price']:.2f}\n"
                     response += f"  📊 Distância: {result['distance_pct']:.2f}%\n\n"
             
-            await update.message.reply_text(response, parse_mode='MarkdownV2')
+            await update.message.reply_text(response, parse_mode='Markdown')
         else:
             await update.message.reply_text("ℹ️ Nenhuma oportunidade de topo ou fundo detectada nos ativos analisados.", parse_mode='Markdown')
     else:
