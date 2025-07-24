@@ -9,6 +9,5 @@ dependencies = [
     "plotly>=6.2.0",
     "requests>=2.32.4",
     "streamlit>=1.47.0",
-    "telegram-send==0.37",
     "yfinance>=0.2.65",
 ]
