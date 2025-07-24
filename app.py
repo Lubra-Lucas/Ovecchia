@@ -18,9 +18,17 @@ def check_bot_status():
     """Verifica se o bot está rodando"""
     try:
         # Verifica se existe algum processo do bot rodando
-        result = subprocess.run(['pgrep', '-f', 'telegram_bot'], capture_output=True, text=True)
-        return bool(result.stdout.strip())
-    except:
+        result = subprocess.run(['pgrep', '-f', 'telegram_bot.py'], capture_output=True, text=True)
+        if result.returncode == 0 and result.stdout.strip():
+            return True
+        
+        # Método alternativo usando ps
+        result = subprocess.run(['ps', 'aux'], capture_output=True, text=True)
+        if result.returncode == 0 and 'telegram_bot.py' in result.stdout:
+            return True
+            
+        return False
+    except Exception as e:
         return False
 
 def install_telegram_dependencies():
@@ -483,21 +491,44 @@ if __name__ == '__main__':
 def start_telegram_bot():
     """Inicia o bot do Telegram em background"""
     try:
-        # Verificar e instalar dependências
-        if not install_telegram_dependencies():
-            return False
+        st.info("🚀 Iniciando bot do Telegram...")
         
-        # Criar arquivo do bot
-        create_telegram_bot_file()
+        # Verificar se o bot já está rodando
+        if check_bot_status():
+            st.warning("⚠️ Bot já está rodando!")
+            return True
         
-        st.info("🚀 Iniciando bot como processo separado...")
+        # Iniciar bot como processo independente
+        env = os.environ.copy()
+        env['PYTHONPATH'] = os.getcwd()
         
-        # Iniciar bot em background
         process = subprocess.Popen([
-            sys.executable, 'telegram_bot.py'
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            sys.executable, '-u', 'telegram_bot.py'
+        ], 
+        stdout=subprocess.PIPE, 
+        stderr=subprocess.PIPE, 
+        text=True,
+        env=env,
+        cwd=os.getcwd()
+        )
         
-        return True
+        # Aguardar um pouco para ver se o processo iniciou
+        import time
+        time.sleep(3)
+        
+        # Verificar se o processo ainda está rodando
+        if process.poll() is None:
+            st.success("✅ Bot iniciado com sucesso!")
+            st.info("📱 Acesse @Ovecchia_bot no Telegram")
+            return True
+        else:
+            stdout, stderr = process.communicate()
+            st.error(f"❌ Bot falhou ao iniciar")
+            if stderr:
+                st.error(f"Erro: {stderr}")
+            if stdout:
+                st.info(f"Log: {stdout}")
+            return False
         
     except Exception as e:
         st.error(f"❌ Falha ao iniciar bot: {str(e)}")
@@ -506,14 +537,40 @@ def start_telegram_bot():
 def stop_telegram_bot():
     """Para o bot do Telegram"""
     try:
-        subprocess.run(['pkill', '-f', 'telegram_bot'], check=False)
-        return True
-    except:
+        # Tenta parar usando pkill
+        result = subprocess.run(['pkill', '-f', 'telegram_bot.py'], capture_output=True)
+        
+        # Aguarda um pouco para o processo terminar
+        import time
+        time.sleep(2)
+        
+        # Verifica se realmente parou
+        if not check_bot_status():
+            return True
+        
+        # Se ainda estiver rodando, força a parada
+        subprocess.run(['pkill', '-9', '-f', 'telegram_bot.py'], capture_output=True)
+        time.sleep(1)
+        
+        return not check_bot_status()
+    except Exception as e:
         return False
 
 def restart_telegram_bot():
     """Reinicia o bot do Telegram"""
-    stop_telegram_bot()
+    st.info("🔄 Reiniciando bot...")
+    
+    # Para o bot
+    if stop_telegram_bot():
+        st.success("✅ Bot parado")
+    else:
+        st.warning("⚠️ Não foi possível parar o bot anterior")
+    
+    # Aguarda um pouco
+    import time
+    time.sleep(2)
+    
+    # Inicia novamente
     return start_telegram_bot()
 
 def get_market_data(symbol, start_date, end_date, interval):
@@ -2539,24 +2596,36 @@ with tab5:
     # Control buttons
     st.markdown("### 🎛️ Controles do Bot")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         if st.button("🚀 Iniciar Bot", use_container_width=True):
-            start_telegram_bot()
-            st.success("Bot iniciado com sucesso!")
-            st.rerun()
-
+            result = start_telegram_bot()
+            if result:
+                st.rerun()
+            
     with col2:
         if st.button("🛑 Parar Bot", use_container_width=True):
-            stop_telegram_bot()
-            st.warning("Bot foi parado")
+            if stop_telegram_bot():
+                st.success("✅ Bot parado com sucesso")
+            else:
+                st.error("❌ Erro ao parar o bot")
             st.rerun()
 
     with col3:
         if st.button("🔄 Reiniciar Bot", use_container_width=True):
-            restart_telegram_bot()
-            st.info("Bot reiniciado")
+            result = restart_telegram_bot()
+            if result:
+                st.success("✅ Bot reiniciado com sucesso")
+            st.rerun()
+            
+    with col4:
+        if st.button("📊 Verificar Status", use_container_width=True):
+            status = check_bot_status()
+            if status:
+                st.success("🟢 Bot está online")
+            else:
+                st.error("🔴 Bot está offline")
             st.rerun()
 
     # Example alerts section
@@ -2592,6 +2661,33 @@ with tab5:
             • VALE3.SA: R$ 72.80<br>
             • Distância da banda: 1.8%
         </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Testing section
+    st.markdown("### 🧪 Como Testar o Bot")
+    
+    st.markdown("""
+    <div class="metric-card">
+        <p><strong>📱 Passos para testar:</strong></p>
+        <ol>
+            <li>Clique em "🚀 Iniciar Bot" acima</li>
+            <li>Abra o Telegram e procure por <code>@Ovecchia_bot</code></li>
+            <li>Clique em "Iniciar" ou digite <code>/start</code></li>
+            <li>Teste os comandos:</li>
+            <ul>
+                <li><code>/status</code> - Para verificar se está funcionando</li>
+                <li><code>/screening balanceada BTC-USD ETH-USD</code></li>
+                <li><code>/topos_fundos BTC-USD PETR4.SA</code></li>
+            </ul>
+        </ol>
+        
+        <p><strong>🔍 Solução de problemas:</strong></p>
+        <ul>
+            <li>Se o bot não responder, clique em "🔄 Reiniciar Bot"</li>
+            <li>Verifique o status com "📊 Verificar Status"</li>
+            <li>Se persistir, pare e inicie novamente</li>
+        </ul>
     </div>
     """, unsafe_allow_html=True)
 
