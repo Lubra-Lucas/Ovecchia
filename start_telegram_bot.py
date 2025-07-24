@@ -20,6 +20,7 @@ def start_bot():
     
     print("✅ Token do bot configurado automaticamente!")
     print("🤖 Bot: @Ovecchia_bot")
+    print("🔗 Link direto: https://t.me/Ovecchia_bot")
     
     # Install dependencies
     if not install_dependencies():

@@ -203,6 +203,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     welcome_text = """
 🤖 **Bem-vindo ao OVECCHIA TRADING Bot!**
+📱 **Bot: @Ovecchia_bot**
 
 Receba alertas automáticos sobre:
 • 🔄 Mudanças de estado dos ativos
@@ -360,7 +361,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• Forex: EURUSD=X"
         )
 
-async def send_alerts():
+async def send_alerts(context: ContextTypes.DEFAULT_TYPE):
     """Check for alerts and send to users"""
     users = load_users()
     
@@ -457,9 +458,9 @@ def main():
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    # Schedule periodic alerts (every 15 minutes)
+    # Schedule periodic alerts (every 5 minutes for testing)
     job_queue = application.job_queue
-    job_queue.run_repeating(send_alerts, interval=900, first=10)  # 900 seconds = 15 minutes
+    job_queue.run_repeating(send_alerts, interval=300, first=30)  # 300 seconds = 5 minutes
     
     print("🤖 Bot iniciado! Pressione Ctrl+C para parar.")
     

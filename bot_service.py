@@ -54,7 +54,7 @@ class BotService:
         return {
             'running': self.is_running,
             'thread_alive': self.bot_thread.is_alive() if self.bot_thread else False,
-            'bot_username': '@OvecchiaTrading_bot'
+            'bot_username': '@Ovecchia_bot'
         }
 
 # Instância global do serviço

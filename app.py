@@ -2038,17 +2038,30 @@ with tab5:
     with col1:
         if st.button("🚀 Iniciar Serviço de Alertas", type="primary", use_container_width=True):
             st.success("✅ Serviço de alertas configurado e pronto!")
-            st.info("📱 Procure por @OvecchiaTrading_bot no Telegram e envie /start")
+            st.info("📱 Procure por @Ovecchia_bot no Telegram e envie /start")
+            st.info("🔗 Link direto: https://t.me/Ovecchia_bot")
             st.info("🔧 O bot está rodando em background no servidor")
     
     with col2:
-        if st.button("⏹️ Parar Serviço", use_container_width=True):
-            st.warning("⚠️ Serviço de alertas pausado.")
+        if st.button("🧪 Testar Conexão", use_container_width=True):
+            with st.spinner("Testando conexão com o bot..."):
+                try:
+                    import subprocess
+                    result = subprocess.run(["python", "test_bot.py"], capture_output=True, text=True, timeout=10)
+                    if result.returncode == 0:
+                        st.success("✅ Bot está online e respondendo!")
+                        st.code(result.stdout)
+                    else:
+                        st.error("❌ Erro na conexão com o bot")
+                        st.code(result.stderr)
+                except Exception as e:
+                    st.error(f"❌ Erro ao testar bot: {e}")
     
     with col3:
         if st.button("📊 Status do Serviço", use_container_width=True):
-            st.success("✅ Bot ativo e monitorando mercados")
-            st.info("🤖 @OvecchiaTrading_bot está respondendo")
+            st.success("✅ Bot: @Ovecchia_bot")
+            st.info("🤖 Token configurado automaticamente")
+            st.info("⚡ Alertas a cada 5 minutos (modo teste)")
 
     # Commands reference
     st.markdown("### 📖 Comandos do Bot")
