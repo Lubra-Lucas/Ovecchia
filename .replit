@@ -42,6 +42,15 @@ args = "streamlit run app.py --server.port 5000 --server.address 0.0.0.0"
 task = "shell.exec"
 args = "python telegram_bot.py"
 
+[[workflows.workflow]]
+name = "Telegram Bot Only"
+author = 45300270
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python telegram_bot.py"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
