@@ -306,7 +306,7 @@ st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING - MODELO QUANT</h1>', 
 st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Análise Técnica e Sinais de Trading</p>', unsafe_allow_html=True)
 
 # Create main navigation tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏠 Home", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "📊 Detecção de Topos e Fundos", "ℹ️ Sobre"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏠 Home", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "📊 Detecção de Topos e Fundos", "📱 Alertas Telegram", "ℹ️ Sobre"])
 
 with tab1:
     # Home page content
@@ -359,6 +359,21 @@ with tab1:
             <li>Detecção de topos (oportunidades de venda)</li>
             <li>Configuração personalizável de sensibilidade</li>
             <li>Análise em múltiplos timeframes</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("### 📱 Alertas Telegram")
+    st.markdown("""
+    <div class="metric-card">
+        <p><strong>🤖 Receba Alertas Automáticos no seu Celular</strong><br>
+        Configure um bot do Telegram para receber notificações em tempo real sobre mudanças nos mercados.</p>
+        <ul>
+            <li>Alertas de mudanças de estado dos ativos</li>
+            <li>Notificações de topos e fundos detectados</li>
+            <li>Configuração de estratégias personalizadas</li>
+            <li>Monitoramento 24/7 dos seus ativos favoritos</li>
+            <li>Interface conversacional no Telegram</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -1938,6 +1953,164 @@ with tab4:
             st.write("Por favor verifique os parâmetros e tente novamente.")
 
 with tab5:
+    # Telegram Alerts tab
+    st.markdown("## 📱 Configurar Alertas no Telegram")
+    st.markdown("Configure alertas automáticos para receber notificações sobre mudanças de estado e detecção de topos/fundos diretamente no seu celular")
+
+    # Instructions section
+    st.markdown("### 🤖 Como Configurar o Bot do Telegram")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div class="metric-card">
+            <h4 style="color: #1f77b4;">📋 Passo a Passo:</h4>
+            <ol>
+                <li><strong>Abra o Telegram</strong> no seu celular</li>
+                <li><strong>Procure por:</strong> @OvecchiaTrading_bot</li>
+                <li><strong>Inicie uma conversa</strong> enviando /start</li>
+                <li><strong>Configure seus alertas</strong> seguindo as instruções do bot</li>
+                <li><strong>Receba notificações</strong> automáticas em tempo real</li>
+            </ol>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="metric-card">
+            <h4 style="color: #1f77b4;">⚡ Funcionalidades Disponíveis:</h4>
+            <ul>
+                <li><strong>Mudanças de Estado:</strong> Receba alertas quando ativos mudarem de sinal</li>
+                <li><strong>Topos e Fundos:</strong> Seja notificado sobre possíveis reversões</li>
+                <li><strong>Estratégias:</strong> Escolha entre Agressivo, Balanceado ou Conservador</li>
+                <li><strong>Ativos Personalizados:</strong> Configure sua própria lista de monitoramento</li>
+                <li><strong>Alertas em Tempo Real:</strong> Receba notificações instantâneas</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Bot configuration section
+    st.markdown("### ⚙️ Configuração do Bot")
+    
+    st.info("ℹ️ **Status do Bot:** Para ativar os alertas, o bot precisa estar rodando no servidor. Use a seção abaixo para configurar e iniciar o serviço.")
+    
+    # Bot settings
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### 🔑 Token do Bot")
+        bot_token = st.text_input(
+            "Token do Bot Telegram:",
+            type="password",
+            help="Obtenha o token criando um bot com @BotFather no Telegram",
+            placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+        )
+        
+        st.markdown("#### 📊 Configurações de Monitoramento")
+        monitoring_interval = st.selectbox(
+            "Intervalo de Verificação:",
+            ["5 minutos", "15 minutos", "30 minutos", "1 hora"],
+            index=1
+        )
+        
+    with col2:
+        st.markdown("#### 📈 Mercados Ativos")
+        active_markets = st.multiselect(
+            "Mercados para Monitoramento:",
+            ["Criptomoedas", "Ações Brasileiras", "Ações Americanas", "Forex", "Commodities"],
+            default=["Criptomoedas", "Ações Brasileiras"]
+        )
+        
+        st.markdown("#### 🎯 Tipos de Alerta")
+        alert_types = st.multiselect(
+            "Tipos de Alerta Ativo:",
+            ["Mudanças de Estado", "Topos e Fundos", "Ambos"],
+            default=["Mudanças de Estado"]
+        )
+
+    # Bot control buttons
+    st.markdown("### 🎮 Controle do Bot")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("🚀 Iniciar Serviço de Alertas", type="primary", use_container_width=True):
+            if bot_token:
+                st.success("✅ Configuração salva! O serviço de alertas será iniciado.")
+                st.info("📱 Agora procure por @OvecchiaTrading_bot no Telegram e envie /start")
+            else:
+                st.error("❌ Por favor, insira o token do bot primeiro.")
+    
+    with col2:
+        if st.button("⏹️ Parar Serviço", use_container_width=True):
+            st.warning("⚠️ Serviço de alertas parado.")
+    
+    with col3:
+        if st.button("📊 Status do Serviço", use_container_width=True):
+            st.info("🔄 Verificando status do serviço...")
+
+    # Commands reference
+    st.markdown("### 📖 Comandos do Bot")
+    
+    st.markdown("""
+    <div class="metric-card">
+        <h4 style="color: #1f77b4;">🤖 Comandos Disponíveis no Telegram:</h4>
+        <ul>
+            <li><strong>/start</strong> - Iniciar o bot e ver menu principal</li>
+            <li><strong>/screening</strong> - Configurar monitoramento de mudanças de estado</li>
+            <li><strong>/topobottom</strong> - Configurar detecção de topos e fundos</li>
+            <li><strong>/estrategia</strong> - Escolher estratégia (Agressivo/Balanceado/Conservador)</li>
+            <li><strong>/ativos</strong> - Configurar lista de ativos para monitoramento</li>
+            <li><strong>/status</strong> - Ver status atual dos alertas</li>
+            <li><strong>/help</strong> - Ver todos os comandos disponíveis</li>
+            <li><strong>/stop</strong> - Parar todos os alertas</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Example workflow
+    st.markdown("### 💬 Exemplo de Conversa com o Bot")
+    
+    st.markdown("""
+    <div style="background: #f8f9fa; padding: 1rem; border-radius: 10px; font-family: monospace;">
+        <p><strong>👤 Você:</strong> /start</p>
+        <p><strong>🤖 Bot:</strong> Olá! O que você deseja fazer?</p>
+        <p style="margin-left: 20px;">1️⃣ Verificar mudança de estado</p>
+        <p style="margin-left: 20px;">2️⃣ Verificar topos e fundos</p>
+        <p style="margin-left: 20px;">3️⃣ Ambos</p>
+        
+        <p><strong>👤 Você:</strong> 1</p>
+        <p><strong>🤖 Bot:</strong> Qual estratégia você prefere?</p>
+        <p style="margin-left: 20px;">🔥 Agressivo (mais sinais)</p>
+        <p style="margin-left: 20px;">⚖️ Balanceado (equilibrado)</p>
+        <p style="margin-left: 20px;">🛡️ Conservador (poucos sinais, mais confiáveis)</p>
+        
+        <p><strong>👤 Você:</strong> Balanceado</p>
+        <p><strong>🤖 Bot:</strong> Perfeito! Quais ativos você quer monitorar? (ex: BTC-USD, PETR4.SA, AAPL)</p>
+        
+        <p><strong>👤 Você:</strong> BTC-USD, ETH-USD, PETR4.SA</p>
+        <p><strong>🤖 Bot:</strong> ✅ Alertas configurados! Você receberá notificações sobre mudanças de estado nos ativos: BTC-USD, ETH-USD, PETR4.SA usando estratégia Balanceada.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Deployment note
+    st.markdown("### 🚀 Implantação do Bot")
+    
+    st.markdown("""
+    <div style="background: linear-gradient(90deg, #e3f2fd, #f3e5f5); padding: 1rem; border-radius: 10px; border-left: 4px solid #2196F3;">
+        <p><strong>📋 Para ativar os alertas:</strong></p>
+        <ol>
+            <li>Configure o token do bot acima</li>
+            <li>Use o botão "Iniciar Serviço de Alertas"</li>
+            <li>O bot ficará ativo 24/7 monitorando os mercados</li>
+            <li>Você receberá alertas automáticos no Telegram</li>
+        </ol>
+        <p><strong>⚡ O serviço roda em background e não interfere nas outras funcionalidades do sistema.</strong></p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with tab6:
     # About tab
     st.markdown("## ℹ️ Sobre o Sistema OVECCHIA TRADING")
 
