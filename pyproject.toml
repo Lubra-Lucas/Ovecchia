@@ -7,6 +7,7 @@ dependencies = [
     "kaleido>=1.0.0",
     "numpy>=2.3.1",
     "pandas>=2.3.1",
+    "pillow>=11.3.0",
     "plotly>=6.2.0",
     "python-telegram-bot>=22.3",
     "requests>=2.32.4",

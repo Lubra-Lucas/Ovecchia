@@ -231,24 +231,8 @@ class OvecchiaTradingBot:
         return results
 
     def generate_analysis_chart(self, symbol, strategy_type, timeframe):
-        """Gera gráfico de análise para um ativo específico"""
+        """Gera análise detalhada em texto para um ativo específico"""
         try:
-            import plotly.graph_objects as go
-            from plotly.subplots import make_subplots
-            import plotly.io as pio
-            import tempfile
-            import os
-            
-            # Configurar o engine de renderização para funcionar no Replit
-            try:
-                import kaleido
-                pio.kaleido.scope.default_width = 1200
-                pio.kaleido.scope.default_height = 600
-            except ImportError:
-                logger.warning("Kaleido não disponível, tentando alternativa")
-                # Usar engine alternativo se Kaleido não estiver disponível
-                pio.renderers.default = "svg"
-            
             # Define período baseado no timeframe
             if timeframe in ['1m', '5m', '15m', '30m']:
                 days = 7  # 1 semana para timeframes menores
@@ -273,181 +257,121 @@ class OvecchiaTradingBot:
             if df.empty:
                 return {'success': False, 'error': 'Erro ao calcular indicadores'}
 
-            # Criar gráfico
-            fig = make_subplots(
-                rows=2, cols=1,
-                shared_xaxes=True,
-                vertical_spacing=0.03,
-                row_heights=[0.75, 0.25],
-                subplot_titles=(f"{symbol} - {strategy_type} - {timeframe.upper()}", "Indicador de Sinais")
-            )
-
-            # Adicionar linha de preço com cores dos sinais
-            for i in range(len(df) - 1):
-                color = 'blue' if df['Estado'].iloc[i] == 'Buy' else 'red' if df['Estado'].iloc[i] == 'Sell' else 'gray'
-                fig.add_trace(go.Scatter(
-                    x=df['time'][i:i+2],
-                    y=df['close'][i:i+2],
-                    mode="lines",
-                    line=dict(color=color, width=2),
-                    showlegend=False,
-                    hoverinfo="skip"
-                ), row=1, col=1)
-
-            # Adicionar médias móveis se disponíveis
-            strategy_params = {
-                "Agressivo": (10, 21),
-                "Conservador": (140, 200),
-                "Balanceado": (60, 70)
-            }
-            
-            sma_short, sma_long = strategy_params.get(strategy_type, (60, 70))
-            
-            if f'SMA_{sma_short}' in df.columns:
-                fig.add_trace(go.Scatter(
-                    x=df['time'], y=df[f'SMA_{sma_short}'],
-                    mode="lines", name=f'SMA {sma_short}',
-                    line=dict(color="orange", width=1, dash="dot")
-                ), row=1, col=1)
-                
-            if f'SMA_{sma_long}' in df.columns:
-                fig.add_trace(go.Scatter(
-                    x=df['time'], y=df[f'SMA_{sma_long}'],
-                    mode="lines", name=f'SMA {sma_long}',
-                    line=dict(color="purple", width=1, dash="dot")
-                ), row=1, col=1)
-
-            # Adicionar indicador de sinais
-            indicator_mapping = {'Buy': 1, 'Sell': 0, 'Stay Out': 0.5}
-            df['Indicator'] = df['Estado'].map(indicator_mapping)
-            
-            fig.add_trace(go.Scatter(
-                x=df['time'],
-                y=df['Indicator'],
-                mode="lines+markers",
-                name="Signal",
-                line=dict(color="purple", width=2),
-                marker=dict(size=4),
-                showlegend=False
-            ), row=2, col=1)
-
-            # Atualizar layout
-            fig.update_yaxes(range=[-0.1, 1.1], tickvals=[0, 0.5, 1], 
-                           ticktext=['Venda', 'Neutro', 'Compra'], row=2, col=1)
-            
-            fig.update_layout(
-                title=f"OVECCHIA TRADING - {symbol}",
-                template="plotly_white",
-                height=600,
-                showlegend=True,
-                font=dict(size=10)
-            )
-
-            # Salvar gráfico temporariamente
-            temp_dir = tempfile.gettempdir()
-            chart_filename = f"chart_{symbol}_{int(datetime.now().timestamp())}.png"
-            chart_path = os.path.join(temp_dir, chart_filename)
-            
-            # Tentar salvar a imagem com diferentes métodos
-            try:
-                fig.write_image(chart_path, width=1200, height=600, scale=2, engine="kaleido")
-            except Exception as img_error:
-                logger.warning(f"Erro com Kaleido: {img_error}")
-                try:
-                    # Tentar com engine alternativo
-                    fig.write_image(chart_path, width=1200, height=600, scale=1, engine="auto")
-                except Exception as img_error2:
-                    logger.error(f"Erro ao salvar imagem: {img_error2}")
-                    # Como último recurso, salvar como HTML e informar o usuário
-                    html_path = chart_path.replace('.png', '.html')
-                    fig.write_html(html_path)
-                    return {
-                        'success': False, 
-                        'error': 'Erro na geração de imagem. Tente novamente em alguns minutos.'
-                    }
-
             # Preparar informações atuais
             current_price = df['close'].iloc[-1]
             current_state = df['Estado'].iloc[-1]
             current_rsi = df['RSI_14'].iloc[-1] if 'RSI_14' in df.columns else 'N/A'
+            current_rsl = df['RSL_20'].iloc[-1] if 'RSL_20' in df.columns else 'N/A'
             
             # Estado anterior para detectar mudanças
             previous_state = df['Estado'].iloc[-2] if len(df) > 1 else current_state
-            state_change = "✅ MUDANÇA" if current_state != previous_state else "➖ SEM MUDANÇA"
+            state_change = "✅ MUDANÇA DETECTADA" if current_state != previous_state else "➖ SEM MUDANÇA"
 
-            caption = f"""📊 <b>ANÁLISE - {symbol}</b>
+            # Calcular estatísticas dos últimos candles
+            last_10_candles = df.tail(10)
+            buy_count = (last_10_candles['Estado'] == 'Buy').sum()
+            sell_count = (last_10_candles['Estado'] == 'Sell').sum()
+            out_count = (last_10_candles['Estado'] == 'Stay Out').sum()
 
-🎯 <b>Estratégia:</b> {strategy_type}
-⏰ <b>Timeframe:</b> {timeframe.upper()}
-💰 <b>Preço Atual:</b> {current_price:.2f}
+            # Calcular variação de preço
+            price_change = ((current_price - df['close'].iloc[-2]) / df['close'].iloc[-2] * 100) if len(df) > 1 else 0
 
-📈 <b>Estado Atual:</b> {current_state}
-📊 <b>Estado Anterior:</b> {previous_state}
-🔄 <b>Mudança:</b> {state_change}
+            # Determinar estratégia visual
+            strategy_emoji = {
+                "Agressivo": "🔥",
+                "Balanceado": "⚖️", 
+                "Conservador": "🛡️"
+            }
 
-📉 <b>RSI (14):</b> {current_rsi if isinstance(current_rsi, str) else f"{current_rsi:.2f}"}
+            # Status do RSI
+            rsi_status = ""
+            if isinstance(current_rsi, (int, float)):
+                if current_rsi > 70:
+                    rsi_status = "📈 Sobrecomprado"
+                elif current_rsi < 30:
+                    rsi_status = "📉 Sobrevendido"
+                else:
+                    rsi_status = "⚖️ Neutro"
 
+            # Status do RSL
+            rsl_status = ""
+            if isinstance(current_rsl, (int, float)):
+                if current_rsl > 1.02:
+                    rsl_status = "📈 Acima da MM20"
+                elif current_rsl < 0.98:
+                    rsl_status = "📉 Abaixo da MM20"
+                else:
+                    rsl_status = "⚖️ Próximo da MM20"
+
+            # Ícone do estado atual
+            state_emoji = {
+                'Buy': '🟢',
+                'Sell': '🔴',
+                'Stay Out': '⚫'
+            }
+
+            detailed_analysis = f"""📊 <b>ANÁLISE TÉCNICA COMPLETA</b>
+
+🎯 <b>ATIVO:</b> {symbol}
+{strategy_emoji.get(strategy_type, '📊')} <b>ESTRATÉGIA:</b> {strategy_type}
+⏰ <b>TIMEFRAME:</b> {timeframe.upper()}
+
+💰 <b>PREÇO ATUAL:</b> {current_price:.2f}
+📈 <b>VARIAÇÃO:</b> {price_change:+.2f}%
+
+🎯 <b>SINAL ATUAL:</b> {state_emoji.get(current_state, '⚫')} <b>{current_state}</b>
+📊 <b>SINAL ANTERIOR:</b> {state_emoji.get(previous_state, '⚫')} {previous_state}
+🔄 <b>STATUS:</b> {state_change}
+
+📉 <b>RSI (14):</b> {current_rsi if isinstance(current_rsi, str) else f"{current_rsi:.2f}"} {rsi_status}
+📊 <b>RSL (20):</b> {current_rsl if isinstance(current_rsl, str) else f"{current_rsl:.3f}"} {rsl_status}
+
+📈 <b>ÚLTIMOS 10 CANDLES:</b>
+🟢 Compra: {buy_count}
+🔴 Venda: {sell_count}
+⚫ Fora: {out_count}
+
+💡 <b>ANÁLISE:</b>
+{self._generate_technical_analysis(current_state, current_rsi, current_rsl, state_change)}
+
+🕐 <b>Análise gerada em:</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}
 🤖 <i>OVECCHIA TRADING BOT</i>"""
 
             return {
                 'success': True,
-                'chart_path': chart_path,
-                'caption': caption
+                'chart_path': None,
+                'caption': detailed_analysis,
+                'text_only': True
             }
 
         except Exception as e:
-            logger.error(f"Erro ao gerar gráfico para {symbol}: {str(e)}")
-            
-            # Se falhar na geração de gráfico, retornar análise em texto
-            try:
-                # Ainda tentar coletar os dados para análise textual
-                if timeframe in ['1m', '5m', '15m', '30m']:
-                    days = 7
-                elif timeframe in ['1h', '4h']:
-                    days = 30
-                else:
-                    days = 180
-                    
-                end_date = datetime.now().date()
-                start_date = end_date - timedelta(days=days)
-                
-                df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
-                                        end_date.strftime("%Y-%m-%d"), timeframe)
-                
-                if not df.empty:
-                    df = self.calculate_indicators_and_signals(df, strategy_type)
-                    
-                    current_price = df['close'].iloc[-1]
-                    current_state = df['Estado'].iloc[-1]
-                    current_rsi = df['RSI_14'].iloc[-1] if 'RSI_14' in df.columns else 'N/A'
-                    previous_state = df['Estado'].iloc[-2] if len(df) > 1 else current_state
-                    state_change = "✅ MUDANÇA" if current_state != previous_state else "➖ SEM MUDANÇA"
-                    
-                    text_analysis = f"""📊 <b>ANÁLISE - {symbol}</b> (Texto)
+            logger.error(f"Erro ao gerar análise para {symbol}: {str(e)}")
+            return {'success': False, 'error': f'Erro ao gerar análise: {str(e)}'}
 
-🎯 <b>Estratégia:</b> {strategy_type}
-⏰ <b>Timeframe:</b> {timeframe.upper()}
-💰 <b>Preço Atual:</b> {current_price:.2f}
-
-📈 <b>Estado Atual:</b> {current_state}
-📊 <b>Estado Anterior:</b> {previous_state}
-🔄 <b>Mudança:</b> {state_change}
-
-📉 <b>RSI (14):</b> {current_rsi if isinstance(current_rsi, str) else f"{current_rsi:.2f}"}
-
-⚠️ <i>Gráfico indisponível temporariamente</i>
-🤖 <i>OVECCHIA TRADING BOT</i>"""
-                    
-                    return {
-                        'success': True,
-                        'chart_path': None,
-                        'caption': text_analysis,
-                        'text_only': True
-                    }
-            except:
-                pass
-                
-            return {'success': False, 'error': f'Erro ao gerar análise: Sistema temporariamente indisponível'}
+    def _generate_technical_analysis(self, current_state, rsi, rsl, state_change):
+        """Gera análise técnica descritiva"""
+        analysis = []
+        
+        # Análise do estado atual
+        if current_state == 'Buy':
+            analysis.append("🟢 Condições favoráveis para posição comprada")
+        elif current_state == 'Sell':
+            analysis.append("🔴 Condições favoráveis para posição vendida")
+        else:
+            analysis.append("⚫ Aguardando melhores condições de entrada")
+        
+        # Análise do RSI
+        if isinstance(rsi, (int, float)):
+            if rsi > 70:
+                analysis.append("⚠️ RSI indica possível correção")
+            elif rsi < 30:
+                analysis.append("✅ RSI indica possível recuperação")
+        
+        # Análise da mudança de estado
+        if "MUDANÇA" in state_change:
+            analysis.append("🚨 ATENÇÃO: Mudança de sinal detectada!")
+        
+        return "\n".join([f"• {item}" for item in analysis])
 
 # Initialize bot instance
 trading_bot = OvecchiaTradingBot()
@@ -465,14 +389,14 @@ def start_command(message):
 👋 Olá! Sou o bot oficial do sistema OVECCHIA TRADING, desenvolvido para fornecer análises técnicas avançadas e sinais de trading profissionais.
 
 📊 FUNCIONALIDADES PRINCIPAIS:
-• Análise individual de ativos com gráficos
+• Análise individual de ativos detalhada
 • Screening automático de múltiplos ativos
 • Detecção de topos e fundos
 • Alertas em tempo real de mudanças de estado
 • Suporte a múltiplas estratégias de trading
 
 🎯 COMANDOS DISPONÍVEIS:
-/analise [estrategia] [ativo] [timeframe] - Análise completa com gráfico
+/analise [estrategia] [ativo] [timeframe] - Análise completa detalhada
 /screening [estrategia] [ativos] - Screening de múltiplos ativos
 /topos_fundos [ativos] - Detectar oportunidades de reversão
 /status - Verificar status do bot
@@ -722,27 +646,12 @@ def analise_command(message):
 
         bot.reply_to(message, f"🔄 Analisando {symbol} com estratégia {strategy_input} no timeframe {timeframe}...")
         
-        # Gerar análise e gráfico
+        # Gerar análise
         chart_result = trading_bot.generate_analysis_chart(symbol, strategy, timeframe)
         
         if chart_result['success']:
-            if chart_result.get('text_only', False):
-                # Enviar apenas texto quando gráfico não disponível
-                bot.reply_to(message, chart_result['caption'], parse_mode='HTML')
-            else:
-                # Enviar gráfico normal
-                with open(chart_result['chart_path'], 'rb') as chart_file:
-                    bot.send_photo(
-                        message.chat.id, 
-                        chart_file,
-                        caption=chart_result['caption'],
-                        parse_mode='HTML'
-                    )
-                
-                # Limpar arquivo temporário
-                import os
-                os.remove(chart_result['chart_path'])
-            
+            # Enviar análise em texto
+            bot.reply_to(message, chart_result['caption'], parse_mode='HTML')
             logger.info(f"Análise enviada para {user_name}: {symbol}")
         else:
             bot.reply_to(message, f"❌ {chart_result['error']}")
