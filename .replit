@@ -29,15 +29,6 @@ task = "shell.exec"
 args = "uv add yfinance plotly && streamlit run app.py --server.port 5000"
 waitForPort = 5000
 
-[[workflows.workflow]]
-name = "Bot Telegram"
-author = 45300270
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python -u telegram_bot.py"
-
 [[ports]]
 localPort = 5000
 externalPort = 80
