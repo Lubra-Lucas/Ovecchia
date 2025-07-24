@@ -352,8 +352,8 @@ with tab1:
     st.markdown("### 📊 Detecção de Topos e Fundos")
     st.markdown("""
     <div class="metric-card">
-        <p><strong>🎯 Bandas de Bollinger para Identificação de Extremos</strong><br>
-        Detecte automaticamente possíveis topos e fundos usando as famosas Bandas de Bollinger.</p>
+        <p><strong>🎯 Métricas Matemáticas para identificação de extremos</strong><br>
+        Detecte automaticamente possíveis topos e fundos usando variáveis matemáticas r.</p>
         <ul>
             <li>Detecção de fundos (oportunidades de compra)</li>
             <li>Detecção de topos (oportunidades de venda)</li>
@@ -368,14 +368,13 @@ with tab1:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.markdown("#### 📈 Indicadores Técnicos")
+        st.markdown("#### 📈 Análises Quantitativas")
         st.markdown("""
-        - **SMA (Médias Móveis):** Personalizadas
-        - **RSI (14):** Relative Strength Index
-        - **RSL (20):** Relative Strength Levy
-        - **ATR (14):** Average True Range
-        - **Bollinger Bands:** Detecção de topos e fundos
-        - **Stop Loss:** 3 níveis para diferentes perfis de investidores
+        - Modelos baseados em variáveis estatísticas e padrões históricos
+        - Algoritmos de avaliação de momentum e volatilidade
+        - Faixas de oscilação dinâmica para controle de risco
+        - Estratégias com múltiplos níveis de saída
+        - Reconhecimento automático de zonas extremas de preço
         """)
 
     with col2:
@@ -1940,9 +1939,9 @@ with tab5:
             <p><strong>Sistema de Stop Loss Baseado em Métricas Matemáticas:</strong></p>
             <p>Oferecemos diferentes níveis de stop para atender a diversos perfis de investidores:</p>
             <ul>
-                <li><strong>Stop Justo:</strong> para investidores mais agressivos</li>
+                <li><strong>Stop Justo:</strong> para investidores mais conservadores</li>
                 <li><strong>Stop Balanceado:</strong> uma abordagem equilibrada</li>
-                <li><strong>Stop Largo:</strong> para investidores mais conservadores</li>
+                <li><strong>Stop Largo:</strong> para investidores mais agressivos</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
