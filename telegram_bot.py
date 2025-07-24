@@ -230,6 +230,148 @@ class OvecchiaTradingBot:
 
         return results
 
+    def generate_analysis_chart(self, symbol, strategy_type, timeframe):
+        """Gera gráfico de análise para um ativo específico"""
+        try:
+            import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
+            import tempfile
+            import os
+            
+            # Define período baseado no timeframe
+            if timeframe in ['1m', '5m', '15m', '30m']:
+                days = 7  # 1 semana para timeframes menores
+            elif timeframe in ['1h', '4h']:
+                days = 30  # 1 mês para timeframes de horas
+            else:
+                days = 180  # 6 meses para timeframes maiores
+                
+            end_date = datetime.now().date()
+            start_date = end_date - timedelta(days=days)
+
+            # Coletar dados
+            df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
+                                    end_date.strftime("%Y-%m-%d"), timeframe)
+
+            if df.empty:
+                return {'success': False, 'error': f'Sem dados encontrados para {symbol}'}
+
+            # Calcular indicadores e sinais
+            df = self.calculate_indicators_and_signals(df, strategy_type)
+
+            if df.empty:
+                return {'success': False, 'error': 'Erro ao calcular indicadores'}
+
+            # Criar gráfico
+            fig = make_subplots(
+                rows=2, cols=1,
+                shared_xaxes=True,
+                vertical_spacing=0.03,
+                row_heights=[0.75, 0.25],
+                subplot_titles=(f"{symbol} - {strategy_type} - {timeframe.upper()}", "Indicador de Sinais")
+            )
+
+            # Adicionar linha de preço com cores dos sinais
+            for i in range(len(df) - 1):
+                color = 'blue' if df['Estado'].iloc[i] == 'Buy' else 'red' if df['Estado'].iloc[i] == 'Sell' else 'gray'
+                fig.add_trace(go.Scatter(
+                    x=df['time'][i:i+2],
+                    y=df['close'][i:i+2],
+                    mode="lines",
+                    line=dict(color=color, width=2),
+                    showlegend=False,
+                    hoverinfo="skip"
+                ), row=1, col=1)
+
+            # Adicionar médias móveis se disponíveis
+            strategy_params = {
+                "Agressivo": (10, 21),
+                "Conservador": (140, 200),
+                "Balanceado": (60, 70)
+            }
+            
+            sma_short, sma_long = strategy_params.get(strategy_type, (60, 70))
+            
+            if f'SMA_{sma_short}' in df.columns:
+                fig.add_trace(go.Scatter(
+                    x=df['time'], y=df[f'SMA_{sma_short}'],
+                    mode="lines", name=f'SMA {sma_short}',
+                    line=dict(color="orange", width=1, dash="dot")
+                ), row=1, col=1)
+                
+            if f'SMA_{sma_long}' in df.columns:
+                fig.add_trace(go.Scatter(
+                    x=df['time'], y=df[f'SMA_{sma_long}'],
+                    mode="lines", name=f'SMA {sma_long}',
+                    line=dict(color="purple", width=1, dash="dot")
+                ), row=1, col=1)
+
+            # Adicionar indicador de sinais
+            indicator_mapping = {'Buy': 1, 'Sell': 0, 'Stay Out': 0.5}
+            df['Indicator'] = df['Estado'].map(indicator_mapping)
+            
+            fig.add_trace(go.Scatter(
+                x=df['time'],
+                y=df['Indicator'],
+                mode="lines+markers",
+                name="Signal",
+                line=dict(color="purple", width=2),
+                marker=dict(size=4),
+                showlegend=False
+            ), row=2, col=1)
+
+            # Atualizar layout
+            fig.update_yaxes(range=[-0.1, 1.1], tickvals=[0, 0.5, 1], 
+                           ticktext=['Venda', 'Neutro', 'Compra'], row=2, col=1)
+            
+            fig.update_layout(
+                title=f"OVECCHIA TRADING - {symbol}",
+                template="plotly_white",
+                height=600,
+                showlegend=True,
+                font=dict(size=10)
+            )
+
+            # Salvar gráfico temporariamente
+            temp_dir = tempfile.gettempdir()
+            chart_filename = f"chart_{symbol}_{int(datetime.now().timestamp())}.png"
+            chart_path = os.path.join(temp_dir, chart_filename)
+            
+            fig.write_image(chart_path, width=1200, height=600, scale=2)
+
+            # Preparar informações atuais
+            current_price = df['close'].iloc[-1]
+            current_state = df['Estado'].iloc[-1]
+            current_rsi = df['RSI_14'].iloc[-1] if 'RSI_14' in df.columns else 'N/A'
+            
+            # Estado anterior para detectar mudanças
+            previous_state = df['Estado'].iloc[-2] if len(df) > 1 else current_state
+            state_change = "✅ MUDANÇA" if current_state != previous_state else "➖ SEM MUDANÇA"
+
+            caption = f"""📊 <b>ANÁLISE - {symbol}</b>
+
+🎯 <b>Estratégia:</b> {strategy_type}
+⏰ <b>Timeframe:</b> {timeframe.upper()}
+💰 <b>Preço Atual:</b> {current_price:.2f}
+
+📈 <b>Estado Atual:</b> {current_state}
+📊 <b>Estado Anterior:</b> {previous_state}
+🔄 <b>Mudança:</b> {state_change}
+
+📉 <b>RSI (14):</b> {current_rsi if isinstance(current_rsi, str) else f"{current_rsi:.2f}"}
+
+🤖 <i>OVECCHIA TRADING BOT</i>"""
+
+            return {
+                'success': True,
+                'chart_path': chart_path,
+                'caption': caption
+            }
+
+        except Exception as e:
+            logger.error(f"Erro ao gerar gráfico para {symbol}: {str(e)}")
+            return {'success': False, 'error': f'Erro ao gerar análise: {str(e)}'}
+
 # Initialize bot instance
 trading_bot = OvecchiaTradingBot()
 
@@ -241,25 +383,38 @@ def start_command(message):
         user_id = message.from_user.id
         logger.info(f"Comando /start recebido de {user_name} (ID: {user_id})")
         
-        welcome_message = """
-🤖 *Bem-vindo ao OVECCHIA TRADING BOT!*
+        welcome_message = """🤖 Bem-vindo ao OVECCHIA TRADING BOT!
 
-🎯 *Comandos disponíveis:*
-/screening - Configurar screening de ativos
-/topos_fundos - Detectar topos e fundos
-/status - Ver status dos alertas
-/help - Ajuda com comandos
+👋 Olá! Sou o bot oficial do sistema OVECCHIA TRADING, desenvolvido para fornecer análises técnicas avançadas e sinais de trading profissionais.
 
-📊 *Funcionalidades:*
+📊 FUNCIONALIDADES PRINCIPAIS:
+• Análise individual de ativos com gráficos
 • Screening automático de múltiplos ativos
 • Detecção de topos e fundos
-• Alertas em tempo real
-• Timeframe: 1 dia
-• Estratégias: Agressiva, Balanceada, Conservadora
+• Alertas em tempo real de mudanças de estado
+• Suporte a múltiplas estratégias de trading
 
-🚀 Use /screening para começar!
-        """
-        bot.reply_to(message, welcome_message, parse_mode='Markdown')
+🎯 COMANDOS DISPONÍVEIS:
+/analise [estrategia] [ativo] [timeframe] - Análise completa com gráfico
+/screening [estrategia] [ativos] - Screening de múltiplos ativos
+/topos_fundos [ativos] - Detectar oportunidades de reversão
+/status - Verificar status do bot
+/help - Ajuda detalhada
+
+📈 ESTRATÉGIAS:
+• agressiva - Mais sinais, maior frequência
+• balanceada - Equilíbrio ideal (recomendada)
+• conservadora - Sinais mais confiáveis
+
+⏰ TIMEFRAMES SUPORTADOS:
+1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+
+🚀 EXEMPLO DE USO:
+/analise balanceada PETR4.SA 1d
+
+Comece agora mesmo digitando um comando!"""
+        
+        bot.reply_to(message, welcome_message)
         logger.info(f"Mensagem de boas-vindas enviada para {user_name}")
     except Exception as e:
         logger.error(f"Erro no comando /start: {str(e)}")
@@ -430,40 +585,129 @@ def status_command(message):
         logger.error(f"Erro no comando /status: {str(e)}")
         bot.reply_to(message, "❌ Erro ao verificar status.")
 
+@bot.message_handler(commands=['analise'])
+def analise_command(message):
+    try:
+        user_name = message.from_user.first_name
+        logger.info(f"Comando /analise recebido de {user_name}")
+        
+        args = message.text.split()[1:]  # Remove /analise from the list
+        
+        if len(args) < 3:
+            help_message = """📊 ANÁLISE INDIVIDUAL DE ATIVO
+
+📝 Como usar:
+/analise [estrategia] [ativo] [timeframe]
+
+🎯 Estratégias disponíveis:
+• agressiva - Mais sinais, maior frequência
+• balanceada - Equilibrada (recomendada)
+• conservadora - Sinais mais confiáveis
+
+⏰ Timeframes disponíveis:
+1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+
+📈 Exemplos:
+/analise balanceada PETR4.SA 1d
+/analise agressiva BTC-USD 4h
+/analise conservadora AAPL 1d
+
+💡 Ativos suportados:
+• Cripto: BTC-USD, ETH-USD, etc.
+• Ações BR: PETR4.SA, VALE3.SA, etc.
+• Ações US: AAPL, GOOGL, etc.
+• Forex: EURUSD=X, etc."""
+            bot.reply_to(message, help_message)
+            return
+
+        strategy_input = args[0].lower()
+        symbol = args[1].upper()
+        timeframe = args[2].lower()
+
+        # Mapear estratégias
+        strategy_map = {
+            'agressiva': 'Agressivo',
+            'balanceada': 'Balanceado', 
+            'conservadora': 'Conservador'
+        }
+
+        if strategy_input not in strategy_map:
+            bot.reply_to(message, "❌ Estratégia inválida. Use: agressiva, balanceada ou conservadora")
+            return
+
+        strategy = strategy_map[strategy_input]
+
+        # Validar timeframes
+        valid_timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1wk']
+        if timeframe not in valid_timeframes:
+            bot.reply_to(message, f"❌ Timeframe inválido. Use: {', '.join(valid_timeframes)}")
+            return
+
+        bot.reply_to(message, f"🔄 Analisando {symbol} com estratégia {strategy_input} no timeframe {timeframe}...")
+        
+        # Gerar análise e gráfico
+        chart_result = trading_bot.generate_analysis_chart(symbol, strategy, timeframe)
+        
+        if chart_result['success']:
+            # Enviar gráfico
+            with open(chart_result['chart_path'], 'rb') as chart_file:
+                bot.send_photo(
+                    message.chat.id, 
+                    chart_file,
+                    caption=chart_result['caption'],
+                    parse_mode='HTML'
+                )
+            
+            # Limpar arquivo temporário
+            import os
+            os.remove(chart_result['chart_path'])
+            
+            logger.info(f"Análise enviada para {user_name}: {symbol}")
+        else:
+            bot.reply_to(message, f"❌ {chart_result['error']}")
+            
+    except Exception as e:
+        logger.error(f"Erro no comando /analise: {str(e)}")
+        bot.reply_to(message, "❌ Erro ao processar análise. Verifique os parâmetros e tente novamente.")
+
 @bot.message_handler(commands=['help'])
 def help_command(message):
     try:
         logger.info(f"Comando /help recebido de {message.from_user.first_name}")
         
-        help_message = """
-🤖 *AJUDA - OVECCHIA TRADING BOT*
+        help_message = """🤖 AJUDA - OVECCHIA TRADING BOT
 
-📋 *Comandos disponíveis:*
+📋 COMANDOS DISPONÍVEIS:
 
-🏠 `/start` - Iniciar o bot
+🏠 /start - Iniciar o bot
 
-🔍 `/screening [estrategia] [ativos]`
-   Exemplo: `/screening balanceada BTC-USD ETH-USD`
+📊 /analise [estrategia] [ativo] [timeframe]
+   Exemplo: /analise balanceada PETR4.SA 1d
 
-📊 `/topos_fundos [ativos]`
-   Exemplo: `/topos_fundos PETR4.SA VALE3.SA`
+🔍 /screening [estrategia] [ativos]
+   Exemplo: /screening balanceada BTC-USD ETH-USD
 
-📈 `/status` - Ver status do bot
+📈 /topos_fundos [ativos]
+   Exemplo: /topos_fundos PETR4.SA VALE3.SA
 
-❓ `/help` - Esta mensagem de ajuda
+📊 /status - Ver status do bot
 
-🎯 *Estratégias:*
-• `agressiva` - Mais sinais
-• `balanceada` - Equilibrada
-• `conservadora` - Mais confiável
+❓ /help - Esta mensagem de ajuda
 
-💡 *Exemplos de ativos:*
+🎯 ESTRATÉGIAS:
+• agressiva - Mais sinais
+• balanceada - Equilibrada
+• conservadora - Mais confiável
+
+⏰ TIMEFRAMES:
+1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+
+💡 EXEMPLOS DE ATIVOS:
 • Cripto: BTC-USD, ETH-USD, ADA-USD
 • Ações BR: PETR4.SA, VALE3.SA, ITUB4.SA
 • Ações US: AAPL, GOOGL, MSFT, TSLA
-• Forex: EURUSD=X, GBPUSD=X
-        """
-        bot.reply_to(message, help_message, parse_mode='Markdown')
+• Forex: EURUSD=X, GBPUSD=X"""
+        bot.reply_to(message, help_message)
     except Exception as e:
         logger.error(f"Erro no comando /help: {str(e)}")
         bot.reply_to(message, "❌ Erro ao exibir ajuda.")
@@ -495,6 +739,7 @@ def run_bot():
         # Configurar comandos do bot
         bot.set_my_commands([
             telebot.types.BotCommand("start", "Iniciar o bot"),
+            telebot.types.BotCommand("analise", "Análise individual com gráfico"),
             telebot.types.BotCommand("screening", "Screening de múltiplos ativos"),
             telebot.types.BotCommand("topos_fundos", "Detectar topos e fundos"),
             telebot.types.BotCommand("status", "Ver status do bot"),
