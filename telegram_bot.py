@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 import telebot
 import logging
@@ -240,7 +239,7 @@ class OvecchiaTradingBot:
             from matplotlib.patches import Rectangle
             import tempfile
             import os
-            
+
             # Define período baseado no timeframe ou usa datas personalizadas
             if custom_start_date and custom_end_date:
                 start_date = datetime.strptime(custom_start_date, '%Y-%m-%d').date()
@@ -252,7 +251,7 @@ class OvecchiaTradingBot:
                     days = 30  # 1 mês para timeframes de horas
                 else:
                     days = 180  # 6 meses para timeframes maiores
-                    
+
                 end_date = datetime.now().date()
                 start_date = end_date - timedelta(days=days)
 
@@ -271,12 +270,12 @@ class OvecchiaTradingBot:
 
             # Preparar dados para matplotlib
             df['time'] = pd.to_datetime(df['time'])
-            
+
             # Color coding
             df['Color'] = 'black'
             df.loc[df['Estado'] == 'Buy', 'Color'] = 'blue'
             df.loc[df['Estado'] == 'Sell', 'Color'] = 'red'
-            
+
             # Create indicator mapping
             estado_mapping = {'Buy': 1, 'Sell': 0, 'Stay Out': 0.5}
             df['Indicator'] = df['Estado'].apply(lambda x: estado_mapping.get(x, 0.5))
@@ -285,23 +284,23 @@ class OvecchiaTradingBot:
             fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), 
                                          gridspec_kw={'height_ratios': [3, 1]}, 
                                          sharex=True)
-            
+
             # Título principal
             titulo_grafico = f"OVECCHIA TRADING - {symbol} - {timeframe.upper()}"
             fig.suptitle(titulo_grafico, fontsize=16, fontweight='bold')
 
             # Subplot 1: Preço com sinais
             ax1.set_title("Gráfico do Preço com Sinais", fontsize=12)
-            
+
             # Plotar linha de preço com cores baseadas no estado
             for i in range(len(df) - 1):
                 color = df['Color'].iloc[i]
                 ax1.plot(df['time'].iloc[i:i+2], df['close'].iloc[i:i+2], 
                         color=color, linewidth=2)
-            
+
             ax1.set_ylabel('Preço', fontsize=10)
             ax1.grid(True, alpha=0.3)
-            
+
             # Adicionar legenda
             from matplotlib.lines import Line2D
             legend_elements = [
@@ -334,7 +333,7 @@ class OvecchiaTradingBot:
             temp_dir = tempfile.gettempdir()
             chart_filename = f"chart_{symbol.replace('.', '_').replace('-', '_')}_{int(datetime.now().timestamp())}.png"
             chart_path = os.path.join(temp_dir, chart_filename)
-            
+
             plt.savefig(chart_path, dpi=150, bbox_inches='tight', facecolor='white')
             plt.close()  # Fechar figura para liberar memória
 
@@ -368,7 +367,7 @@ def start_command(message):
         user_name = message.from_user.first_name
         user_id = message.from_user.id
         logger.info(f"Comando /start recebido de {user_name} (ID: {user_id})")
-        
+
         welcome_message = """🤖 Bem-vindo ao OVECCHIA TRADING BOT!
 
 👋 Olá! Sou o bot oficial do sistema OVECCHIA TRADING, desenvolvido para fornecer análises técnicas avançadas e sinais de trading profissionais.
@@ -399,7 +398,7 @@ def start_command(message):
 /analise balanceada PETR4.SA 1d
 
 Comece agora mesmo digitando um comando!"""
-        
+
         bot.reply_to(message, welcome_message)
         logger.info(f"Mensagem de boas-vindas enviada para {user_name}")
     except Exception as e:
@@ -411,10 +410,10 @@ def screening_command(message):
     try:
         user_name = message.from_user.first_name
         logger.info(f"Comando /screening recebido de {user_name}")
-        
+
         # Parse arguments
         args = message.text.split()[1:]  # Remove /screening from the list
-        
+
         if not args:
             help_message = """
 🔍 *SCREENING DE ATIVOS*
@@ -439,7 +438,7 @@ def screening_command(message):
             return
 
         bot.reply_to(message, "🔄 Processando screening...", parse_mode='Markdown')
-        
+
         strategy = "Balanceado"
         symbols = args
 
@@ -478,7 +477,7 @@ def screening_command(message):
         else:
             bot.reply_to(message, "ℹ️ Nenhuma mudança de estado detectada nos ativos analisados.", parse_mode='Markdown')
             logger.info(f"Nenhum alerta encontrado para {user_name}")
-            
+
     except Exception as e:
         logger.error(f"Erro no comando /screening: {str(e)}")
         bot.reply_to(message, "❌ Erro ao processar screening. Tente novamente.")
@@ -488,9 +487,9 @@ def topos_fundos_command(message):
     try:
         user_name = message.from_user.first_name
         logger.info(f"Comando /topos_fundos recebido de {user_name}")
-        
+
         args = message.text.split()[1:]  # Remove /topos_fundos from the list
-        
+
         if not args:
             help_message = """
 📊 *DETECÇÃO DE TOPOS E FUNDOS*
@@ -538,7 +537,7 @@ def topos_fundos_command(message):
             logger.info(f"Topos e fundos enviados para {user_name}: {len(results)} oportunidades")
         else:
             bot.reply_to(message, "ℹ️ Nenhuma oportunidade de topo ou fundo detectada nos ativos analisados.", parse_mode='Markdown')
-            
+
     except Exception as e:
         logger.error(f"Erro no comando /topos_fundos: {str(e)}")
         bot.reply_to(message, "❌ Erro ao processar topos e fundos. Tente novamente.")
@@ -547,7 +546,7 @@ def topos_fundos_command(message):
 def status_command(message):
     try:
         logger.info(f"Comando /status recebido de {message.from_user.first_name}")
-        
+
         status_message = """
 📊 *STATUS DO BOT*
 
@@ -576,9 +575,9 @@ def analise_command(message):
     try:
         user_name = message.from_user.first_name
         logger.info(f"Comando /analise recebido de {user_name}")
-        
+
         args = message.text.split()[1:]  # Remove /analise from the list
-        
+
         if len(args) < 3:
             help_message = """📊 ANÁLISE INDIVIDUAL DE ATIVO
 
@@ -614,11 +613,11 @@ YYYY-MM-DD (exemplo: 2024-01-01)
         strategy_input = args[0].lower()
         symbol = args[1].upper()
         timeframe = args[2].lower()
-        
+
         # Datas opcionais
         start_date = None
         end_date = None
-        
+
         if len(args) >= 5:
             try:
                 start_date = args[3]
@@ -653,10 +652,10 @@ YYYY-MM-DD (exemplo: 2024-01-01)
             bot.reply_to(message, f"🔄 Analisando {symbol} de {start_date} até {end_date} com estratégia {strategy_input} no timeframe {timeframe}...")
         else:
             bot.reply_to(message, f"🔄 Analisando {symbol} com estratégia {strategy_input} no timeframe {timeframe}...")
-        
+
         # Gerar análise e gráfico
         chart_result = trading_bot.generate_analysis_chart(symbol, strategy, timeframe, start_date, end_date)
-        
+
         if chart_result['success']:
             # Enviar gráfico
             with open(chart_result['chart_path'], 'rb') as chart_file:
@@ -666,15 +665,15 @@ YYYY-MM-DD (exemplo: 2024-01-01)
                     caption=chart_result['caption'],
                     parse_mode='HTML'
                 )
-            
+
             # Limpar arquivo temporário
             import os
             os.remove(chart_result['chart_path'])
-            
+
             logger.info(f"Análise enviada para {user_name}: {symbol}")
         else:
             bot.reply_to(message, f"❌ {chart_result['error']}")
-            
+
     except Exception as e:
         logger.error(f"Erro no comando /analise: {str(e)}")
         bot.reply_to(message, "❌ Erro ao processar análise. Verifique os parâmetros e tente novamente.")
@@ -684,7 +683,7 @@ def restart_command(message):
     try:
         user_name = message.from_user.first_name
         logger.info(f"Comando /restart recebido de {user_name}")
-        
+
         restart_message = """🔄 REINICIANDO BOT...
 
 ⚠️ O bot será reiniciado completamente.
@@ -695,25 +694,25 @@ def restart_command(message):
 🔧 Limpando cache e memória...
 
 ✅ O bot voltará online em instantes!"""
-        
+
         bot.reply_to(message, restart_message)
         logger.info(f"Mensagem de restart enviada para {user_name}")
-        
+
         # Aguardar um pouco para enviar a mensagem antes de reiniciar
         time.sleep(2)
-        
+
         # Parar o bot e reiniciar o processo
         logger.info("🔄 Reiniciando bot por comando do usuário...")
         bot.stop_polling()
-        
+
         # Importar os módulos necessários para reiniciar
         import os
         import sys
-        
+
         # Reiniciar o processo Python
         logger.info("🚀 Executando restart completo...")
         os.execv(sys.executable, ['python'] + sys.argv)
-        
+
     except Exception as e:
         logger.error(f"Erro no comando /restart: {str(e)}")
         bot.reply_to(message, "❌ Erro ao reiniciar o bot. Tente novamente.")
@@ -722,7 +721,7 @@ def restart_command(message):
 def help_command(message):
     try:
         logger.info(f"Comando /help recebido de {message.from_user.first_name}")
-        
+
         help_message = """🤖 AJUDA - OVECCHIA TRADING BOT
 
 📋 COMANDOS DISPONÍVEIS:
@@ -768,16 +767,16 @@ def handle_message(message):
     try:
         user_message = message.text.lower()
         user_name = message.from_user.first_name
-        
+
         logger.info(f"Mensagem recebida de {user_name}: {user_message}")
-        
+
         if any(word in user_message for word in ['oi', 'olá', 'hello', 'hi']):
             bot.reply_to(message, "👋 Olá! Use /help para ver os comandos disponíveis.")
         elif 'ajuda' in user_message:
             help_command(message)
         else:
             bot.reply_to(message, "🤖 Use /help para ver os comandos disponíveis.")
-            
+
     except Exception as e:
         logger.error(f"Erro ao processar mensagem: {str(e)}")
 
@@ -785,12 +784,12 @@ def run_bot():
     """Função para rodar o bot"""
     max_retries = 3
     retry_count = 0
-    
+
     while retry_count < max_retries:
         try:
             logger.info("🤖 Iniciando OVECCHIA TRADING BOT...")
             print("🤖 OVECCHIA TRADING BOT ONLINE!")
-            
+
             # Configurar comandos do bot
             bot.set_my_commands([
                 telebot.types.BotCommand("start", "Iniciar o bot"),
@@ -801,17 +800,17 @@ def run_bot():
                 telebot.types.BotCommand("restart", "Reiniciar o bot"),
                 telebot.types.BotCommand("help", "Ajuda com comandos")
             ])
-            
+
             logger.info("🤖 Bot iniciado com sucesso!")
-            
+
             # Rodar o bot
             bot.polling(none_stop=True, interval=2, timeout=30)
-            
+
         except Exception as e:
             retry_count += 1
             logger.error(f"Erro crítico no bot (tentativa {retry_count}/{max_retries}): {str(e)}")
             print(f"❌ Erro ao iniciar bot (tentativa {retry_count}/{max_retries}): {str(e)}")
-            
+
             if retry_count < max_retries:
                 wait_time = 5 * retry_count  # Aumentar tempo de espera a cada tentativa
                 logger.info(f"🔄 Tentando novamente em {wait_time} segundos...")
