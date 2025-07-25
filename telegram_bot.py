@@ -230,7 +230,7 @@ class OvecchiaTradingBot:
 
         return results
 
-    def generate_analysis_chart(self, symbol, strategy_type, timeframe):
+    def generate_analysis_chart(self, symbol, strategy_type, timeframe, custom_start_date=None, custom_end_date=None):
         """Gera gráfico de análise para um ativo específico usando matplotlib"""
         try:
             import matplotlib.pyplot as plt
@@ -239,16 +239,20 @@ class OvecchiaTradingBot:
             import tempfile
             import os
             
-            # Define período baseado no timeframe
-            if timeframe in ['1m', '5m', '15m', '30m']:
-                days = 7  # 1 semana para timeframes menores
-            elif timeframe in ['1h', '4h']:
-                days = 30  # 1 mês para timeframes de horas
+            # Define período baseado no timeframe ou usa datas personalizadas
+            if custom_start_date and custom_end_date:
+                start_date = datetime.strptime(custom_start_date, '%Y-%m-%d').date()
+                end_date = datetime.strptime(custom_end_date, '%Y-%m-%d').date()
             else:
-                days = 180  # 6 meses para timeframes maiores
-                
-            end_date = datetime.now().date()
-            start_date = end_date - timedelta(days=days)
+                if timeframe in ['1m', '5m', '15m', '30m']:
+                    days = 7  # 1 semana para timeframes menores
+                elif timeframe in ['1h', '4h']:
+                    days = 30  # 1 mês para timeframes de horas
+                else:
+                    days = 180  # 6 meses para timeframes maiores
+                    
+                end_date = datetime.now().date()
+                start_date = end_date - timedelta(days=days)
 
             # Coletar dados
             df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
@@ -336,8 +340,11 @@ class OvecchiaTradingBot:
             if not os.path.exists(chart_path):
                 return {'success': False, 'error': 'Falha ao gerar arquivo de imagem'}
 
-            # Caption simples apenas com o título
-            caption = f"📊 OVECCHIA TRADING - {symbol}\n🎯 {strategy_type} | ⏰ {timeframe.upper()}"
+            # Caption com informações completas
+            if custom_start_date and custom_end_date:
+                caption = f"📊 OVECCHIA TRADING - {symbol}\n🎯 {strategy_type} | ⏰ {timeframe.upper()}\n📅 {custom_start_date} até {custom_end_date}"
+            else:
+                caption = f"📊 OVECCHIA TRADING - {symbol}\n🎯 {strategy_type} | ⏰ {timeframe.upper()}\n📅 Período: {start_date} até {end_date}"
 
             return {
                 'success': True,
@@ -574,7 +581,7 @@ def analise_command(message):
             help_message = """📊 ANÁLISE INDIVIDUAL DE ATIVO
 
 📝 Como usar:
-/analise [estrategia] [ativo] [timeframe]
+/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]
 
 🎯 Estratégias disponíveis:
 • agressiva - Mais sinais, maior frequência
@@ -584,22 +591,42 @@ def analise_command(message):
 ⏰ Timeframes disponíveis:
 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
 
+📅 Formato de datas (opcional):
+YYYY-MM-DD (exemplo: 2024-01-01)
+
 📈 Exemplos:
 /analise balanceada PETR4.SA 1d
-/analise agressiva BTC-USD 4h
-/analise conservadora AAPL 1d
+/analise agressiva BTC-USD 4h 2024-01-01 2024-01-31
+/analise conservadora AAPL 1d 2024-06-01 2024-12-01
 
 💡 Ativos suportados:
 • Cripto: BTC-USD, ETH-USD, etc.
 • Ações BR: PETR4.SA, VALE3.SA, etc.
 • Ações US: AAPL, GOOGL, etc.
-• Forex: EURUSD=X, etc."""
+• Forex: EURUSD=X, etc.
+
+ℹ️ Se não especificar datas, será usado período padrão baseado no timeframe"""
             bot.reply_to(message, help_message)
             return
 
         strategy_input = args[0].lower()
         symbol = args[1].upper()
         timeframe = args[2].lower()
+        
+        # Datas opcionais
+        start_date = None
+        end_date = None
+        
+        if len(args) >= 5:
+            try:
+                start_date = args[3]
+                end_date = args[4]
+                # Validar formato de data
+                datetime.strptime(start_date, '%Y-%m-%d')
+                datetime.strptime(end_date, '%Y-%m-%d')
+            except ValueError:
+                bot.reply_to(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
+                return
 
         # Mapear estratégias
         strategy_map = {
@@ -620,10 +647,13 @@ def analise_command(message):
             bot.reply_to(message, f"❌ Timeframe inválido. Use: {', '.join(valid_timeframes)}")
             return
 
-        bot.reply_to(message, f"🔄 Analisando {symbol} com estratégia {strategy_input} no timeframe {timeframe}...")
+        if start_date and end_date:
+            bot.reply_to(message, f"🔄 Analisando {symbol} de {start_date} até {end_date} com estratégia {strategy_input} no timeframe {timeframe}...")
+        else:
+            bot.reply_to(message, f"🔄 Analisando {symbol} com estratégia {strategy_input} no timeframe {timeframe}...")
         
         # Gerar análise e gráfico
-        chart_result = trading_bot.generate_analysis_chart(symbol, strategy, timeframe)
+        chart_result = trading_bot.generate_analysis_chart(symbol, strategy, timeframe, start_date, end_date)
         
         if chart_result['success']:
             # Enviar gráfico
@@ -658,8 +688,9 @@ def help_command(message):
 
 🏠 /start - Iniciar o bot
 
-📊 /analise [estrategia] [ativo] [timeframe]
+📊 /analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]
    Exemplo: /analise balanceada PETR4.SA 1d
+   Com datas: /analise balanceada PETR4.SA 1d 2024-01-01 2024-06-01
 
 🔍 /screening [estrategia] [ativos]
    Exemplo: /screening balanceada BTC-USD ETH-USD
