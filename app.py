@@ -2167,6 +2167,40 @@ with tab6:
         </div>
         """, unsafe_allow_html=True)
 
+        st.markdown("### 📌 Checkbox 'Sair por Mudança de Estado'")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>🔄 Funcionalidade do Checkbox "Sair por mudança de estado?"</strong></p>
+            <p>Este checkbox controla se as operações devem ser encerradas automaticamente quando o sistema detecta uma mudança no estado dos sinais, independentemente do critério de saída principal escolhido.</p>
+            
+            <p><strong>✅ Quando ATIVADO (Marcado):</strong></p>
+            <ul>
+                <li><strong>Saída Automática</strong>: A operação é encerrada imediatamente quando o estado muda (ex: de Buy para Sell, de Sell para Stay Out, etc.)</li>
+                <li><strong>Prioridade Máxima</strong>: A mudança de estado tem precedência sobre outros critérios de saída</li>
+                <li><strong>Maior Segurança</strong>: Evita manter posições quando o sistema já indica mudança de tendência</li>
+                <li><strong>Operações mais Curtas</strong>: Tende a gerar operações de menor duração</li>
+                <li><strong>Exemplo</strong>: Se você está comprado em PETR4 e o sistema muda de "Buy" para "Sell", a posição é encerrada automaticamente</li>
+            </ul>
+            
+            <p><strong>❌ Quando DESATIVADO (Desmarcado):</strong></p>
+            <ul>
+                <li><strong>Ignora Mudanças</strong>: Operações continuam ativas mesmo com mudança de estado</li>
+                <li><strong>Critério Principal</strong>: Apenas o critério de saída selecionado (Stop Loss, Alvo Fixo, etc.) encerra a operação</li>
+                <li><strong>Operações mais Longas</strong>: Permite que operações durem mais tempo</li>
+                <li><strong>Maior Exposição</strong>: Mantém posições mesmo quando sistema indica reversão</li>
+                <li><strong>Exemplo</strong>: Se você está comprado e o sistema muda para "Sell", você permanece comprado até atingir seu stop loss ou alvo</li>
+            </ul>
+            
+            <p><strong>💡 Recomendações de Uso:</strong></p>
+            <ul>
+                <li><strong>Ative</strong> para estratégias mais conservadoras e seguir sinais do sistema</li>
+                <li><strong>Desative</strong> para testar estratégias específicas de saída sem interferência dos sinais</li>
+                <li><strong>Para iniciantes</strong>: Recomenda-se manter ativado para maior segurança</li>
+                <li><strong>Para testes</strong>: Desative para avaliar puramente a eficácia do critério de saída escolhido</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
         st.markdown("### 📌 Funcionalidade de Otimização")
         st.markdown("""
         <div class="metric-card">
