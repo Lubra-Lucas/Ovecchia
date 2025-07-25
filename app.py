@@ -2220,38 +2220,28 @@ with tab6:
     """, unsafe_allow_html=True)
 
     st.markdown("### 🤖 Atualizações Recentes do Bot Telegram")
-    st.markdown("""
-    <div class="metric-card" style="border-left: 4px solid #25D366;">
-        <p><strong>🚀 Versão 2.0 - Bot @Ovecchia_bot</strong></p>
-        
-        <p><strong>📊 Nova Funcionalidade: Análise Individual com Gráficos</strong></p>
-        <ul>
-            <li><strong>Comando Aprimorado:</strong> <code>/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]</code></li>
-            <li><strong>Gráficos Automáticos:</strong> Geração de gráficos profissionais com matplotlib</li>
-            <li><strong>Períodos Personalizados:</strong> Defina suas próprias datas de análise</li>
-            <li><strong>Múltiplos Timeframes:</strong> De 1 minuto até 1 semana</li>
-        </ul>
-        
-        <p><strong>🔧 Melhorias Técnicas:</strong></p>
-        <ul>
-            <li><strong>Performance Otimizada:</strong> Processamento mais rápido de dados</li>
-            <li><strong>Tratamento de Erros:</strong> Mensagens mais claras para o usuário</li>
-            <li><strong>Validação de Dados:</strong> Verificação automática de formatos de data</li>
-            <li><strong>Cleanup Automático:</strong> Limpeza de arquivos temporários</li>
-        </ul>
-        
-        <p><strong>📈 Exemplos de Uso Avançado:</strong></p>
-        <ul>
-            <li><code>/analise balanceada BTC-USD 4h 2024-01-01 2024-01-31</code></li>
-            <li><code>/analise agressiva PETR4.SA 1d 2024-06-01 2024-12-01</code></li>
-            <li><code>/analise conservadora AAPL 1h</code> (período automático)</li>
-        </ul>
-        
-        <p style="margin-top: 1rem; padding: 0.5rem; background: #f0f8f0; border-radius: 5px; color: #25D366;">
-        <strong>💡 Dica:</strong> Use datas personalizadas para analisar períodos específicos de interesse ou eventos de mercado!
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class=\"metric-card\" style=\"border-left: 4px solid #25D366;\">
+            <p><strong>🚀 Versão 2.0 - Bot @Ovecchia_bot</strong></p>
+            <ul>
+                <li><strong>📊 Nova Funcionalidade:</strong> Análise Individual com Gráficos Interativos</li>
+                <li><strong>🔄 Comando Aprimorado:</strong> Estrutura mais intuitiva e funcional</li>
+                <li><strong>📅 Períodos Personalizados:</strong> Ajuste flexível das datas de análise</li>
+                <li><strong>⌚ Múltiplos Timeframes:</strong> Variedade de intervalos de tempo, de 1 minuto a 1 semana</li>
+                <li><strong>💾 Performance Otimizada:</strong> Processamento acelerado e eficiente dos dados</li>
+                <li><strong>❗ Tratamento Avançado de Erros:</strong> Alertas mais informativos para melhor usabilidade</li>
+                <li><strong>🔍 Validação Automática:</strong> Formatos de data são conferidos instantaneamente</li>
+                <li><strong>🧹 Manutenção Automática:</strong> Gerenciamento automático de arquivos temporários</li>
+            </ul>
+            <div style=\"background: #f0f8f0; padding: 1rem; border-radius: 10px; margin-top: 1rem;\">
+                <p style=\"color: #25D366;\"><strong>💡 Dica:</strong> Explore períodos personalizados para investigar eventos de mercado específicos!</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 
     st.markdown("### 👨‍💻 Desenvolvido por")
     st.markdown("""
