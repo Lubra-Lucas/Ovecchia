@@ -2305,23 +2305,24 @@ with tab6:
     with guide_tab3:
         st.markdown("## 📊 Guia de Utilização - Detecção de Topos e Fundos")
 
-        st.markdown("### 📌 O que é a Detecção de Topos e Fundos?")
+        st.markdown("### 📌 O que são Detecções Quantitativas de Topos e Fundos?")
         st.markdown("""
         <div class="metric-card">
-            <p>A Detecção de Topos e Fundos é uma funcionalidade especializada que utiliza as Bandas de Bollinger para identificar potenciais pontos de reversão de preço. Quando um ativo está fora das bandas estatísticas normais, isso pode indicar uma oportunidade de entrada contrária à tendência atual.</p>
+            <p>A Detecção Quantitativa de Topos e Fundos é uma funcionalidade especializada que utiliza métricas matemáticas e quantitativas para identificar potenciais pontos de reversão de preço. Este método aplica rigor analítico para capturar momentos em que o comportamento do mercado está anômalo em relação às suas oscilações esperadas.</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("### 📌 Como Funciona?")
         st.markdown("""
         <div class="metric-card">
-            <p>O sistema utiliza métricas matemáticas baseadas em Bandas de Bollinger:</p>
+            <p>O sistema se baseia em métricas quantitativas:
             <ul>
-                <li><strong>📊 Bandas de Bollinger</strong>: Calculadas com período de 20 e desvio padrão de 2</li>
-                <li><strong>🟢 Detecção de Fundos</strong>: Quando o preço está abaixo da banda inferior</li>
-                <li><strong>🔴 Detecção de Topos</strong>: Quando o preço está acima da banda superior</li>
-                <li><strong>📏 Medição de Distância</strong>: Calcula o percentual de distância das bandas</li>
+                <li><strong>📊 Análise de Desvios</strong>: Utilização de desvios padrões para detectar anomalias</li>
+                <li><strong>🟢 Detecção de Excesso de Venda</strong>: Identificado quando métricas cruzam limites inferiores</li>
+                <li><strong>🔴 Detecção de Excesso de Compra</strong>: Observado quando métricas ultrapassam limites superiores</li>
+                <li><strong>📏 Medição da Desvio</strong>: Calcula a magnitude do desvio em relação à média esperada</li>
             </ul>
+            </p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -2329,21 +2330,20 @@ with tab6:
         st.markdown("""
         <div class="metric-card">
             <p><strong>🟢 Possível Fundo (Oportunidade de Compra)</strong></p>
-            <p>Quando o preço do ativo está abaixo da banda inferior de Bollinger, isso indica:</p>
+            <p>Quando as variáveis do ativo indicam excesso de venda:
             <ul>
-                <li>O ativo pode estar sobrevendido</li>
-                <li>Possível reversão de alta a partir daquele ponto</li>
-                <li>Oportunidade para operações compradas</li>
-                <li>Maior distância = maior probabilidade de reversão</li>
+                <li>O ativo encontra-se subvalorizado em relação à média</li>
+                <li>Potencial de elevação dos preços a partir do estado atual</li>
+                <li>Oportunidade para apostas compradas</li>
+                <li>Maior desvio = maior potencial de correção</li>
             </ul>
-            
             <p><strong>🔴 Possível Topo (Oportunidade de Venda)</strong></p>
-            <p>Quando o preço está acima da banda superior de Bollinger:</p>
+            <p>Quando há sinais de excesso de compra:
             <ul>
-                <li>O ativo pode estar sobrecomprado</li>
-                <li>Possível reversão de baixa a partir daquele ponto</li>
-                <li>Oportunidade para operações vendidas ou saída de posições compradas</li>
-                <li>Maior distância = maior probabilidade de reversão</li>
+                <li>O ativo é considerado supervalorizado</li>
+                <li>Potencial de queda dos preços a partir do estado atual</li>
+                <li>Oportunidade de ações de venda ou desligamento de posições compradas</li>
+                <li>Maior desvio = maior potencial de correção</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -2355,43 +2355,42 @@ with tab6:
                 <li><strong>📋 Listas de Ativos</strong>: Mesmas opções do screening (Criptos, Ações BR/US, Forex, Commodities)</li>
                 <li><strong>📅 Período de Análise</strong>: Configure o intervalo de datas desejado</li>
                 <li><strong>⏱️ Timeframe</strong>: Recomendado usar 1h, 4h, 1d ou 1wk para melhor precisão</li>
-                <li><strong>🎯 Sensibilidade</strong>: Sistema usa parâmetros fixos otimizados (20 períodos, 2 desvios)</li>
+                <li><strong>🎯 Sensibilidade</strong>: Sistema usa parâmetros fixos otimizados para detectar anomalias</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("### 📌 Interpretando a Distância")
+        st.markdown("### 📌 Interpretando o Desvio")
         st.markdown("""
         <div class="metric-card">
-            <p><strong>📏 Percentual de Distância das Bandas</strong></p>
-            <p>A distância percentual indica a intensidade do sinal:</p>
+            <p><strong>📏 Análise do Desvio Padrão</strong></p>
+            <p>A magnitude do desvio indica a força do sinal:
             <ul>
-                <li><strong>0% - 1%</strong>: Sinal fraco, reversão menos provável</li>
-                <li><strong>1% - 3%</strong>: Sinal moderado, possível reversão</li>
-                <li><strong>3% - 5%</strong>: Sinal forte, reversão mais provável</li>
-                <li><strong>Acima de 5%</strong>: Sinal muito forte, alta probabilidade de reversão</li>
+                <li><strong>0% - 1%</strong>: Sinal fraco, correção menos provável</li>
+                <li><strong>1% - 3%</strong>: Sinal moderado, probabilidade de correção</li>
+                <li><strong>3% - 5%</strong>: Sinal forte, correção mais provável</li>
+                <li><strong>Acima de 5%</strong>: Sinal muito forte, alta probabilidade de correção</li>
             </ul>
-            <p><strong>💡 Regra Geral</strong>: Quanto maior a distância, maior a probabilidade de reversão, mas também maior o risco.</p>
+            <p><strong>💡 Regra Geral</strong>: Quanto maior o desvio, maior a probabilidade de correção, mas também maior o risco.</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("### 📌 Estratégias de Uso")
         st.markdown("""
         <div class="metric-card">
-            <p><strong>📈 Para Operações de Compra (Fundos)</strong></p>
+            <p><strong>📈 Para Operações de Compra (Excesso de Venda)</strong></p>
             <ul>
-                <li>Aguarde o ativo romper a banda inferior</li>
-                <li>Considere entrada gradual em múltiplos pontos</li>
-                <li>Use stop loss abaixo do menor preço recente</li>
-                <li>Meta: retorno à média móvel de 20 períodos</li>
+                <li>Espere até que métricas indiquem que o ativo está em território de venda excessiva</li>
+                <li>Utilize uma abordagem de entrada gradual em diferentes pontos de preço</li>
+                <li>Implementar stop loss abaixo do preço mais baixo detectado</li>
+                <li>Objetivo: Retorno à média esperada de comportamento</li>
             </ul>
-            
-            <p><strong>📉 Para Operações de Venda (Topos)</strong></p>
+            <p><strong>📉 Para Operações de Venda (Excesso de Compra)</strong></p>
             <ul>
-                <li>Aguarde o ativo romper a banda superior</li>
-                <li>Ideal para saída de posições compradas</li>
-                <li>Ou entrada em operações vendidas (short)</li>
-                <li>Meta: retorno à média móvel de 20 períodos</li>
+                <li>Aguarde até que o ativo esteja em território de compra excessiva</li>
+                <li>Recomenda-se encerrar posições longas</li>
+                <li>Opte por vendas curtas se o mercado permitir</li>
+                <li>Objetivo: Retorno à média esperada de comportamento</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -2399,13 +2398,13 @@ with tab6:
         st.markdown("### 📌 Limitações e Cuidados")
         st.markdown("""
         <div class="metric-card">
-            <p><strong>⚠️ Importantes Considerações</strong></p>
+            <p><strong>⚠️ Considerações Importantes</strong></p>
             <ul>
-                <li><strong>Tendências Fortes</strong>: Em tendências muito fortes, o ativo pode permanecer fora das bandas por longos períodos</li>
-                <li><strong>Confirmação</strong>: Use outros indicadores para confirmar os sinais</li>
-                <li><strong>Gestão de Risco</strong>: Sempre use stop loss, mesmo em sinais "muito fortes"</li>
-                <li><strong>Volatilidade</strong>: Em mercados muito voláteis, os sinais podem ser menos confiáveis</li>
-                <li><strong>Volume</strong>: Considere o volume de negociação para validar os sinais</li>
+                <li><strong>Fortes Tendências</strong>: Em mercados com tendências marcantes, o ativo pode permanecer desviado da média por períodos prolongados</li>
+                <li><strong>Confirmação</strong>: Importante validar sinais com indicadores adicionais</li>
+                <li><strong>Gestão de Risco</strong>: Sempre utilize stop loss, mesmo em sinais "muito fortes"</li>
+                <li><strong>Volatilidade</strong>: Em mercados voláteis, sinais podem ser menos confiáveis</li>
+                <li><strong>Volume</strong>: Verificar volume de negociações para suporte adicional aos sinais</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
