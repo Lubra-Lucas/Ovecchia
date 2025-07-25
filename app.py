@@ -453,8 +453,7 @@ with tab2:
 
     with col2:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
-        st.markdown("#### ✅ Confirmação de Sinais")
-        confirm_candles = st.number_input("Candles de Confirmação", min_value=0, max_value=5, value=0)
+        
 
         st.markdown("#### 📈 Estratégia de Sinais")
         st.markdown("""
@@ -620,7 +619,7 @@ with tab2:
                 ):
                     df.at[i, 'Signal'] = 'Sell'
 
-            # State persistence with confirmation delay
+            # State persistence - aplicar sinal imediatamente
             df['Estado'] = 'Stay Out'
 
             for i in range(len(df)):
@@ -631,26 +630,12 @@ with tab2:
                 # Estado anterior
                 estado_anterior = df['Estado'].iloc[i - 1]
 
-                # Verificar se houve mudança de sinal há confirm_candles períodos atrás
-                if confirm_candles == 0:
-                    # Sem confirmação - aplicar sinal imediatamente
-                    sinal_atual = df['Signal'].iloc[i]
-                    if sinal_atual != 'Stay Out':
-                        df.loc[df.index[i], 'Estado'] = sinal_atual
-                    else:
-                        df.loc[df.index[i], 'Estado'] = estado_anterior
+                # Aplicar sinal imediatamente
+                sinal_atual = df['Signal'].iloc[i]
+                if sinal_atual != 'Stay Out':
+                    df.loc[df.index[i], 'Estado'] = sinal_atual
                 else:
-                    # Com confirmação - aplicar sinal de confirm_candles períodos atrás
-                    if i > confirm_candles:
-                        # Verificar o sinal de confirm_candles períodos atrás
-                        sinal_passado = df['Signal'].iloc[i - confirm_candles]
-                        if sinal_passado != 'Stay Out':
-                            df.loc[df.index[i], 'Estado'] = sinal_passado
-                        else:
-                            df.loc[df.index[i], 'Estado'] = estado_anterior
-                    else:
-                        # Ainda não temos candles suficientes, manter estado anterior
-                        df.loc[df.index[i], 'Estado'] = estado_anterior
+                    df.loc[df.index[i], 'Estado'] = estado_anterior
 
             # ATR and Stop Loss calculations
             df['prior_close'] = df['close'].shift(1)
@@ -1440,8 +1425,7 @@ with tab3:
         interval_display_screening = st.selectbox("Intervalo de Tempo", list(interval_options.keys()), index=8, key="interval_screening")
         interval_screening = interval_options[interval_display_screening]
 
-        # Confirmation candles parameter
-        confirm_candles_screening = st.number_input("Candles de Confirmação", min_value=0, max_value=5, value=0, key="confirm_screening")
+        
 
         # Strategy selection
         st.markdown("#### 📈 Estratégia de Sinais")
@@ -1558,7 +1542,7 @@ with tab3:
                         ):
                             df_temp.at[i, 'Signal'] = 'Sell'
 
-                    # State persistence with confirmation delay
+                    # State persistence - aplicar sinal imediatamente
                     df_temp['Estado'] = 'Stay Out'
 
                     for i in range(len(df_temp)):
@@ -1569,26 +1553,12 @@ with tab3:
                         # Estado anterior
                         estado_anterior = df_temp['Estado'].iloc[i - 1]
 
-                        # Verificar se houve mudança de sinal há confirm_candles períodos atrás
-                        if confirm_candles_screening == 0:
-                            # Sem confirmação - aplicar sinal imediatamente
-                            sinal_atual = df_temp['Signal'].iloc[i]
-                            if sinal_atual != 'Stay Out':
-                                df_temp.loc[df_temp.index[i], 'Estado'] = sinal_atual
-                            else:
-                                df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
+                        # Aplicar sinal imediatamente
+                        sinal_atual = df_temp['Signal'].iloc[i]
+                        if sinal_atual != 'Stay Out':
+                            df_temp.loc[df_temp.index[i], 'Estado'] = sinal_atual
                         else:
-                            # Com confirmação - aplicar sinal de confirm_candles períodos atrás
-                            if i > confirm_candles_screening:
-                                # Verificar o sinal de confirm_candles períodos atrás
-                                sinal_passado = df_temp['Signal'].iloc[i - confirm_candles_screening]
-                                if sinal_passado != 'Stay Out':
-                                    df_temp.loc[df_temp.index[i], 'Estado'] = sinal_passado
-                                else:
-                                    df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
-                            else:
-                                # Ainda não temos candles suficientes, manter estado anterior
-                                df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
+                            df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
 
                     # Check for state change
                     current_state = df_temp['Estado'].iloc[-1]
@@ -2176,7 +2146,7 @@ with tab6:
                 <li><strong>Nome do Ativo 💹</strong>: Insira o código do ativo que deseja analisar (ex.: PETR4.SA, BTC-USD, AAPL).</li>
                 <li><strong>Intervalo de Data 📅</strong>: Escolha o período inicial e final da análise. Recomendamos intervalos superiores a 30 dias para maior precisão nos sinais. Atente-se às restrições históricas fornecidas pelo Yahoo Finance.</li>
                 <li><strong>Intervalo de Tempo ⏱️</strong>: Selecione a periodicidade desejada, como 1 minuto, 15 minutos, 1 hora, ou 1 dia, de acordo com seu perfil operacional.</li>
-                <li><strong>Confirmação de Sinais ✅</strong>: Defina o número de candles (períodos) consecutivos necessários para confirmar uma mudança de sinal, ajudando a filtrar sinais falsos.</li>
+                
                 <li><strong>Estratégia de Sinais 📈</strong>: Selecione entre Agressiva, Balanceada ou Conservadora para ajustar o sistema ao seu apetite por risco.</li>
                 <li><strong>Direção da Operação 🎯</strong>: Escolha entre operar em ambas direções (comprado e vendido), somente comprado ou somente vendido.</li>
             </ul>
@@ -2264,7 +2234,7 @@ with tab6:
             <ul>
                 <li><strong>📅 Período de Análise</strong>: Defina o intervalo de datas para análise (padrão: últimos 30 dias)</li>
                 <li><strong>⏱️ Timeframe</strong>: Escolha o intervalo temporal (recomendado: 1 dia para screening)</li>
-                <li><strong>✅ Confirmação</strong>: Configure candles de confirmação para filtrar sinais falsos</li>
+                
                 <li><strong>📈 Estratégia</strong>: Selecione entre Agressiva, Balanceada ou Conservadora</li>
             </ul>
         </div>
@@ -2626,19 +2596,7 @@ with tab6:
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("### 📌 Confirmação de Sinais")
-        st.markdown("""
-        <div class="metric-card">
-            <p><strong>✅ Sistema de Confirmação</strong></p>
-            <p>O parâmetro "Candles de Confirmação" determina quantos períodos o sistema aguarda antes de confirmar uma mudança de sinal:</p>
-            <ul>
-                <li><strong>0 Candles</strong>: Sinal imediato (mais reativo, mais sinais falsos)</li>
-                <li><strong>1-2 Candles</strong>: Confirmação rápida (equilibrio)</li>
-                <li><strong>3-5 Candles</strong>: Confirmação robusta (menos sinais falsos, menos reativo)</li>
-            </ul>
-            <p><strong>💡 Recomendação</strong>: Use 0-1 para timeframes altos (1d, 1wk) e 2-3 para timeframes baixos (1h, 4h).</p>
-        </div>
-        """, unsafe_allow_html=True)
+        
 
         st.markdown("### 📌 Direções de Operação")
         st.markdown("""
