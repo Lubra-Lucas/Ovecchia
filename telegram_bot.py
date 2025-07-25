@@ -186,12 +186,21 @@ class OvecchiaTradingBot:
         end_date = datetime.now().date()
         start_date = end_date - timedelta(days=730)  # 2 years
 
+        logger.info(f"Iniciando análise de topos/fundos para {len(symbols_list)} ativos")
+
         for symbol in symbols_list:
             try:
+                logger.info(f"Analisando topos/fundos para {symbol}")
                 df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
                                         end_date.strftime("%Y-%m-%d"), "1d")
 
-                if df.empty:
+                if df.empty or len(df) < 20:
+                    logger.warning(f"Dados insuficientes para {symbol}: {len(df) if not df.empty else 0} registros")
+                    continue
+
+                # Verificar se temos as colunas necessárias
+                if 'close' not in df.columns:
+                    logger.error(f"Coluna 'close' não encontrada para {symbol}")
                     continue
 
                 # Calculate Bollinger Bands
@@ -203,9 +212,19 @@ class OvecchiaTradingBot:
                 banda_superior = sma + (bb_std * std)
                 banda_inferior = sma - (bb_std * std)
 
+                # Verificar se temos dados válidos
+                if sma.iloc[-1] is None or pd.isna(sma.iloc[-1]):
+                    logger.warning(f"Dados de SMA inválidos para {symbol}")
+                    continue
+
                 current_price = df['close'].iloc[-1]
                 current_banda_superior = banda_superior.iloc[-1]
                 current_banda_inferior = banda_inferior.iloc[-1]
+
+                # Verificar se os valores são válidos
+                if pd.isna(current_price) or pd.isna(current_banda_superior) or pd.isna(current_banda_inferior):
+                    logger.warning(f"Valores NaN encontrados para {symbol}")
+                    continue
 
                 signal = None
                 distance_pct = 0
@@ -221,14 +240,16 @@ class OvecchiaTradingBot:
                     results.append({
                         'symbol': symbol,
                         'signal': signal,
-                        'current_price': current_price,
-                        'distance_pct': distance_pct
+                        'current_price': float(current_price),
+                        'distance_pct': float(distance_pct)
                     })
+                    logger.info(f"Sinal detectado para {symbol}: {signal}")
 
             except Exception as e:
                 logger.error(f"Erro ao analisar topos/fundos {symbol}: {str(e)}")
                 continue
 
+        logger.info(f"Análise de topos/fundos concluída: {len(results)} sinais encontrados")
         return results
 
     def generate_analysis_chart(self, symbol, strategy_type, timeframe, custom_start_date=None, custom_end_date=None):
