@@ -414,25 +414,87 @@ def screening_command(message):
         # Parse arguments
         args = message.text.split()[1:]  # Remove /screening from the list
 
+        # Listas pré-definidas
+        predefined_lists = {
+            'açõesbr': [
+                "ABEV3.SA", "ALPA4.SA", "AMER3.SA", "ARZZ3.SA", "ASAI3.SA",
+                "AZUL4.SA", "B3SA3.SA", "BBAS3.SA", "BBDC3.SA", "BBDC4.SA",
+                "BBSE3.SA", "BEEF3.SA", "BPAC11.SA", "BPAN4.SA", "BRAP4.SA",
+                "BRFS3.SA", "BRKM5.SA", "CASH3.SA", "CCRO3.SA", "CIEL3.SA",
+                "CMIG4.SA", "CMIN3.SA", "COGN3.SA", "CPFE3.SA", "CPLE6.SA",
+                "CRFB3.SA", "CSAN3.SA", "CSMG3.SA", "CSNA3.SA", "CVCB3.SA",
+                "CYRE3.SA", "DXCO3.SA", "EGIE3.SA", "ELET3.SA", "ELET6.SA",
+                "EMBR3.SA", "ENBR3.SA", "ENEV3.SA", "ENGI11.SA", "EQTL3.SA",
+                "EZTC3.SA", "FLRY3.SA", "GGBR4.SA", "GOAU4.SA", "GOLL4.SA",
+                "HAPV3.SA", "HYPE3.SA", "IGTI11.SA", "IRBR3.SA", "ITSA4.SA",
+                "ITUB4.SA", "JBSS3.SA", "KLBN11.SA", "LREN3.SA", "LWSA3.SA",
+                "MGLU3.SA", "MOVI3.SA", "MRFG3.SA", "MRVE3.SA", "MULT3.SA",
+                "NTCO3.SA", "PCAR3.SA", "PETR3.SA", "PETR4.SA", "PETZ3.SA",
+                "POSI3.SA", "PRIO3.SA", "QUAL3.SA", "RADL3.SA", "RAIL3.SA",
+                "RAIZ4.SA", "RDOR3.SA", "RENT3.SA", "SANB11.SA", "SBSP3.SA",
+                "SLCE3.SA", "SMTO3.SA", "SOMA3.SA", "SUZB3.SA", "TAEE11.SA",
+                "TIMS3.SA", "TOTS3.SA", "TRPL4.SA", "UGPA3.SA", "USIM5.SA",
+                "VALE3.SA", "VAMO3.SA", "VBBR3.SA", "VIIA3.SA", "VIVT3.SA",
+                "WEGE3.SA", "YDUQ3.SA", "ALSO3.SA", "SEQL3.SA", "SIMH3.SA",
+                "TTEN3.SA", "VIVA3.SA", "WEST3.SA", "OIBR4.SA", "CMIG3.SA",
+                "AESB3.SA", "NEOE3.SA", "CAML3.SA", "POMO4.SA", "GRND3.SA",
+                "ODPV3.SA", "ENAT3.SA", "LOGG3.SA", "MDIA3.SA", "RECV3.SA",
+                "SAPR11.SA", "SAPR4.SA", "SBFG3.SA", "TEND3.SA", "TFCO4.SA",
+                "HBOR3.SA", "HBSA3.SA", "SHOW3.SA", "ESPA3.SA", "ROMI3.SA",
+                "JHSF3.SA", "GUAR3.SA", "KEPL3.SA", "JSLG3.SA", "PGMN3.SA",
+                "PNVL3.SA", "PTBL3.SA", "RAPT4.SA", "SEER3.SA", "WIZC3.SA"
+            ],
+            'açõeseua': [
+                "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "BRK-B", "TSLA", 
+                "TSM", "JPM", "WMT", "LLY", "ORCL", "V", "MA", "NFLX", "XOM", "COST", 
+                "JNJ", "PLTR", "HD", "PG", "BAC", "ABBV", "KO", "CVX", "CRM", "UNH", 
+                "PM", "IBM", "MS", "GS", "LIN", "INTU", "ABT", "DIS", "AXP", "MRK", 
+                "MCD", "RTX", "CAT", "T", "NOW", "PEP", "UBER", "BKNG", "VZ", "TMO", 
+                "ISRG", "ACN", "C", "SCHW", "GEV", "BA", "BLK", "QCOM", "TXN", "AMGN", 
+                "SPGI", "ADBE", "BSX", "SYK", "ETN", "SO", "SPG", "TMUS", "NKE", "HON", 
+                "MDT", "MMM", "MO", "USB", "LMT", "UPS", "UNP", "PYPL", "TGT", "DE", 
+                "GILD", "CMCSA", "CHTR", "COP", "GE", "FDX", "DUK", "EMR", "DD", "NEE", 
+                "SBUX", "F", "GM", "OXY", "BIIB", "CVS", "CL", "ED", "GLW", "D", 
+                "PFE", "DG", "ADP", "ZTS", "BBY", "MNST", "TRV", "SLB", "ICE", "WELL", 
+                "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC", 
+                "NOC", "EXC", "SYY", "AON", "MET", "AFL", "TJX", "BMY", "HAL", "STZ"
+            ],
+            'criptos': [
+                "BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD",
+                "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD",
+                "TRX-USD", "LINK-USD", "MATIC-USD", "LTC-USD", "BCH-USD",
+                "FIL-USD", "APT-USD", "ARB-USD", "NEAR-USD", "VET-USD"
+            ],
+            'forex': ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"],
+            'commodities': ["GC=F", "SI=F", "CL=F", "NG=F", "HG=F", "ZC=F", "ZS=F", "KE=F", "CC=F", "KC=F"]
+        }
+
         if not args:
             help_message = """
 🔍 *SCREENING DE ATIVOS*
 
 📝 *Como usar:*
-/screening [estrategia] [ativos]
+/screening [estrategia] [lista/ativos]
 
 🎯 *Estratégias disponíveis:*
 • agressiva - Mais sinais
 • balanceada - Equilibrada (padrão)
 • conservadora - Sinais mais confiáveis
 
-📊 *Exemplo:*
-`/screening balanceada BTC-USD ETH-USD PETR4.SA VALE3.SA`
+📊 *Listas pré-definidas:*
+• açõesBR - Ações brasileiras
+• açõesEUA - Ações americanas
+• criptos - Criptomoedas
+• forex - Pares de moedas
+• commodities - Commodities
 
-💡 *Ativos suportados:*
-• Cripto: BTC-USD, ETH-USD, etc.
-• Ações BR: PETR4.SA, VALE3.SA, etc.
-• Ações US: AAPL, GOOGL, etc.
+📈 *Exemplos:*
+`/screening balanceada açõesBR`
+`/screening agressiva açõesEUA`
+`/screening conservadora criptos`
+`/screening balanceada BTC-USD ETH-USD PETR4.SA`
+
+💡 *Nota:* Você pode usar listas pré-definidas OU especificar ativos individuais
             """
             bot.reply_to(message, help_message, parse_mode='Markdown')
             return
@@ -440,7 +502,7 @@ def screening_command(message):
         bot.reply_to(message, "🔄 Processando screening...", parse_mode='Markdown')
 
         strategy = "Balanceado"
-        symbols = args
+        symbols = []
 
         # Verificar se o primeiro argumento é uma estratégia
         if args[0].lower() in ['agressiva', 'balanceada', 'conservadora']:
@@ -450,19 +512,41 @@ def screening_command(message):
                 'conservadora': 'Conservador'
             }
             strategy = strategy_map[args[0].lower()]
-            symbols = args[1:]
+            remaining_args = args[1:]
+        else:
+            remaining_args = args
+
+        # Verificar se é uma lista pré-definida ou ativos individuais
+        if len(remaining_args) == 1 and remaining_args[0].lower() in predefined_lists:
+            list_name = remaining_args[0].lower()
+            symbols = predefined_lists[list_name]
+            list_display_name = {
+                'açõesbr': 'Ações Brasileiras',
+                'açõeseua': 'Ações Americanas',
+                'criptos': 'Criptomoedas',
+                'forex': 'Forex',
+                'commodities': 'Commodities'
+            }
+            bot.reply_to(message, f"📊 Analisando lista: {list_display_name[list_name]} ({len(symbols)} ativos)", parse_mode='Markdown')
+        else:
+            symbols = remaining_args
 
         if not symbols:
-            bot.reply_to(message, "❌ Por favor, forneça pelo menos um ativo para análise.", parse_mode='Markdown')
+            bot.reply_to(message, "❌ Por favor, forneça uma lista válida ou pelo menos um ativo para análise.", parse_mode='Markdown')
             return
 
         logger.info(f"Realizando screening para {len(symbols)} ativos com estratégia {strategy}")
+
+        # Realizar screening (limitado a 50 ativos por vez para evitar timeout)
+        if len(symbols) > 50:
+            bot.reply_to(message, f"⚠️ Lista muito grande ({len(symbols)} ativos). Analisando os primeiros 50 ativos...", parse_mode='Markdown')
+            symbols = symbols[:50]
 
         # Realizar screening
         results = trading_bot.perform_screening(symbols, strategy)
 
         if results:
-            response = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia\n\n"
+            response = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
             for result in results:
                 state_icon = "🟢" if result['current_state'] == "Buy" else "🔴" if result['current_state'] == "Sell" else "⚫"
@@ -472,10 +556,26 @@ def screening_command(message):
                 response += f"💰 Preço: {result['current_price']:.2f}\n"
                 response += f"📈 {prev_icon} {result['previous_state']} → {state_icon} {result['current_state']}\n\n"
 
-            bot.reply_to(message, response, parse_mode='Markdown')
-            logger.info(f"Screening enviado para {user_name}: {len(results)} alertas")
+            # Dividir mensagem se muito longa
+            if len(response) > 4000:
+                parts = response.split('\n\n')
+                current_message = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia\n📈 Total analisado: {len(symbols)} ativos\n\n"
+                
+                for part in parts[1:]:  # Skip header
+                    if len(current_message + part + '\n\n') > 4000:
+                        bot.reply_to(message, current_message, parse_mode='Markdown')
+                        current_message = part + '\n\n'
+                    else:
+                        current_message += part + '\n\n'
+                
+                if current_message.strip():
+                    bot.reply_to(message, current_message, parse_mode='Markdown')
+            else:
+                bot.reply_to(message, response, parse_mode='Markdown')
+
+            logger.info(f"Screening enviado para {user_name}: {len(results)} alertas de {len(symbols)} ativos")
         else:
-            bot.reply_to(message, "ℹ️ Nenhuma mudança de estado detectada nos ativos analisados.", parse_mode='Markdown')
+            bot.reply_to(message, f"ℹ️ Nenhuma mudança de estado detectada nos {len(symbols)} ativos analisados.", parse_mode='Markdown')
             logger.info(f"Nenhum alerta encontrado para {user_name}")
 
     except Exception as e:
@@ -490,15 +590,80 @@ def topos_fundos_command(message):
 
         args = message.text.split()[1:]  # Remove /topos_fundos from the list
 
+        # Listas pré-definidas (mesmas do screening)
+        predefined_lists = {
+            'açõesbr': [
+                "ABEV3.SA", "ALPA4.SA", "AMER3.SA", "ARZZ3.SA", "ASAI3.SA",
+                "AZUL4.SA", "B3SA3.SA", "BBAS3.SA", "BBDC3.SA", "BBDC4.SA",
+                "BBSE3.SA", "BEEF3.SA", "BPAC11.SA", "BPAN4.SA", "BRAP4.SA",
+                "BRFS3.SA", "BRKM5.SA", "CASH3.SA", "CCRO3.SA", "CIEL3.SA",
+                "CMIG4.SA", "CMIN3.SA", "COGN3.SA", "CPFE3.SA", "CPLE6.SA",
+                "CRFB3.SA", "CSAN3.SA", "CSMG3.SA", "CSNA3.SA", "CVCB3.SA",
+                "CYRE3.SA", "DXCO3.SA", "EGIE3.SA", "ELET3.SA", "ELET6.SA",
+                "EMBR3.SA", "ENBR3.SA", "ENEV3.SA", "ENGI11.SA", "EQTL3.SA",
+                "EZTC3.SA", "FLRY3.SA", "GGBR4.SA", "GOAU4.SA", "GOLL4.SA",
+                "HAPV3.SA", "HYPE3.SA", "IGTI11.SA", "IRBR3.SA", "ITSA4.SA",
+                "ITUB4.SA", "JBSS3.SA", "KLBN11.SA", "LREN3.SA", "LWSA3.SA",
+                "MGLU3.SA", "MOVI3.SA", "MRFG3.SA", "MRVE3.SA", "MULT3.SA",
+                "NTCO3.SA", "PCAR3.SA", "PETR3.SA", "PETR4.SA", "PETZ3.SA",
+                "POSI3.SA", "PRIO3.SA", "QUAL3.SA", "RADL3.SA", "RAIL3.SA",
+                "RAIZ4.SA", "RDOR3.SA", "RENT3.SA", "SANB11.SA", "SBSP3.SA",
+                "SLCE3.SA", "SMTO3.SA", "SOMA3.SA", "SUZB3.SA", "TAEE11.SA",
+                "TIMS3.SA", "TOTS3.SA", "TRPL4.SA", "UGPA3.SA", "USIM5.SA",
+                "VALE3.SA", "VAMO3.SA", "VBBR3.SA", "VIIA3.SA", "VIVT3.SA",
+                "WEGE3.SA", "YDUQ3.SA", "ALSO3.SA", "SEQL3.SA", "SIMH3.SA",
+                "TTEN3.SA", "VIVA3.SA", "WEST3.SA", "OIBR4.SA", "CMIG3.SA",
+                "AESB3.SA", "NEOE3.SA", "CAML3.SA", "POMO4.SA", "GRND3.SA",
+                "ODPV3.SA", "ENAT3.SA", "LOGG3.SA", "MDIA3.SA", "RECV3.SA",
+                "SAPR11.SA", "SAPR4.SA", "SBFG3.SA", "TEND3.SA", "TFCO4.SA",
+                "HBOR3.SA", "HBSA3.SA", "SHOW3.SA", "ESPA3.SA", "ROMI3.SA",
+                "JHSF3.SA", "GUAR3.SA", "KEPL3.SA", "JSLG3.SA", "PGMN3.SA",
+                "PNVL3.SA", "PTBL3.SA", "RAPT4.SA", "SEER3.SA", "WIZC3.SA"
+            ],
+            'açõeseua': [
+                "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "BRK-B", "TSLA", 
+                "TSM", "JPM", "WMT", "LLY", "ORCL", "V", "MA", "NFLX", "XOM", "COST", 
+                "JNJ", "PLTR", "HD", "PG", "BAC", "ABBV", "KO", "CVX", "CRM", "UNH", 
+                "PM", "IBM", "MS", "GS", "LIN", "INTU", "ABT", "DIS", "AXP", "MRK", 
+                "MCD", "RTX", "CAT", "T", "NOW", "PEP", "UBER", "BKNG", "VZ", "TMO", 
+                "ISRG", "ACN", "C", "SCHW", "GEV", "BA", "BLK", "QCOM", "TXN", "AMGN", 
+                "SPGI", "ADBE", "BSX", "SYK", "ETN", "SO", "SPG", "TMUS", "NKE", "HON", 
+                "MDT", "MMM", "MO", "USB", "LMT", "UPS", "UNP", "PYPL", "TGT", "DE", 
+                "GILD", "CMCSA", "CHTR", "COP", "GE", "FDX", "DUK", "EMR", "DD", "NEE", 
+                "SBUX", "F", "GM", "OXY", "BIIB", "CVS", "CL", "ED", "GLW", "D", 
+                "PFE", "DG", "ADP", "ZTS", "BBY", "MNST", "TRV", "SLB", "ICE", "WELL", 
+                "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC", 
+                "NOC", "EXC", "SYY", "AON", "MET", "AFL", "TJX", "BMY", "HAL", "STZ"
+            ],
+            'criptos': [
+                "BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD",
+                "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD",
+                "TRX-USD", "LINK-USD", "MATIC-USD", "LTC-USD", "BCH-USD",
+                "FIL-USD", "APT-USD", "ARB-USD", "NEAR-USD", "VET-USD"
+            ],
+            'forex': ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"],
+            'commodities': ["GC=F", "SI=F", "CL=F", "NG=F", "HG=F", "ZC=F", "ZS=F", "KE=F", "CC=F", "KC=F"]
+        }
+
         if not args:
             help_message = """
 📊 *DETECÇÃO DE TOPOS E FUNDOS*
 
 📝 *Como usar:*
-/topos_fundos [ativos]
+/topos_fundos [lista/ativos]
 
-📈 *Exemplo:*
-`/topos_fundos BTC-USD ETH-USD PETR4.SA VALE3.SA AAPL GOOGL`
+📊 *Listas pré-definidas:*
+• açõesBR - Ações brasileiras
+• açõesEUA - Ações americanas
+• criptos - Criptomoedas
+• forex - Pares de moedas
+• commodities - Commodities
+
+📈 *Exemplos:*
+`/topos_fundos açõesBR`
+`/topos_fundos açõesEUA`
+`/topos_fundos criptos`
+`/topos_fundos BTC-USD ETH-USD PETR4.SA VALE3.SA`
 
 🎯 *O que detecta:*
 • Possíveis fundos (oportunidades de compra)
@@ -509,14 +674,39 @@ def topos_fundos_command(message):
             bot.reply_to(message, help_message, parse_mode='Markdown')
             return
 
-        symbols = args
+        symbols = []
+        
+        # Verificar se é uma lista pré-definida ou ativos individuais
+        if len(args) == 1 and args[0].lower() in predefined_lists:
+            list_name = args[0].lower()
+            symbols = predefined_lists[list_name]
+            list_display_name = {
+                'açõesbr': 'Ações Brasileiras',
+                'açõeseua': 'Ações Americanas', 
+                'criptos': 'Criptomoedas',
+                'forex': 'Forex',
+                'commodities': 'Commodities'
+            }
+            bot.reply_to(message, f"📊 Analisando topos e fundos: {list_display_name[list_name]} ({len(symbols)} ativos)", parse_mode='Markdown')
+        else:
+            symbols = args
+
+        if not symbols:
+            bot.reply_to(message, "❌ Por favor, forneça uma lista válida ou pelo menos um ativo para análise.", parse_mode='Markdown')
+            return
+
+        # Limitação para evitar timeout
+        if len(symbols) > 50:
+            bot.reply_to(message, f"⚠️ Lista muito grande ({len(symbols)} ativos). Analisando os primeiros 50 ativos...", parse_mode='Markdown')
+            symbols = symbols[:50]
+
         bot.reply_to(message, f"🔄 Analisando topos e fundos para {len(symbols)} ativos...", parse_mode='Markdown')
 
         # Detectar topos e fundos
         results = trading_bot.detect_tops_bottoms(symbols)
 
         if results:
-            response = "📊 *DETECÇÃO DE TOPOS E FUNDOS*\n\n⏰ Timeframe: 1 dia\n\n"
+            response = f"📊 *DETECÇÃO DE TOPOS E FUNDOS*\n\n⏰ Timeframe: 1 dia\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
             buy_opportunities = [r for r in results if 'Compra' in r['signal']]
             sell_opportunities = [r for r in results if 'Venda' in r['signal']]
@@ -533,10 +723,24 @@ def topos_fundos_command(message):
                     response += f"• *{result['symbol']}*: {result['current_price']:.2f}\n"
                     response += f"  📊 Distância: {result['distance_pct']:.2f}%\n\n"
 
-            bot.reply_to(message, response, parse_mode='Markdown')
-            logger.info(f"Topos e fundos enviados para {user_name}: {len(results)} oportunidades")
+            # Dividir mensagem se muito longa
+            if len(response) > 4000:
+                parts = response.split('🔴 *POSSÍVEIS TOPOS (VENDA):*')
+                if len(parts) > 1:
+                    # Enviar fundos primeiro
+                    first_part = parts[0]
+                    bot.reply_to(message, first_part, parse_mode='Markdown')
+                    # Enviar topos depois
+                    second_part = "🔴 *POSSÍVEIS TOPOS (VENDA):*" + parts[1]
+                    bot.reply_to(message, second_part, parse_mode='Markdown')
+                else:
+                    bot.reply_to(message, response, parse_mode='Markdown')
+            else:
+                bot.reply_to(message, response, parse_mode='Markdown')
+
+            logger.info(f"Topos e fundos enviados para {user_name}: {len(results)} oportunidades de {len(symbols)} ativos")
         else:
-            bot.reply_to(message, "ℹ️ Nenhuma oportunidade de topo ou fundo detectada nos ativos analisados.", parse_mode='Markdown')
+            bot.reply_to(message, f"ℹ️ Nenhuma oportunidade de topo ou fundo detectada nos {len(symbols)} ativos analisados.", parse_mode='Markdown')
 
     except Exception as e:
         logger.error(f"Erro no comando /topos_fundos: {str(e)}")
@@ -732,11 +936,13 @@ def help_command(message):
    Exemplo: /analise balanceada PETR4.SA 1d
    Com datas: /analise balanceada PETR4.SA 1d 2024-01-01 2024-06-01
 
-🔍 /screening [estrategia] [ativos]
-   Exemplo: /screening balanceada BTC-USD ETH-USD
+🔍 /screening [estrategia] [lista/ativos]
+   Com lista: /screening balanceada açõesBR
+   Individual: /screening balanceada BTC-USD ETH-USD
 
-📈 /topos_fundos [ativos]
-   Exemplo: /topos_fundos PETR4.SA VALE3.SA
+📈 /topos_fundos [lista/ativos]
+   Com lista: /topos_fundos açõesEUA
+   Individual: /topos_fundos PETR4.SA VALE3.SA
 
 📊 /status - Ver status do bot
 
@@ -749,14 +955,20 @@ def help_command(message):
 • balanceada - Equilibrada
 • conservadora - Mais confiável
 
-⏰ TIMEFRAMES:
+📊 LISTAS PRÉ-DEFINIDAS:
+• açõesBR - Ações brasileiras (126 ativos)
+• açõesEUA - Ações americanas (100+ ativos)
+• criptos - Criptomoedas principais (20 ativos)
+• forex - Pares de moedas (8 pares)
+• commodities - Commodities (10 ativos)
+
+⏰ TIMEFRAMES (apenas /analise):
 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
 
-💡 EXEMPLOS DE ATIVOS:
-• Cripto: BTC-USD, ETH-USD, ADA-USD
-• Ações BR: PETR4.SA, VALE3.SA, ITUB4.SA
-• Ações US: AAPL, GOOGL, MSFT, TSLA
-• Forex: EURUSD=X, GBPUSD=X"""
+💡 EXEMPLOS:
+• /screening balanceada açõesBR
+• /topos_fundos criptos
+• /analise agressiva NVDA 4h"""
         bot.reply_to(message, help_message)
     except Exception as e:
         logger.error(f"Erro no comando /help: {str(e)}")
