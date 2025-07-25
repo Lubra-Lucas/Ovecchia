@@ -231,10 +231,11 @@ class OvecchiaTradingBot:
         return results
 
     def generate_analysis_chart(self, symbol, strategy_type, timeframe):
-        """Gera gráfico de análise para um ativo específico"""
+        """Gera gráfico de análise para um ativo específico usando matplotlib"""
         try:
-            import plotly.graph_objects as go
-            from plotly.subplots import make_subplots
+            import matplotlib.pyplot as plt
+            import matplotlib.dates as mdates
+            from matplotlib.patches import Rectangle
             import tempfile
             import os
             
@@ -262,6 +263,9 @@ class OvecchiaTradingBot:
             if df.empty:
                 return {'success': False, 'error': 'Erro ao calcular indicadores'}
 
+            # Preparar dados para matplotlib
+            df['time'] = pd.to_datetime(df['time'])
+            
             # Color coding
             df['Color'] = 'black'
             df.loc[df['Estado'] == 'Buy', 'Color'] = 'blue'
@@ -271,106 +275,62 @@ class OvecchiaTradingBot:
             estado_mapping = {'Buy': 1, 'Sell': 0, 'Stay Out': 0.5}
             df['Indicator'] = df['Estado'].apply(lambda x: estado_mapping.get(x, 0.5))
 
-            # Criar gráfico igual ao Streamlit
-            titulo_grafico = f"OVECCHIA TRADING - {symbol} - Timeframe: {timeframe.upper()}"
+            # Criar figura com subplots
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), 
+                                         gridspec_kw={'height_ratios': [3, 1]}, 
+                                         sharex=True)
+            
+            # Título principal
+            titulo_grafico = f"OVECCHIA TRADING - {symbol} - {timeframe.upper()}"
+            fig.suptitle(titulo_grafico, fontsize=16, fontweight='bold')
 
-            fig = make_subplots(
-                rows=2, cols=1,
-                shared_xaxes=True,
-                vertical_spacing=0.03,
-                row_heights=[0.75, 0.25],
-                subplot_titles=("Gráfico do Preço com Sinais", "Indicador de Sinais")
-            )
-
-            # Add price line with color coding (igual ao Streamlit)
+            # Subplot 1: Preço com sinais
+            ax1.set_title("Gráfico do Preço com Sinais", fontsize=12)
+            
+            # Plotar linha de preço com cores baseadas no estado
             for i in range(len(df) - 1):
-                fig.add_trace(go.Scatter(
-                    x=df['time'][i:i+2],
-                    y=df['close'][i:i+2],
-                    mode="lines",
-                    line=dict(color=df['Color'][i], width=2),
-                    showlegend=False,
-                    hoverinfo="skip"
-                ), row=1, col=1)
+                color = df['Color'].iloc[i]
+                ax1.plot(df['time'].iloc[i:i+2], df['close'].iloc[i:i+2], 
+                        color=color, linewidth=2)
+            
+            ax1.set_ylabel('Preço', fontsize=10)
+            ax1.grid(True, alpha=0.3)
+            
+            # Adicionar legenda
+            from matplotlib.lines import Line2D
+            legend_elements = [
+                Line2D([0], [0], color='blue', lw=2, label='Sinal de Compra'),
+                Line2D([0], [0], color='red', lw=2, label='Sinal de Venda'),
+                Line2D([0], [0], color='black', lw=2, label='Ficar de Fora')
+            ]
+            ax1.legend(handles=legend_elements, loc='upper left')
 
-            # Add invisible trace for hover info
-            fig.add_trace(go.Scatter(
-                x=df['time'],
-                y=df['close'],
-                mode='lines',
-                line=dict(color='rgba(0,0,0,0)'),name='Price',
-                hovertemplate="<b>Price:</b> %{y:.2f}<br><b>Time:</b> %{x}<extra></extra>",
-                showlegend=False
-            ), row=1, col=1)
+            # Subplot 2: Indicador de sinais
+            ax2.set_title("Indicador de Sinais", fontsize=12)
+            ax2.plot(df['time'], df['Indicator'], color='purple', linewidth=2, marker='o', markersize=2)
+            ax2.axhline(y=0.5, color='black', linestyle='--', alpha=0.7)
+            ax2.set_ylabel('Sinal', fontsize=10)
+            ax2.set_ylim(-0.1, 1.1)
+            ax2.set_yticks([0, 0.5, 1])
+            ax2.set_yticklabels(['Venda', 'Ficar de Fora', 'Compra'])
+            ax2.grid(True, alpha=0.3)
 
-            # Add signal indicator
-            fig.add_trace(go.Scatter(
-                x=df['time'],
-                y=df['Indicator'],
-                mode="lines+markers",
-                name="Signal Indicator",
-                line=dict(color="purple", width=2),
-                marker=dict(size=4),
-                showlegend=False
-            ), row=2, col=1)
+            # Formatação do eixo X
+            ax2.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m'))
+            ax2.xaxis.set_major_locator(mdates.DayLocator(interval=max(1, len(df)//10)))
+            plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45)
 
-            # Add legend items (igual ao Streamlit)
-            fig.add_trace(go.Scatter(
-                x=[None], y=[None], mode='lines',
-                line=dict(color='blue', width=2),
-                name='Sinal de Compra'
-            ), row=1, col=1)
+            # Ajustar layout
+            plt.tight_layout()
+            plt.subplots_adjust(top=0.93)
 
-            fig.add_trace(go.Scatter(
-                x=[None], y=[None], mode='lines',
-                line=dict(color='red', width=2),
-                name='Sinal de Venda'
-            ), row=1, col=1)
-
-            fig.add_trace(go.Scatter(
-                x=[None], y=[None], mode='lines',
-                line=dict(color='black', width=2),
-                name='Ficar de Fora'
-            ), row=1, col=1)
-
-            # Add reference line for signal indicator
-            fig.add_shape(
-                type="line",
-                x0=df['time'].iloc[0],
-                x1=df['time'].iloc[-1],
-                y0=0.5,
-                y1=0.5,
-                line=dict(color="black", width=1, dash="dash"),
-                xref="x", yref="y2"
-            )
-
-            # Update layout (igual ao Streamlit)
-            fig.update_yaxes(range=[-0.1, 1.1], tickvals=[0, 0.5, 1], 
-                           ticktext=['Venda', 'Ficar de Fora', 'Compra'], row=2, col=1)
-            fig.update_xaxes(showgrid=False, row=2, col=1)
-
-            # Update layout
-            fig.update_layout(
-                title=dict(text=titulo_grafico, x=0.5, font=dict(size=18)),
-                template="plotly_white",
-                hovermode="x unified",
-                height=700
-            )
-
-            # Salvar gráfico temporariamente usando método mais robusto
+            # Salvar gráfico
             temp_dir = tempfile.gettempdir()
             chart_filename = f"chart_{symbol.replace('.', '_').replace('-', '_')}_{int(datetime.now().timestamp())}.png"
             chart_path = os.path.join(temp_dir, chart_filename)
             
-            # Tentar salvar com diferentes métodos para garantir compatibilidade
-            try:
-                fig.write_image(chart_path, width=1200, height=700, scale=1, format="png")
-            except Exception as img_error:
-                logger.warning(f"Erro com write_image, tentando método alternativo: {str(img_error)}")
-                # Método alternativo usando to_image
-                img_bytes = fig.to_image(format="png", width=1200, height=700, scale=1)
-                with open(chart_path, 'wb') as f:
-                    f.write(img_bytes)
+            plt.savefig(chart_path, dpi=150, bbox_inches='tight', facecolor='white')
+            plt.close()  # Fechar figura para liberar memória
 
             # Verificar se o arquivo foi criado
             if not os.path.exists(chart_path):
