@@ -148,7 +148,7 @@ class OvecchiaTradingBot:
         """Realiza screening de múltiplos ativos"""
         results = []
         end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=365)
+        start_date = end_date - timedelta(days=730)  # 2 years
 
         for symbol in symbols_list:
             try:
@@ -184,7 +184,7 @@ class OvecchiaTradingBot:
         """Detecta topos e fundos usando Bollinger Bands"""
         results = []
         end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=365)
+        start_date = end_date - timedelta(days=730)  # 2 years
 
         for symbol in symbols_list:
             try:
@@ -488,6 +488,10 @@ def screening_command(message):
 • forex - Pares de moedas
 • commodities - Commodities
 
+⏰ *Configurações fixas:*
+• Timeframe: 1 dia (fixo)
+• Período: 2 anos de dados históricos
+
 📈 *Exemplos:*
 `/screening balanceada açõesBR`
 `/screening agressiva açõesEUA`
@@ -546,7 +550,7 @@ def screening_command(message):
         results = trading_bot.perform_screening(symbols, strategy)
 
         if results:
-            response = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia\n📈 Total analisado: {len(symbols)} ativos\n\n"
+            response = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
             for result in results:
                 state_icon = "🟢" if result['current_state'] == "Buy" else "🔴" if result['current_state'] == "Sell" else "⚫"
@@ -659,6 +663,10 @@ def topos_fundos_command(message):
 • forex - Pares de moedas
 • commodities - Commodities
 
+⏰ *Configurações fixas:*
+• Timeframe: 1 dia (fixo)
+• Período: 2 anos de dados históricos
+
 📈 *Exemplos:*
 `/topos_fundos açõesBR`
 `/topos_fundos açõesEUA`
@@ -669,7 +677,6 @@ def topos_fundos_command(message):
 • Possíveis fundos (oportunidades de compra)
 • Possíveis topos (oportunidades de venda)
 • Baseado em Bollinger Bands
-• Timeframe: 1 dia
             """
             bot.reply_to(message, help_message, parse_mode='Markdown')
             return
@@ -706,7 +713,7 @@ def topos_fundos_command(message):
         results = trading_bot.detect_tops_bottoms(symbols)
 
         if results:
-            response = f"📊 *DETECÇÃO DE TOPOS E FUNDOS*\n\n⏰ Timeframe: 1 dia\n📈 Total analisado: {len(symbols)} ativos\n\n"
+            response = f"📊 *DETECÇÃO DE TOPOS E FUNDOS*\n\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
             buy_opportunities = [r for r in results if 'Compra' in r['signal']]
             sell_opportunities = [r for r in results if 'Venda' in r['signal']]
@@ -935,14 +942,17 @@ def help_command(message):
 📊 /analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]
    Exemplo: /analise balanceada PETR4.SA 1d
    Com datas: /analise balanceada PETR4.SA 1d 2024-01-01 2024-06-01
+   ⚠️ Timeframes personalizáveis: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
 
 🔍 /screening [estrategia] [lista/ativos]
    Com lista: /screening balanceada açõesBR
    Individual: /screening balanceada BTC-USD ETH-USD
+   ⚠️ Timeframe fixo: 1d | Período fixo: 2 anos
 
 📈 /topos_fundos [lista/ativos]
    Com lista: /topos_fundos açõesEUA
    Individual: /topos_fundos PETR4.SA VALE3.SA
+   ⚠️ Timeframe fixo: 1d | Período fixo: 2 anos
 
 📊 /status - Ver status do bot
 
@@ -962,8 +972,10 @@ def help_command(message):
 • forex - Pares de moedas (8 pares)
 • commodities - Commodities (10 ativos)
 
-⏰ TIMEFRAMES (apenas /analise):
-1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+⏰ TIMEFRAMES:
+• /analise: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk (personalizável)
+• /screening: 1d (fixo) - 2 anos de dados
+• /topos_fundos: 1d (fixo) - 2 anos de dados
 
 💡 EXEMPLOS:
 • /screening balanceada açõesBR

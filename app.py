@@ -1820,19 +1820,18 @@ with tab4:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         st.markdown("#### 📅 Configurações de Análise")
 
-        # Date range selection
+        # Fixed period: 2 years
         default_end_screening = datetime.now().date()
-        default_start_screening = default_end_screening - timedelta(days=365)
+        default_start_screening = default_end_screening - timedelta(days=730)  # 2 years
 
-        col_date1, col_date2 = st.columns(2)
-        with col_date1:
-            start_date_screening = st.date_input("Data Inicial", value=default_start_screening, max_value=default_end_screening, key="start_screening")
-        with col_date2:
-            end_date_screening = st.date_input("Data Final", value=default_end_screening, min_value=start_date_screening, max_value=default_end_screening, key="end_screening")
+        start_date_screening = default_start_screening
+        end_date_screening = default_end_screening
+        
+        st.info("📅 **Período fixo:** 2 anos de dados históricos")
+        st.info("⏰ **Timeframe fixo:** 1 dia")
 
-        # Interval selection
-        interval_display_screening = st.selectbox("Intervalo de Tempo", list(interval_options.keys()), index=8, key="interval_screening")
-        interval_screening = interval_options[interval_display_screening]
+        # Fixed interval: 1 day
+        interval_screening = "1d"
 
         
 
@@ -2153,25 +2152,18 @@ with tab5:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         st.markdown("#### 📅 Configurações de Análise")
 
-        # Date range selection
+        # Fixed period: 2 years
         default_end_bb = datetime.now().date()
-        default_start_bb = default_end_bb - timedelta(days=365)
+        default_start_bb = default_end_bb - timedelta(days=730)  # 2 years
 
-        col_date1, col_date2 = st.columns(2)
-        with col_date1:
-            start_date_bb = st.date_input("Data Inicial", value=default_start_bb, max_value=default_end_bb, key="start_bb")
-        with col_date2:
-            end_date_bb = st.date_input("Data Final", value=default_end_bb, min_value=start_date_bb, max_value=default_end_bb, key="end_bb")
+        start_date_bb = default_start_bb
+        end_date_bb = default_end_bb
+        
+        st.info("📅 **Período fixo:** 2 anos de dados históricos")
+        st.info("⏰ **Timeframe fixo:** 1 dia")
 
-        # Interval selection - Limited options for BB analysis
-        bb_interval_options = {
-            "1 hour": "1h",
-            "4 hours": "4h", 
-            "1 day": "1d",
-            "1 week": "1wk"
-        }
-        interval_display_bb = st.selectbox("Intervalo de Tempo", list(bb_interval_options.keys()), index=2, key="interval_bb")
-        interval_bb = bb_interval_options[interval_display_bb]
+        # Fixed interval: 1 day
+        interval_bb = "1d"
 
         st.markdown('</div>', unsafe_allow_html=True)
 
