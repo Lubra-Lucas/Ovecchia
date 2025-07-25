@@ -1972,11 +1972,12 @@ with tab5:
             
             <p><strong>2. Comandos disponíveis:</strong></p>
             <ul>
-                <li><code>/start</code> - Iniciar o bot</li>
-                <li><code>/screening</code> - Configurar screening de ativos</li>
-                <li><code>/topos_fundos</code> - Detectar topos e fundos</li>
-                <li><code>/status</code> - Ver status dos alertas</li>
-                <li><code>/help</code> - Ajuda com comandos</li>
+                <li><code>/start</code> - Iniciar o bot e ver boas-vindas</li>
+                <li><code>/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]</code> - Análise individual com gráfico</li>
+                <li><code>/screening [estrategia] [ativos]</code> - Screening de múltiplos ativos</li>
+                <li><code>/topos_fundos [ativos]</code> - Detectar topos e fundos</li>
+                <li><code>/status</code> - Ver status do bot</li>
+                <li><code>/help</code> - Ajuda detalhada com comandos</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1987,13 +1988,14 @@ with tab5:
         <div class="metric-card">
             <p><strong>Estratégias disponíveis:</strong></p>
             <ul>
-                <li><strong>🔥 Agressiva:</strong> Mais sinais, maior frequência</li>
-                <li><strong>⚖️ Balanceada:</strong> Equilíbrio entre sinais e confiabilidade</li>
-                <li><strong>🛡️ Conservadora:</strong> Sinais mais confiáveis, menor frequência</li>
+                <li><strong>🔥 agressiva:</strong> Mais sinais, maior frequência</li>
+                <li><strong>⚖️ balanceada:</strong> Equilíbrio entre sinais e confiabilidade</li>
+                <li><strong>🛡️ conservadora:</strong> Sinais mais confiáveis, menor frequência</li>
             </ul>
             
-            <p><strong>Timeframe fixo:</strong> 1 dia</p>
-            <p><strong>Período de análise:</strong> 365 dias</p>
+            <p><strong>Timeframes suportados:</strong> 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk</p>
+            <p><strong>Período padrão de análise:</strong> Baseado no timeframe escolhido</p>
+            <p><strong>Datas personalizadas:</strong> Formato YYYY-MM-DD (opcional)</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -2040,7 +2042,12 @@ with tab5:
             <li><strong>Clique em "Iniciar"</strong> ou digite <code>/start</code></li>
             <li><strong>Pronto!</strong> O bot responderá com as opções disponíveis</li>
         </ol>
-        <p style="margin-top: 1rem;"><strong>💡 Dica:</strong> Digite <code>/help</code> a qualquer momento para ver todos os comandos.</p>
+        <p style="margin-top: 1rem;"><strong>💡 Exemplos de comandos:</strong></p>
+        <ul style="color: #333;">
+            <li><code>/analise balanceada PETR4.SA 1d</code> - Análise da Petrobras</li>
+            <li><code>/screening balanceada BTC-USD ETH-USD</code> - Screening de criptos</li>
+            <li><code>/topos_fundos PETR4.SA VALE3.SA</code> - Detectar extremos</li>
+        </ul>
     </div>
     """, unsafe_allow_html=True)
 
@@ -2051,15 +2058,27 @@ with tab5:
     <div class="metric-card">
         <p><strong>🔍 Exemplo de Screening:</strong></p>
         <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; font-family: monospace;">
-            🤖 OVECCHIA TRADING - SCREENING ALERT<br>
-            📊 Estratégia: Balanceada<br>
+            🚨 ALERTAS DE MUDANÇA DE ESTADO<br><br>
+            📊 Estratégia: Balanceado<br>
             ⏰ Timeframe: 1 dia<br><br>
-            🟢 COMPRA DETECTADA:<br>
-            • BTC-USD: $45,230.50<br>
-            • Estado: Stay Out → Buy<br><br>
-            🔴 VENDA DETECTADA:<br>
-            • ETH-USD: $2,850.75<br>
-            • Estado: Buy → Sell
+            🟢 BTC-USD<br>
+            💰 Preço: 45,230.50<br>
+            📈 ⚫ Stay Out → 🟢 Buy<br><br>
+            🔴 ETH-USD<br>
+            💰 Preço: 2,850.75<br>
+            📈 🟢 Buy → 🔴 Sell
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="metric-card">
+        <p><strong>📊 Exemplo de Análise Individual:</strong></p>
+        <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; font-family: monospace;">
+            📊 OVECCHIA TRADING - PETR4.SA<br>
+            🎯 Balanceado | ⏰ 1D<br>
+            📅 Período: 2024-01-01 até 2024-12-01<br><br>
+            [Gráfico de análise enviado como imagem]
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -2068,14 +2087,14 @@ with tab5:
     <div class="metric-card">
         <p><strong>📊 Exemplo de Topos e Fundos:</strong></p>
         <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; font-family: monospace;">
-            🤖 OVECCHIA TRADING - TOPOS & FUNDOS<br>
+            📊 DETECÇÃO DE TOPOS E FUNDOS<br>
             ⏰ Timeframe: 1 dia<br><br>
-            🟢 POSSÍVEL FUNDO (COMPRA):<br>
-            • PETR4.SA: R$ 28.45<br>
-            • Distância da banda: 2.3%<br><br>
-            🔴 POSSÍVEL TOPO (VENDA):<br>
-            • VALE3.SA: R$ 72.80<br>
-            • Distância : 1.8%
+            🟢 POSSÍVEIS FUNDOS (COMPRA):<br>
+            • PETR4.SA: 28.45<br>
+            📊 Distância: 2.30%<br><br>
+            🔴 POSSÍVEIS TOPOS (VENDA):<br>
+            • VALE3.SA: 72.80<br>
+            📊 Distância: 1.80%
         </div>
     </div>
     """, unsafe_allow_html=True)
