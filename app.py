@@ -306,7 +306,7 @@ st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING - MODELO QUANT</h1>', 
 st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Análise Técnica e Sinais de Trading</p>', unsafe_allow_html=True)
 
 # Create main navigation tabs
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏠 Home", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "📊 Detecção de Topos e Fundos", "🤖 Bot Telegram", "ℹ️ Sobre"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["🏠 Home", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "📊 Detecção de Topos e Fundos", "🤖 Bot Telegram", "📖 Guia de Utilização", "ℹ️ Sobre"])
 
 with tab1:
     # Home page content
@@ -2125,6 +2125,580 @@ with tab5:
     """, unsafe_allow_html=True)
 
 with tab6:
+    # Guia de Utilização tab
+    st.markdown("## 📖 Guia de Utilização - Manual Completo")
+    st.markdown("Manual detalhado para utilização de todas as funcionalidades do sistema OVECCHIA TRADING")
+
+    # Create sub-tabs for different sections
+    guide_tab1, guide_tab2, guide_tab3, guide_tab4, guide_tab5 = st.tabs([
+        "📊 Análise Individual", 
+        "🔍 Screening Multi-Ativos", 
+        "📊 Topos e Fundos", 
+        "🤖 Bot Telegram",
+        "⚙️ Parâmetros Gerais"
+    ])
+
+    with guide_tab1:
+        st.markdown("## 📊 Guia de Utilização - Análise Individual do Ativo")
+
+        st.markdown("### 📌 O que é a Análise Individual?")
+        st.markdown("""
+        <div class="metric-card">
+            <p>A Análise Individual é uma funcionalidade avançada que auxilia o usuário a identificar pontos ideais de compra e venda de um determinado ativo financeiro. Utilizando métricas matemáticas e técnicas avançadas de análise técnica, o sistema consegue captar movimentos claros de tendência, facilitando tomadas de decisão mais seguras e assertivas.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Como funciona?")
+        st.markdown("""
+        <div class="metric-card">
+            <p>O sistema opera baseado em três estratégias diferentes, adaptadas para diferentes perfis de investidores:</p>
+            <ul>
+                <li><strong>Agressiva 🔥</strong>: gera mais sinais, oferecendo mais oportunidades, porém com maior risco associado.</li>
+                <li><strong>Balanceada ⚖️</strong>: equilíbrio entre frequência de sinais e confiabilidade.</li>
+                <li><strong>Conservadora 🛡️</strong>: menos sinais, mas com alta confiabilidade, reduzindo a exposição ao risco.</li>
+            </ul>
+            <p>Por exemplo, imagine que você deseja investir em PETR4.SA (Petrobras). É fundamental saber exatamente o momento certo para entrar ou sair desse ativo, protegendo seu patrimônio e maximizando lucros. Os melhores momentos são claramente exibidos no gráfico de preços com sinais coloridos:</p>
+            <ul>
+                <li><strong>Linha Azul 🔵</strong>: indica ao usuário para se manter em posição comprada (apostando na alta).</li>
+                <li><strong>Linha Vermelha 🔴</strong>: sugere ao usuário manter posição vendida (apostando na baixa).</li>
+                <li><strong>Linha Preta ⚫</strong>: indica que é melhor ficar fora do mercado naquele momento.</li>
+            </ul>
+            <p>A grande vantagem do sistema está em identificar mudanças de estado: quando o gráfico passa de vermelho para azul, é um sinal claro para entrar comprado. Da mesma forma, de azul para vermelho, é a hora de assumir uma posição vendida ou sair de uma posição comprada, aumentando a probabilidade de capturar grandes movimentos de mercado.</p>
+            <p>Você também pode entrar em uma operação já em andamento e usar os pontos de Stop Loss para limitar perdas caso o mercado vá contra sua posição ou para surfar uma tendência já estabelecida, garantindo segurança e tranquilidade operacional.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Parâmetros Essenciais")
+        st.markdown("""
+        <div class="metric-card">
+            <p>Para realizar a análise individual, você deverá configurar os seguintes parâmetros:</p>
+            <ul>
+                <li><strong>Nome do Ativo 💹</strong>: Insira o código do ativo que deseja analisar (ex.: PETR4.SA, BTC-USD, AAPL).</li>
+                <li><strong>Intervalo de Data 📅</strong>: Escolha o período inicial e final da análise. Recomendamos intervalos superiores a 30 dias para maior precisão nos sinais. Atente-se às restrições históricas fornecidas pelo Yahoo Finance.</li>
+                <li><strong>Intervalo de Tempo ⏱️</strong>: Selecione a periodicidade desejada, como 1 minuto, 15 minutos, 1 hora, ou 1 dia, de acordo com seu perfil operacional.</li>
+                <li><strong>Confirmação de Sinais ✅</strong>: Defina o número de candles (períodos) consecutivos necessários para confirmar uma mudança de sinal, ajudando a filtrar sinais falsos.</li>
+                <li><strong>Estratégia de Sinais 📈</strong>: Selecione entre Agressiva, Balanceada ou Conservadora para ajustar o sistema ao seu apetite por risco.</li>
+                <li><strong>Direção da Operação 🎯</strong>: Escolha entre operar em ambas direções (comprado e vendido), somente comprado ou somente vendido.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Critérios de Saída")
+        st.markdown("""
+        <div class="metric-card">
+            <p>O sistema permite que você teste estratégias variadas para saída das posições, podendo escolher entre:</p>
+            <ul>
+                <li><strong>Mudança de Estado 🔄</strong>: A operação é encerrada automaticamente sempre que o estado dos sinais mudar (de compra para venda ou vice-versa).</li>
+                <li><strong>Stop Loss 🛑</strong>: Você define um preço limite de perda. Se o preço do ativo atingir este limite em relação ao preço de entrada, a operação é encerrada automaticamente. É um critério importante para gestão de risco eficiente.</li>
+                <li><strong>Alvo Fixo 🎯</strong>: Estabelece uma meta percentual de lucro e um limite percentual de perda. Ao alcançar qualquer um deles, a operação é encerrada.</li>
+                <li><strong>Média Móvel 📉</strong>: Neste critério, a operação é encerrada sempre que o preço cruza uma média móvel previamente configurada. A ideia é que enquanto o ativo estiver em tendência favorável, o preço estará sempre de um lado da média móvel. Caso o preço volte a cruzá-la, isso pode indicar enfraquecimento da tendência, sendo prudente sair da operação.</li>
+                <li><strong>Tempo ⏳</strong>: A saída ocorre após um número fixo de candles desde a entrada. Este método garante operações mais curtas e disciplinadas, reduzindo riscos de exposição prolongada. Contudo, pode limitar ganhos em tendências mais duradouras.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Funcionalidade de Otimização")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>🎯 Otimização Automática de Parâmetros</strong></p>
+            <p>O sistema oferece uma funcionalidade única de otimização automática que testa diferentes configurações para encontrar os melhores parâmetros para o ativo e período selecionados:</p>
+            <ul>
+                <li><strong>Teste Automático</strong>: O sistema testa múltiplas combinações de parâmetros automaticamente</li>
+                <li><strong>Comparação Detalhada</strong>: Visualize uma tabela comparativa com todos os resultados testados</li>
+                <li><strong>Melhor Configuração</strong>: Identifica automaticamente a configuração que gerou o melhor retorno total</li>
+                <li><strong>Múltiplas Métricas</strong>: Avalia retorno total, retorno médio, taxa de acerto e número de operações</li>
+            </ul>
+            <p><strong>💡 Dica</strong>: Use a otimização para descobrir qual critério de saída funciona melhor para cada ativo específico!</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Resumo")
+        st.markdown("""
+        <div class="metric-card">
+            <p>Utilizar a análise individual corretamente maximiza suas chances de sucesso no mercado financeiro. Explore diferentes estratégias, teste os critérios de saída disponíveis e utilize os gráficos com sinais para tomar decisões seguras e bem fundamentadas. A combinação correta de todos esses elementos é essencial para alcançar resultados consistentes e sustentáveis em suas operações.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with guide_tab2:
+        st.markdown("## 🔍 Guia de Utilização - Screening Multi-Ativos")
+
+        st.markdown("### 📌 O que é o Screening?")
+        st.markdown("""
+        <div class="metric-card">
+            <p>O Screening Multi-Ativos é uma ferramenta poderosa que permite monitorar simultaneamente múltiplos ativos financeiros, identificando rapidamente mudanças de estado nos sinais de trading. É ideal para quem gerencia carteiras diversificadas ou quer identificar oportunidades em diferentes mercados ao mesmo tempo.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Como Funciona?")
+        st.markdown("""
+        <div class="metric-card">
+            <p>O sistema aplica a mesma metodologia da análise individual, mas de forma simultânea em uma lista de ativos:</p>
+            <ul>
+                <li><strong>Análise Simultânea</strong>: Processa múltiplos ativos de uma só vez</li>
+                <li><strong>Detecção de Mudanças</strong>: Identifica automaticamente quando um ativo muda de estado (ex: de "Stay Out" para "Buy")</li>
+                <li><strong>Alertas Visuais</strong>: Destaca ativos com mudanças recentes de estado</li>
+                <li><strong>Resumo Executivo</strong>: Apresenta estatísticas gerais da análise</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Listas Pré-Definidas")
+        st.markdown("""
+        <div class="metric-card">
+            <p>O sistema oferece listas curadas de ativos para facilitar sua análise:</p>
+            <ul>
+                <li><strong>🪙 Criptomoedas</strong>: BTC-USD, ETH-USD, BNB-USD, ADA-USD, XRP-USD e mais</li>
+                <li><strong>🇧🇷 Ações Brasileiras</strong>: PETR4.SA, VALE3.SA, ITUB4.SA, BBDC4.SA e mais</li>
+                <li><strong>🇺🇸 Ações Americanas</strong>: AAPL, GOOGL, MSFT, AMZN, TSLA e mais</li>
+                <li><strong>💱 Pares de Forex</strong>: EURUSD=X, GBPUSD=X, USDJPY=X e mais</li>
+                <li><strong>📦 Commodities</strong>: GC=F (Ouro), SI=F (Prata), CL=F (Petróleo) e mais</li>
+            </ul>
+            <p><strong>💡 Lista Customizada</strong>: Você também pode criar sua própria lista inserindo os tickers desejados.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Configurações do Screening")
+        st.markdown("""
+        <div class="metric-card">
+            <p>Parâmetros principais para configurar o screening:</p>
+            <ul>
+                <li><strong>📅 Período de Análise</strong>: Defina o intervalo de datas para análise (padrão: últimos 30 dias)</li>
+                <li><strong>⏱️ Timeframe</strong>: Escolha o intervalo temporal (recomendado: 1 dia para screening)</li>
+                <li><strong>✅ Confirmação</strong>: Configure candles de confirmação para filtrar sinais falsos</li>
+                <li><strong>📈 Estratégia</strong>: Selecione entre Agressiva, Balanceada ou Conservadora</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Interpretando os Resultados")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>🚨 Alertas de Mudança de Estado</strong></p>
+            <p>O screening destaca ativos que mudaram de estado recentemente:</p>
+            <ul>
+                <li><strong>🟢 Para Compra</strong>: Ativos que mudaram para sinal de compra</li>
+                <li><strong>🔴 Para Venda</strong>: Ativos que mudaram para sinal de venda</li>
+                <li><strong>⚫ Para Fora</strong>: Ativos que mudaram para "stay out"</li>
+            </ul>
+            <p><strong>📊 Resumo Geral</strong></p>
+            <ul>
+                <li><strong>Total de Ativos</strong>: Quantidade total analisada</li>
+                <li><strong>Análises Bem-sucedidas</strong>: Ativos processados sem erro</li>
+                <li><strong>Sinais Atuais</strong>: Distribuição dos sinais por tipo</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Melhores Práticas")
+        st.markdown("""
+        <div class="metric-card">
+            <ul>
+                <li><strong>🕐 Frequência</strong>: Execute o screening diariamente para capturar mudanças recentes</li>
+                <li><strong>📋 Listas Focadas</strong>: Use listas específicas por categoria para análises mais direcionadas</li>
+                <li><strong>🔍 Acompanhamento</strong>: Monitore ativos que mudaram de estado para oportunidades</li>
+                <li><strong>⚖️ Estratégia Balanceada</strong>: Recomendada para screening geral</li>
+                <li><strong>📊 Análise Complementar</strong>: Use a análise individual para estudar ativos identificados no screening</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with guide_tab3:
+        st.markdown("## 📊 Guia de Utilização - Detecção de Topos e Fundos")
+
+        st.markdown("### 📌 O que é a Detecção de Topos e Fundos?")
+        st.markdown("""
+        <div class="metric-card">
+            <p>A Detecção de Topos e Fundos é uma funcionalidade especializada que utiliza as Bandas de Bollinger para identificar potenciais pontos de reversão de preço. Quando um ativo está fora das bandas estatísticas normais, isso pode indicar uma oportunidade de entrada contrária à tendência atual.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Como Funciona?")
+        st.markdown("""
+        <div class="metric-card">
+            <p>O sistema utiliza métricas matemáticas baseadas em Bandas de Bollinger:</p>
+            <ul>
+                <li><strong>📊 Bandas de Bollinger</strong>: Calculadas com período de 20 e desvio padrão de 2</li>
+                <li><strong>🟢 Detecção de Fundos</strong>: Quando o preço está abaixo da banda inferior</li>
+                <li><strong>🔴 Detecção de Topos</strong>: Quando o preço está acima da banda superior</li>
+                <li><strong>📏 Medição de Distância</strong>: Calcula o percentual de distância das bandas</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Sinais Gerados")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>🟢 Possível Fundo (Oportunidade de Compra)</strong></p>
+            <p>Quando o preço do ativo está abaixo da banda inferior de Bollinger, isso indica:</p>
+            <ul>
+                <li>O ativo pode estar sobrevendido</li>
+                <li>Possível reversão de alta a partir daquele ponto</li>
+                <li>Oportunidade para operações compradas</li>
+                <li>Maior distância = maior probabilidade de reversão</li>
+            </ul>
+            
+            <p><strong>🔴 Possível Topo (Oportunidade de Venda)</strong></p>
+            <p>Quando o preço está acima da banda superior de Bollinger:</p>
+            <ul>
+                <li>O ativo pode estar sobrecomprado</li>
+                <li>Possível reversão de baixa a partir daquele ponto</li>
+                <li>Oportunidade para operações vendidas ou saída de posições compradas</li>
+                <li>Maior distância = maior probabilidade de reversão</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Configurações Disponíveis")
+        st.markdown("""
+        <div class="metric-card">
+            <ul>
+                <li><strong>📋 Listas de Ativos</strong>: Mesmas opções do screening (Criptos, Ações BR/US, Forex, Commodities)</li>
+                <li><strong>📅 Período de Análise</strong>: Configure o intervalo de datas desejado</li>
+                <li><strong>⏱️ Timeframe</strong>: Recomendado usar 1h, 4h, 1d ou 1wk para melhor precisão</li>
+                <li><strong>🎯 Sensibilidade</strong>: Sistema usa parâmetros fixos otimizados (20 períodos, 2 desvios)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Interpretando a Distância")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>📏 Percentual de Distância das Bandas</strong></p>
+            <p>A distância percentual indica a intensidade do sinal:</p>
+            <ul>
+                <li><strong>0% - 1%</strong>: Sinal fraco, reversão menos provável</li>
+                <li><strong>1% - 3%</strong>: Sinal moderado, possível reversão</li>
+                <li><strong>3% - 5%</strong>: Sinal forte, reversão mais provável</li>
+                <li><strong>Acima de 5%</strong>: Sinal muito forte, alta probabilidade de reversão</li>
+            </ul>
+            <p><strong>💡 Regra Geral</strong>: Quanto maior a distância, maior a probabilidade de reversão, mas também maior o risco.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Estratégias de Uso")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>📈 Para Operações de Compra (Fundos)</strong></p>
+            <ul>
+                <li>Aguarde o ativo romper a banda inferior</li>
+                <li>Considere entrada gradual em múltiplos pontos</li>
+                <li>Use stop loss abaixo do menor preço recente</li>
+                <li>Meta: retorno à média móvel de 20 períodos</li>
+            </ul>
+            
+            <p><strong>📉 Para Operações de Venda (Topos)</strong></p>
+            <ul>
+                <li>Aguarde o ativo romper a banda superior</li>
+                <li>Ideal para saída de posições compradas</li>
+                <li>Ou entrada em operações vendidas (short)</li>
+                <li>Meta: retorno à média móvel de 20 períodos</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Limitações e Cuidados")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>⚠️ Importantes Considerações</strong></p>
+            <ul>
+                <li><strong>Tendências Fortes</strong>: Em tendências muito fortes, o ativo pode permanecer fora das bandas por longos períodos</li>
+                <li><strong>Confirmação</strong>: Use outros indicadores para confirmar os sinais</li>
+                <li><strong>Gestão de Risco</strong>: Sempre use stop loss, mesmo em sinais "muito fortes"</li>
+                <li><strong>Volatilidade</strong>: Em mercados muito voláteis, os sinais podem ser menos confiáveis</li>
+                <li><strong>Volume</strong>: Considere o volume de negociação para validar os sinais</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with guide_tab4:
+        st.markdown("## 🤖 Guia de Utilização - Bot Telegram")
+
+        st.markdown("### 📌 O que é o Bot Telegram?")
+        st.markdown("""
+        <div class="metric-card">
+            <p>O Bot Telegram @Ovecchia_bot é uma extensão do sistema que permite acesso às funcionalidades principais diretamente pelo Telegram, oferecendo análises rápidas e alertas personalizados onde quer que você esteja.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Como Começar a Usar")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>🚀 Passos Iniciais</strong></p>
+            <ol>
+                <li><strong>Abra o Telegram</strong> no seu dispositivo</li>
+                <li><strong>Procure por</strong>: <code>@Ovecchia_bot</code></li>
+                <li><strong>Clique em "Iniciar"</strong> ou digite <code>/start</code></li>
+                <li><strong>Pronto!</strong> O bot responderá com as opções disponíveis</li>
+            </ol>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Comandos Disponíveis")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>📋 Lista Completa de Comandos</strong></p>
+            <ul>
+                <li><strong>/start</strong> - Iniciar o bot e ver mensagem de boas-vindas</li>
+                <li><strong>/analise</strong> - Análise individual com gráfico personalizado</li>
+                <li><strong>/screening</strong> - Screening de múltiplos ativos</li>
+                <li><strong>/topos_fundos</strong> - Detectar topos e fundos</li>
+                <li><strong>/status</strong> - Ver status atual do bot</li>
+                <li><strong>/restart</strong> - Reiniciar o bot (em caso de problemas)</li>
+                <li><strong>/help</strong> - Ajuda detalhada com todos os comandos</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Comando /analise - Análise Individual")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>📊 Sintaxe Completa</strong></p>
+            <code>/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]</code>
+            
+            <p><strong>📝 Parâmetros</strong></p>
+            <ul>
+                <li><strong>estrategia</strong>: agressiva, balanceada ou conservadora</li>
+                <li><strong>ativo</strong>: ticker do ativo (ex: PETR4.SA, BTC-USD, AAPL)</li>
+                <li><strong>timeframe</strong>: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk</li>
+                <li><strong>data_inicio</strong>: formato YYYY-MM-DD (opcional)</li>
+                <li><strong>data_fim</strong>: formato YYYY-MM-DD (opcional)</li>
+            </ul>
+            
+            <p><strong>💡 Exemplos</strong></p>
+            <ul>
+                <li><code>/analise balanceada PETR4.SA 1d</code></li>
+                <li><code>/analise agressiva BTC-USD 4h 2024-01-01 2024-06-01</code></li>
+                <li><code>/analise conservadora AAPL 1d</code></li>
+            </ul>
+            
+            <p><strong>📈 Resultado</strong>: O bot gerará um gráfico personalizado e enviará como imagem junto com análise detalhada</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Comando /screening - Múltiplos Ativos")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>🔍 Sintaxe</strong></p>
+            <code>/screening [estrategia] [ativo1] [ativo2] [ativo3] ...</code>
+            
+            <p><strong>💡 Exemplos</strong></p>
+            <ul>
+                <li><code>/screening balanceada BTC-USD ETH-USD</code></li>
+                <li><code>/screening agressiva PETR4.SA VALE3.SA ITUB4.SA</code></li>
+                <li><code>/screening conservadora AAPL GOOGL MSFT</code></li>
+            </ul>
+            
+            <p><strong>📊 Resultado</strong>: Lista mudanças de estado recentes nos ativos especificados</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Comando /topos_fundos - Extremos")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>📊 Sintaxe</strong></p>
+            <code>/topos_fundos [ativo1] [ativo2] [ativo3] ...</code>
+            
+            <p><strong>💡 Exemplos</strong></p>
+            <ul>
+                <li><code>/topos_fundos PETR4.SA VALE3.SA</code></li>
+                <li><code>/topos_fundos BTC-USD ETH-USD BNB-USD</code></li>
+                <li><code>/topos_fundos AAPL GOOGL</code></li>
+            </ul>
+            
+            <p><strong>📈 Resultado</strong>: Identifica possíveis topos e fundos usando Bandas de Bollinger</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Recursos Especiais do Bot")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>🎯 Funcionalidades Exclusivas</strong></p>
+            <ul>
+                <li><strong>📊 Gráficos Automáticos</strong>: Geração e envio automático de gráficos</li>
+                <li><strong>⚡ Respostas Rápidas</strong>: Análises em poucos segundos</li>
+                <li><strong>📱 Disponibilidade 24/7</strong>: Bot ativo 24 horas por dia</li>
+                <li><strong>🔄 Auto-Recovery</strong>: Sistema de restart automático em caso de falhas</li>
+                <li><strong>📋 Validação Automática</strong>: Verificação de parâmetros e formatos</li>
+                <li><strong>🗂️ Limpeza Automática</strong>: Remove arquivos temporários automaticamente</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Dicas de Uso")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>💡 Melhores Práticas</strong></p>
+            <ul>
+                <li><strong>⏰ Timing</strong>: Use o bot preferencialmente fora de horários de alta volatilidade</li>
+                <li><strong>📊 Estratégias</strong>: Comece com "balanceada" para ter equilíbrio</li>
+                <li><strong>⚖️ Múltiplos Ativos</strong>: No screening, limite a 10 ativos por comando</li>
+                <li><strong>📅 Datas</strong>: Para análises históricas, use períodos mínimos de 30 dias</li>
+                <li><strong>🔄 Problemas</strong>: Se o bot não responder, use /restart</li>
+                <li><strong>💾 Armazenamento</strong>: Salve gráficos importantes, pois são temporários</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Status e Troubleshooting")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>🔧 Resolução de Problemas</strong></p>
+            <ul>
+                <li><strong>Bot não responde</strong>: Use /restart ou aguarde alguns minutos</li>
+                <li><strong>Erro de ativo</strong>: Verifique se o ticker está correto (ex: PETR4.SA, não PETR4)</li>
+                <li><strong>Erro de data</strong>: Use formato YYYY-MM-DD (ex: 2024-01-15)</li>
+                <li><strong>Timeframe inválido</strong>: Use apenas: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk</li>
+                <li><strong>Comando não reconhecido</strong>: Use /help para ver lista completa</li>
+            </ul>
+            
+            <p><strong>📊 Verificar Status</strong></p>
+            <ul>
+                <li>Use <code>/status</code> para verificar se o bot está funcionando</li>
+                <li>Resposta esperada: informações sobre tempo online e status dos serviços</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with guide_tab5:
+        st.markdown("## ⚙️ Guia de Parâmetros Gerais")
+
+        st.markdown("### 📌 Tipos de Ativos Suportados")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>📊 Formato de Tickers por Categoria</strong></p>
+            <ul>
+                <li><strong>🪙 Criptomoedas</strong>: Use sufixo -USD (ex: BTC-USD, ETH-USD)</li>
+                <li><strong>🇧🇷 Ações Brasileiras</strong>: Use sufixo .SA (ex: PETR4.SA, VALE3.SA)</li>
+                <li><strong>🇺🇸 Ações Americanas</strong>: Use ticker direto (ex: AAPL, GOOGL, MSFT)</li>
+                <li><strong>💱 Forex</strong>: Use sufixo =X (ex: EURUSD=X, GBPUSD=X)</li>
+                <li><strong>📦 Commodities</strong>: Use sufixo =F (ex: GC=F para ouro, CL=F para petróleo)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Intervalos de Tempo (Timeframes)")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>⏱️ Timeframes Disponíveis e Recomendações</strong></p>
+            <ul>
+                <li><strong>1m, 2m, 5m</strong>: Scalping e day trading (dados limitados a 7 dias no Yahoo Finance)</li>
+                <li><strong>15m, 30m</strong>: Day trading e swing trading intraday</li>
+                <li><strong>60m, 90m</strong>: Swing trading de curto prazo</li>
+                <li><strong>4h</strong>: Swing trading de médio prazo</li>
+                <li><strong>1d</strong>: Position trading e análises de médio/longo prazo (mais recomendado)</li>
+                <li><strong>5d, 1wk</strong>: Análises de longo prazo</li>
+                <li><strong>1mo, 3mo</strong>: Análises macro e tendências de muito longo prazo</li>
+            </ul>
+            <p><strong>💡 Recomendação</strong>: Para análises gerais, use 1d (1 dia) para melhor equilíbrio entre dados históricos e precisão.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Estratégias de Trading")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>🎯 Perfis de Estratégia</strong></p>
+            
+            <p><strong>🔥 Estratégia Agressiva</strong></p>
+            <ul>
+                <li>Médias móveis: SMA 10 e SMA 21</li>
+                <li>Gera mais sinais de entrada</li>
+                <li>Maior frequência de operações</li>
+                <li>Maior potencial de lucro, mas também maior risco</li>
+                <li>Ideal para: Traders experientes, mercados com tendência clara</li>
+            </ul>
+            
+            <p><strong>⚖️ Estratégia Balanceada</strong></p>
+            <ul>
+                <li>Médias móveis: SMA 60 e SMA 70</li>
+                <li>Equilíbrio entre frequência e confiabilidade</li>
+                <li>Recomendada para maioria dos usuários</li>
+                <li>Boa relação risco/retorno</li>
+                <li>Ideal para: Investidores intermediários, carteiras diversificadas</li>
+            </ul>
+            
+            <p><strong>🛡️ Estratégia Conservadora</strong></p>
+            <ul>
+                <li>Médias móveis: SMA 140 e SMA 200</li>
+                <li>Menos sinais, mas mais confiáveis</li>
+                <li>Menor frequência de operações</li>
+                <li>Foco em preservação de capital</li>
+                <li>Ideal para: Investidores iniciantes, mercados voláteis</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Confirmação de Sinais")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>✅ Sistema de Confirmação</strong></p>
+            <p>O parâmetro "Candles de Confirmação" determina quantos períodos o sistema aguarda antes de confirmar uma mudança de sinal:</p>
+            <ul>
+                <li><strong>0 Candles</strong>: Sinal imediato (mais reativo, mais sinais falsos)</li>
+                <li><strong>1-2 Candles</strong>: Confirmação rápida (equilibrio)</li>
+                <li><strong>3-5 Candles</strong>: Confirmação robusta (menos sinais falsos, menos reativo)</li>
+            </ul>
+            <p><strong>💡 Recomendação</strong>: Use 0-1 para timeframes altos (1d, 1wk) e 2-3 para timeframes baixos (1h, 4h).</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Direções de Operação")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>🎯 Tipos de Operação</strong></p>
+            <ul>
+                <li><strong>Ambos (Compra e Venda)</strong>: Opera em ambas direções, maximiza oportunidades</li>
+                <li><strong>Apenas Comprado</strong>: Só opera na alta (long only), ideal para mercados em alta</li>
+                <li><strong>Apenas Vendido</strong>: Só opera na baixa (short only), ideal para mercados em queda</li>
+            </ul>
+            <p><strong>⚠️ Importante</strong>: Nem todos os ativos/brokers permitem operações vendidas (short). Verifique as regras do seu provedor.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Tipos de Stop Loss")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>🛡️ Sistema de Stop Loss Baseado em ATR</strong></p>
+            <p>O sistema calcula stops baseados no ATR (Average True Range) de 14 períodos:</p>
+            
+            <ul>
+                <li><strong>Stop Justo</strong>: 2.0 x ATR (mais próximo, menos perdas por operação, mais stops atingidos)</li>
+                <li><strong>Stop Balanceado</strong>: 2.5 x ATR (equilibrio entre segurança e eficácia)</li>
+                <li><strong>Stop Largo</strong>: 3.5 x ATR (mais distante, menos stops atingidos, perdas maiores quando ocorrem)</li>
+            </ul>
+            
+            <p><strong>📊 Como Funciona</strong></p>
+            <ul>
+                <li>ATR mede a volatilidade média do ativo</li>
+                <li>Stop se adapta automaticamente à volatilidade</li>
+                <li>Em posições de compra: Stop = Preço - (Fator x ATR)</li>
+                <li>Em posições de venda: Stop = Preço + (Fator x ATR)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📌 Limitações dos Dados")
+        st.markdown("""
+        <div class="metric-card">
+            <p><strong>⚠️ Limitações do Yahoo Finance</strong></p>
+            <ul>
+                <li><strong>Dados Intraday</strong>: Timeframes menores que 1 dia têm limite de 7 dias históricos</li>
+                <li><strong>Fins de Semana</strong>: Mercados fechados podem afetar dados em tempo real</li>
+                <li><strong>Feriados</strong>: Dados podem estar indisponíveis em feriados locais</li>
+                <li><strong>Ativos Descontinuados</strong>: Alguns tickers podem não ter dados atualizados</li>
+                <li><strong>Splits/Dividendos</strong>: Podem causar descontinuidades nos dados históricos</li>
+            </ul>
+            
+            <p><strong>💡 Dicas para Evitar Problemas</strong></p>
+            <ul>
+                <li>Use timeframe 1d para análises históricas longas</li>
+                <li>Verifique se o ticker está correto antes de analisar</li>
+                <li>Para timeframes menores, use períodos recentes (última semana)</li>
+                <li>Se encontrar erros, tente ticker alternativo ou período menor</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+with tab7:
     # About tab
     st.markdown("## ℹ️ Sobre o Sistema OVECCHIA TRADING")
 
