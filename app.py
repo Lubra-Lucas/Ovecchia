@@ -1940,7 +1940,7 @@ with tab4:
 with tab5:
     # Telegram Bot tab
     st.markdown("## 🤖 Bot de Alertas do Telegram")
-    st.markdown("Configure e gerencie o bot do Telegram para receber alertas automáticos de sinais de trading")
+    st.markdown("Manual de Instruções e Informações do Bot")
 
     # Bot information section
     st.markdown("### 📱 Informações do Bot")
@@ -1966,38 +1966,30 @@ with tab5:
     with col1:
         st.markdown("#### 🚀 Primeiros Passos")
         st.markdown("""
-        <div class="metric-card">
-            <p><strong>1. Adicione o bot:</strong></p>
-            <p>No Telegram, procure por <code>@Ovecchia_bot</code> e clique em "Iniciar"</p>
-            
-            <p><strong>2. Comandos disponíveis:</strong></p>
-            <ul>
-                <li><code>/start</code> - Iniciar o bot e ver boas-vindas</li>
-                <li><code>/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]</code> - Análise individual com gráfico</li>
-                <li><code>/screening [estrategia] [ativos]</code> - Screening de múltiplos ativos</li>
-                <li><code>/topos_fundos [ativos]</code> - Detectar topos e fundos</li>
-                <li><code>/status</code> - Ver status do bot</li>
-                <li><code>/help</code> - Ajuda detalhada com comandos</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+        **1. Adicione o bot:**
+        No Telegram, procure por **@Ovecchia_bot** e clique em "Iniciar"
+        
+        **2. Comandos disponíveis:**
+        - `/start` - Iniciar o bot e ver boas-vindas
+        - `/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]` - Análise individual com gráfico
+        - `/screening [estrategia] [ativos]` - Screening de múltiplos ativos
+        - `/topos_fundos [ativos]` - Detectar topos e fundos
+        - `/status` - Ver status do bot
+        - `/help` - Ajuda detalhada com comandos
+        """)
 
     with col2:
         st.markdown("#### ⚙️ Configurações")
         st.markdown("""
-        <div class="metric-card">
-            <p><strong>Estratégias disponíveis:</strong></p>
-            <ul>
-                <li><strong>🔥 agressiva:</strong> Mais sinais, maior frequência</li>
-                <li><strong>⚖️ balanceada:</strong> Equilíbrio entre sinais e confiabilidade</li>
-                <li><strong>🛡️ conservadora:</strong> Sinais mais confiáveis, menor frequência</li>
-            </ul>
-            
-            <p><strong>Timeframes suportados:</strong> 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk</p>
-            <p><strong>Período padrão de análise:</strong> Baseado no timeframe escolhido</p>
-            <p><strong>Datas personalizadas:</strong> Formato YYYY-MM-DD (opcional)</p>
-        </div>
-        """, unsafe_allow_html=True)
+        **Estratégias disponíveis:**
+        - **🔥 agressiva:** Mais sinais, maior frequência
+        - **⚖️ balanceada:** Equilíbrio entre sinais e confiabilidade
+        - **🛡️ conservadora:** Sinais mais confiáveis, menor frequência
+        
+        **Timeframes suportados:** 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+        **Período padrão de análise:** Baseado no timeframe escolhido
+        **Datas personalizadas:** Formato YYYY-MM-DD (opcional)
+        """)
 
     # Bot status section
     st.markdown("### 📊 Informações do Bot")
@@ -2026,8 +2018,8 @@ with tab5:
         st.markdown(f"""
         <div class="metric-card">
             <h4 style="margin: 0; color: #1f77b4;">Timeframe</h4>
-            <h2 style="margin: 0; color: #333;">1 dia</h2>
-            <p style="margin: 0; font-size: 0.9rem; color: #666;">Análise diária</p>
+            <h2 style="margin: 0; color: #333;">Flexível</h2>
+            <p style="margin: 0; font-size: 0.9rem; color: #666;">Comandos screening e topos e fundos são exclusivo para 1d . Análise do ativo pode ser personalizada.</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -2089,10 +2081,10 @@ with tab5:
         <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; font-family: monospace;">
             📊 DETECÇÃO DE TOPOS E FUNDOS<br>
             ⏰ Timeframe: 1 dia<br><br>
-            🟢 POSSÍVEIS FUNDOS (COMPRA):<br>
+            🟢 POSSÍVEL FUNDO (COMPRA):<br>
             • PETR4.SA: 28.45<br>
             📊 Distância: 2.30%<br><br>
-            🔴 POSSÍVEIS TOPOS (VENDA):<br>
+            🔴 POSSÍVEL TOPO (VENDA):<br>
             • VALE3.SA: 72.80<br>
             📊 Distância: 1.80%
         </div>
