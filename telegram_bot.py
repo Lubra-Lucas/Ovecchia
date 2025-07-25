@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 import warnings
 import threading
 import time
+import os
+import sys
 
 warnings.filterwarnings('ignore')
 
@@ -677,6 +679,45 @@ YYYY-MM-DD (exemplo: 2024-01-01)
         logger.error(f"Erro no comando /analise: {str(e)}")
         bot.reply_to(message, "❌ Erro ao processar análise. Verifique os parâmetros e tente novamente.")
 
+@bot.message_handler(commands=['restart'])
+def restart_command(message):
+    try:
+        user_name = message.from_user.first_name
+        logger.info(f"Comando /restart recebido de {user_name}")
+        
+        restart_message = """🔄 REINICIANDO BOT...
+
+⚠️ O bot será reiniciado completamente.
+⏳ Aguarde alguns segundos e tente novamente.
+
+🤖 Status: Reiniciando sistema...
+📡 Reconectando aos serviços...
+🔧 Limpando cache e memória...
+
+✅ O bot voltará online em instantes!"""
+        
+        bot.reply_to(message, restart_message)
+        logger.info(f"Mensagem de restart enviada para {user_name}")
+        
+        # Aguardar um pouco para enviar a mensagem antes de reiniciar
+        time.sleep(2)
+        
+        # Parar o bot e reiniciar o processo
+        logger.info("🔄 Reiniciando bot por comando do usuário...")
+        bot.stop_polling()
+        
+        # Importar os módulos necessários para reiniciar
+        import os
+        import sys
+        
+        # Reiniciar o processo Python
+        logger.info("🚀 Executando restart completo...")
+        os.execv(sys.executable, ['python'] + sys.argv)
+        
+    except Exception as e:
+        logger.error(f"Erro no comando /restart: {str(e)}")
+        bot.reply_to(message, "❌ Erro ao reiniciar o bot. Tente novamente.")
+
 @bot.message_handler(commands=['help'])
 def help_command(message):
     try:
@@ -699,6 +740,8 @@ def help_command(message):
    Exemplo: /topos_fundos PETR4.SA VALE3.SA
 
 📊 /status - Ver status do bot
+
+🔄 /restart - Reiniciar o bot (em caso de problemas)
 
 ❓ /help - Esta mensagem de ajuda
 
@@ -740,29 +783,42 @@ def handle_message(message):
 
 def run_bot():
     """Função para rodar o bot"""
-    try:
-        logger.info("🤖 Iniciando OVECCHIA TRADING BOT...")
-        print("🤖 OVECCHIA TRADING BOT ONLINE!")
-        
-        # Configurar comandos do bot
-        bot.set_my_commands([
-            telebot.types.BotCommand("start", "Iniciar o bot"),
-            telebot.types.BotCommand("analise", "Análise individual com gráfico"),
-            telebot.types.BotCommand("screening", "Screening de múltiplos ativos"),
-            telebot.types.BotCommand("topos_fundos", "Detectar topos e fundos"),
-            telebot.types.BotCommand("status", "Ver status do bot"),
-            telebot.types.BotCommand("help", "Ajuda com comandos")
-        ])
-        
-        logger.info("🤖 Bot iniciado com sucesso!")
-        
-        # Rodar o bot
-        bot.polling(none_stop=True, interval=2, timeout=30)
-        
-    except Exception as e:
-        logger.error(f"Erro crítico no bot: {str(e)}")
-        print(f"❌ Erro ao iniciar bot: {str(e)}")
-        time.sleep(5)  # Aguardar antes de tentar novamente
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            logger.info("🤖 Iniciando OVECCHIA TRADING BOT...")
+            print("🤖 OVECCHIA TRADING BOT ONLINE!")
+            
+            # Configurar comandos do bot
+            bot.set_my_commands([
+                telebot.types.BotCommand("start", "Iniciar o bot"),
+                telebot.types.BotCommand("analise", "Análise individual com gráfico"),
+                telebot.types.BotCommand("screening", "Screening de múltiplos ativos"),
+                telebot.types.BotCommand("topos_fundos", "Detectar topos e fundos"),
+                telebot.types.BotCommand("status", "Ver status do bot"),
+                telebot.types.BotCommand("restart", "Reiniciar o bot"),
+                telebot.types.BotCommand("help", "Ajuda com comandos")
+            ])
+            
+            logger.info("🤖 Bot iniciado com sucesso!")
+            
+            # Rodar o bot
+            bot.polling(none_stop=True, interval=2, timeout=30)
+            
+        except Exception as e:
+            retry_count += 1
+            logger.error(f"Erro crítico no bot (tentativa {retry_count}/{max_retries}): {str(e)}")
+            print(f"❌ Erro ao iniciar bot (tentativa {retry_count}/{max_retries}): {str(e)}")
+            
+            if retry_count < max_retries:
+                wait_time = 5 * retry_count  # Aumentar tempo de espera a cada tentativa
+                logger.info(f"🔄 Tentando novamente em {wait_time} segundos...")
+                time.sleep(wait_time)
+            else:
+                logger.error("🛑 Máximo de tentativas excedido. Bot será encerrado.")
+                break
 
 if __name__ == '__main__':
     try:
