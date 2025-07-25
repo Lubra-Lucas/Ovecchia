@@ -29,6 +29,63 @@ bot = telebot.TeleBot(BOT_TOKEN)
 class OvecchiaTradingBot:
     def __init__(self):
         self.users_config = {}
+    
+    def convert_brazilian_date(self, date_str):
+        """Converte data do formato DD/MM/AAAA para YYYY-MM-DD"""
+        try:
+            # Verifica se já está no formato correto
+            if '-' in date_str and len(date_str.split('-')[0]) == 4:
+                return date_str
+            
+            # Converte de DD/MM/AAAA para YYYY-MM-DD
+            if '/' in date_str:
+                parts = date_str.split('/')
+                if len(parts) == 3:
+                    day, month, year = parts
+                    return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+            
+            return date_str
+        except:
+            return date_str
+    
+    def normalize_list_name(self, list_name):
+        """Normaliza o nome da lista para aceitar variações"""
+        list_name = list_name.lower()
+        # Remove acentos e caracteres especiais
+        list_name = list_name.replace('ã', 'a').replace('õ', 'o').replace('ç', 'c')
+        list_name = list_name.replace('ó', 'o').replace('é', 'e').replace('í', 'i')
+        list_name = list_name.replace('á', 'a').replace('ú', 'u')
+        
+        # Mapear variações para nomes padrão
+        variations = {
+            'acoesbr': 'açõesbr',
+            'acoesbrasileiras': 'açõesbr', 
+            'acoesbrasil': 'açõesbr',
+            'açoesbrasil': 'açõesbr',
+            'açoesbrasileiras': 'açõesbr',
+            'açoesbr': 'açõesbr',
+            
+            'acoeseua': 'açõeseua',
+            'acoesamericanas': 'açõeseua',
+            'acoesusa': 'açõeseua', 
+            'açoesusa': 'açõeseua',
+            'açoesamericanas': 'açõeseua',
+            'açoeseua': 'açõeseua',
+            
+            'crypto': 'criptos',
+            'cryptocurrency': 'criptos',
+            'cripto': 'criptos',
+            'criptocmoedas': 'criptos',
+            'criptomoedas': 'criptos',
+            
+            'commoditie': 'commodities',
+            'commodity': 'commodities',
+            
+            'cambio': 'forex',
+            'moedas': 'forex'
+        }
+        
+        return variations.get(list_name, list_name)
 
     def get_market_data(self, symbol, start_date, end_date, interval="1d"):
         """Função para coletar dados do mercado"""
@@ -503,11 +560,11 @@ def screening_command(message):
 • conservadora - Sinais mais confiáveis
 
 📊 *Listas pré-definidas:*
-• açõesBR - Ações brasileiras
-• açõesEUA - Ações americanas
-• criptos - Criptomoedas
-• forex - Pares de moedas
-• commodities - Commodities
+• açõesBR / acoesBR - Ações brasileiras (126 ativos)
+• açõesEUA / acoesEUA - Ações americanas (100+ ativos)
+• criptos - Criptomoedas principais (20 ativos)
+• forex - Pares de moedas (8 pares)
+• commodities - Commodities (10 ativos)
 
 ⏰ *Configurações fixas:*
 • Timeframe: 1 dia (fixo)
@@ -542,17 +599,20 @@ def screening_command(message):
             remaining_args = args
 
         # Verificar se é uma lista pré-definida ou ativos individuais
-        if len(remaining_args) == 1 and remaining_args[0].lower() in predefined_lists:
-            list_name = remaining_args[0].lower()
-            symbols = predefined_lists[list_name]
-            list_display_name = {
-                'açõesbr': 'Ações Brasileiras',
-                'açõeseua': 'Ações Americanas',
-                'criptos': 'Criptomoedas',
-                'forex': 'Forex',
-                'commodities': 'Commodities'
-            }
-            bot.reply_to(message, f"📊 Analisando lista: {list_display_name[list_name]} ({len(symbols)} ativos)", parse_mode='Markdown')
+        if len(remaining_args) == 1:
+            list_name = self.normalize_list_name(remaining_args[0])
+            if list_name in predefined_lists:
+                symbols = predefined_lists[list_name]
+                list_display_name = {
+                    'açõesbr': 'Ações Brasileiras',
+                    'açõeseua': 'Ações Americanas',
+                    'criptos': 'Criptomoedas',
+                    'forex': 'Forex',
+                    'commodities': 'Commodities'
+                }
+                bot.reply_to(message, f"📊 Analisando lista: {list_display_name[list_name]} ({len(symbols)} ativos)", parse_mode='Markdown')
+            else:
+                symbols = remaining_args
         else:
             symbols = remaining_args
 
@@ -674,51 +734,58 @@ def topos_fundos_command(message):
         }
 
         if not args:
-            help_message = """
-📊 *DETECÇÃO DE TOPOS E FUNDOS*
+            help_message = """📊 *DETECÇÃO DE TOPOS E FUNDOS*
+
+🎯 *O que este comando faz:*
+Analisa ativos para detectar possíveis pontos de reversão usando Bollinger Bands, identificando oportunidades de compra (fundos) e venda (topos).
 
 📝 *Como usar:*
 /topos_fundos [lista/ativos]
 
 📊 *Listas pré-definidas:*
-• açõesBR - Ações brasileiras
-• açõesEUA - Ações americanas
-• criptos - Criptomoedas
-• forex - Pares de moedas
-• commodities - Commodities
+• açõesBR / acoesBR - Ações brasileiras (126 ativos)
+• açõesEUA / acoesEUA - Ações americanas (100+ ativos)  
+• criptos - Criptomoedas principais (20 ativos)
+• forex - Pares de moedas (8 pares)
+• commodities - Commodities (10 ativos)
 
 ⏰ *Configurações fixas:*
 • Timeframe: 1 dia (fixo)
 • Período: 2 anos de dados históricos
+• Indicador: Bollinger Bands (20 períodos, 2 desvios)
 
 📈 *Exemplos:*
 `/topos_fundos açõesBR`
+`/topos_fundos acoesbr` (aceita sem acentos)
 `/topos_fundos açõesEUA`
 `/topos_fundos criptos`
 `/topos_fundos BTC-USD ETH-USD PETR4.SA VALE3.SA`
 
 🎯 *O que detecta:*
-• Possíveis fundos (oportunidades de compra)
-• Possíveis topos (oportunidades de venda)
-• Baseado em Bollinger Bands
-            """
+🟢 *Possíveis fundos* - Preço abaixo da banda inferior (oportunidade de compra)
+🔴 *Possíveis topos* - Preço acima da banda superior (oportunidade de venda)
+
+💡 *Dica:* Use este comando para identificar pontos de entrada e saída baseados em extremos estatísticos de preço."""
             bot.reply_to(message, help_message, parse_mode='Markdown')
             return
 
         symbols = []
         
         # Verificar se é uma lista pré-definida ou ativos individuais
-        if len(args) == 1 and args[0].lower() in predefined_lists:
-            list_name = args[0].lower()
-            symbols = predefined_lists[list_name]
-            list_display_name = {
-                'açõesbr': 'Ações Brasileiras',
-                'açõeseua': 'Ações Americanas', 
-                'criptos': 'Criptomoedas',
-                'forex': 'Forex',
-                'commodities': 'Commodities'
-            }
-            bot.reply_to(message, f"📊 Analisando topos e fundos: {list_display_name[list_name]} ({len(symbols)} ativos)", parse_mode='Markdown')
+        if len(args) == 1:
+            list_name = self.normalize_list_name(args[0])
+            if list_name in predefined_lists:
+                symbols = predefined_lists[list_name]
+                list_display_name = {
+                    'açõesbr': 'Ações Brasileiras',
+                    'açõeseua': 'Ações Americanas', 
+                    'criptos': 'Criptomoedas',
+                    'forex': 'Forex',
+                    'commodities': 'Commodities'
+                }
+                bot.reply_to(message, f"📊 Analisando topos e fundos: {list_display_name[list_name]} ({len(symbols)} ativos)", parse_mode='Markdown')
+            else:
+                symbols = args
         else:
             symbols = args
 
@@ -831,12 +898,12 @@ def analise_command(message):
 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
 
 📅 Formato de datas (opcional):
-YYYY-MM-DD (exemplo: 2024-01-01)
+DD/MM/AAAA (exemplo: 25/01/2024) ou YYYY-MM-DD
 
 📈 Exemplos:
 /analise balanceada PETR4.SA 1d
-/analise agressiva BTC-USD 4h 2024-01-01 2024-01-31
-/analise conservadora AAPL 1d 2024-06-01 2024-12-01
+/analise agressiva BTC-USD 4h 01/01/2024 31/01/2024
+/analise conservadora AAPL 1d 01/06/2024 01/12/2024
 
 💡 Ativos suportados:
 • Cripto: BTC-USD, ETH-USD, etc.
@@ -858,13 +925,13 @@ YYYY-MM-DD (exemplo: 2024-01-01)
 
         if len(args) >= 5:
             try:
-                start_date = args[3]
-                end_date = args[4]
+                start_date = self.convert_brazilian_date(args[3])
+                end_date = self.convert_brazilian_date(args[4])
                 # Validar formato de data
                 datetime.strptime(start_date, '%Y-%m-%d')
                 datetime.strptime(end_date, '%Y-%m-%d')
             except ValueError:
-                bot.reply_to(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
+                bot.reply_to(message, "❌ Formato de data inválido. Use DD/MM/AAAA (exemplo: 25/01/2024) ou YYYY-MM-DD")
                 return
 
         # Mapear estratégias
