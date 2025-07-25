@@ -262,105 +262,122 @@ class OvecchiaTradingBot:
             if df.empty:
                 return {'success': False, 'error': 'Erro ao calcular indicadores'}
 
-            # Criar gráfico
+            # Color coding
+            df['Color'] = 'black'
+            df.loc[df['Estado'] == 'Buy', 'Color'] = 'blue'
+            df.loc[df['Estado'] == 'Sell', 'Color'] = 'red'
+            
+            # Create indicator mapping
+            estado_mapping = {'Buy': 1, 'Sell': 0, 'Stay Out': 0.5}
+            df['Indicator'] = df['Estado'].apply(lambda x: estado_mapping.get(x, 0.5))
+
+            # Criar gráfico igual ao Streamlit
+            titulo_grafico = f"OVECCHIA TRADING - {symbol} - Timeframe: {timeframe.upper()}"
+
             fig = make_subplots(
                 rows=2, cols=1,
                 shared_xaxes=True,
                 vertical_spacing=0.03,
                 row_heights=[0.75, 0.25],
-                subplot_titles=(f"{symbol} - {strategy_type} - {timeframe.upper()}", "Indicador de Sinais")
+                subplot_titles=("Gráfico do Preço com Sinais", "Indicador de Sinais")
             )
 
-            # Adicionar linha de preço com cores dos sinais
+            # Add price line with color coding (igual ao Streamlit)
             for i in range(len(df) - 1):
-                color = 'blue' if df['Estado'].iloc[i] == 'Buy' else 'red' if df['Estado'].iloc[i] == 'Sell' else 'gray'
                 fig.add_trace(go.Scatter(
                     x=df['time'][i:i+2],
                     y=df['close'][i:i+2],
                     mode="lines",
-                    line=dict(color=color, width=2),
+                    line=dict(color=df['Color'][i], width=2),
                     showlegend=False,
                     hoverinfo="skip"
                 ), row=1, col=1)
 
-            # Adicionar médias móveis se disponíveis
-            strategy_params = {
-                "Agressivo": (10, 21),
-                "Conservador": (140, 200),
-                "Balanceado": (60, 70)
-            }
-            
-            sma_short, sma_long = strategy_params.get(strategy_type, (60, 70))
-            
-            if f'SMA_{sma_short}' in df.columns:
-                fig.add_trace(go.Scatter(
-                    x=df['time'], y=df[f'SMA_{sma_short}'],
-                    mode="lines", name=f'SMA {sma_short}',
-                    line=dict(color="orange", width=1, dash="dot")
-                ), row=1, col=1)
-                
-            if f'SMA_{sma_long}' in df.columns:
-                fig.add_trace(go.Scatter(
-                    x=df['time'], y=df[f'SMA_{sma_long}'],
-                    mode="lines", name=f'SMA {sma_long}',
-                    line=dict(color="purple", width=1, dash="dot")
-                ), row=1, col=1)
+            # Add invisible trace for hover info
+            fig.add_trace(go.Scatter(
+                x=df['time'],
+                y=df['close'],
+                mode='lines',
+                line=dict(color='rgba(0,0,0,0)'),name='Price',
+                hovertemplate="<b>Price:</b> %{y:.2f}<br><b>Time:</b> %{x}<extra></extra>",
+                showlegend=False
+            ), row=1, col=1)
 
-            # Adicionar indicador de sinais
-            indicator_mapping = {'Buy': 1, 'Sell': 0, 'Stay Out': 0.5}
-            df['Indicator'] = df['Estado'].map(indicator_mapping)
-            
+            # Add signal indicator
             fig.add_trace(go.Scatter(
                 x=df['time'],
                 y=df['Indicator'],
                 mode="lines+markers",
-                name="Signal",
+                name="Signal Indicator",
                 line=dict(color="purple", width=2),
                 marker=dict(size=4),
                 showlegend=False
             ), row=2, col=1)
 
-            # Atualizar layout
-            fig.update_yaxes(range=[-0.1, 1.1], tickvals=[0, 0.5, 1], 
-                           ticktext=['Venda', 'Neutro', 'Compra'], row=2, col=1)
-            
-            fig.update_layout(
-                title=f"OVECCHIA TRADING - {symbol}",
-                template="plotly_white",
-                height=600,
-                showlegend=True,
-                font=dict(size=10)
+            # Add legend items (igual ao Streamlit)
+            fig.add_trace(go.Scatter(
+                x=[None], y=[None], mode='lines',
+                line=dict(color='blue', width=2),
+                name='Sinal de Compra'
+            ), row=1, col=1)
+
+            fig.add_trace(go.Scatter(
+                x=[None], y=[None], mode='lines',
+                line=dict(color='red', width=2),
+                name='Sinal de Venda'
+            ), row=1, col=1)
+
+            fig.add_trace(go.Scatter(
+                x=[None], y=[None], mode='lines',
+                line=dict(color='black', width=2),
+                name='Ficar de Fora'
+            ), row=1, col=1)
+
+            # Add reference line for signal indicator
+            fig.add_shape(
+                type="line",
+                x0=df['time'].iloc[0],
+                x1=df['time'].iloc[-1],
+                y0=0.5,
+                y1=0.5,
+                line=dict(color="black", width=1, dash="dash"),
+                xref="x", yref="y2"
             )
 
-            # Salvar gráfico temporariamente
+            # Update layout (igual ao Streamlit)
+            fig.update_yaxes(range=[-0.1, 1.1], tickvals=[0, 0.5, 1], 
+                           ticktext=['Venda', 'Ficar de Fora', 'Compra'], row=2, col=1)
+            fig.update_xaxes(showgrid=False, row=2, col=1)
+
+            # Update layout
+            fig.update_layout(
+                title=dict(text=titulo_grafico, x=0.5, font=dict(size=18)),
+                template="plotly_white",
+                hovermode="x unified",
+                height=700
+            )
+
+            # Salvar gráfico temporariamente usando método mais robusto
             temp_dir = tempfile.gettempdir()
-            chart_filename = f"chart_{symbol}_{int(datetime.now().timestamp())}.png"
+            chart_filename = f"chart_{symbol.replace('.', '_').replace('-', '_')}_{int(datetime.now().timestamp())}.png"
             chart_path = os.path.join(temp_dir, chart_filename)
             
-            fig.write_image(chart_path, width=1200, height=600, scale=2)
+            # Tentar salvar com diferentes métodos para garantir compatibilidade
+            try:
+                fig.write_image(chart_path, width=1200, height=700, scale=1, format="png")
+            except Exception as img_error:
+                logger.warning(f"Erro com write_image, tentando método alternativo: {str(img_error)}")
+                # Método alternativo usando to_image
+                img_bytes = fig.to_image(format="png", width=1200, height=700, scale=1)
+                with open(chart_path, 'wb') as f:
+                    f.write(img_bytes)
 
-            # Preparar informações atuais
-            current_price = df['close'].iloc[-1]
-            current_state = df['Estado'].iloc[-1]
-            current_rsi = df['RSI_14'].iloc[-1] if 'RSI_14' in df.columns else 'N/A'
-            
-            # Estado anterior para detectar mudanças
-            previous_state = df['Estado'].iloc[-2] if len(df) > 1 else current_state
-            state_change = "✅ MUDANÇA" if current_state != previous_state else "➖ SEM MUDANÇA"
+            # Verificar se o arquivo foi criado
+            if not os.path.exists(chart_path):
+                return {'success': False, 'error': 'Falha ao gerar arquivo de imagem'}
 
-            caption = f"""📊 <b>ANÁLISE - {symbol}</b>
-
-🎯 <b>Estratégia:</b> {strategy_type}
-⏰ <b>Timeframe:</b> {timeframe.upper()}
-💰 <b>Preço Atual:</b> {current_price:.2f}
-
-📈 <b>Estado Atual:</b> {current_state}
-📊 <b>Estado Anterior:</b> {previous_state}
-🔄 <b>Mudança:</b> {state_change}
-
-📉 <b>RSI (14):</b> {current_rsi if isinstance(current_rsi, str) else f"{current_rsi:.2f}"}
-
-🤖 <i>OVECCHIA TRADING BOT</i>"""
+            # Caption simples apenas com o título
+            caption = f"📊 OVECCHIA TRADING - {symbol}\n🎯 {strategy_type} | ⏰ {timeframe.upper()}"
 
             return {
                 'success': True,
