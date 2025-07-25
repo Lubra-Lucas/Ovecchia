@@ -550,7 +550,10 @@ def screening_command(message):
         results = trading_bot.perform_screening(symbols, strategy)
 
         if results:
-            response = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
+            # Data e hora atual da análise
+            data_analise = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            
+            response = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n📅 {data_analise}\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
             for result in results:
                 state_icon = "🟢" if result['current_state'] == "Buy" else "🔴" if result['current_state'] == "Sell" else "⚫"
@@ -563,7 +566,7 @@ def screening_command(message):
             # Dividir mensagem se muito longa
             if len(response) > 4000:
                 parts = response.split('\n\n')
-                current_message = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia\n📈 Total analisado: {len(symbols)} ativos\n\n"
+                current_message = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n📅 {data_analise}\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia\n📈 Total analisado: {len(symbols)} ativos\n\n"
                 
                 for part in parts[1:]:  # Skip header
                     if len(current_message + part + '\n\n') > 4000:
@@ -713,7 +716,10 @@ def topos_fundos_command(message):
         results = trading_bot.detect_tops_bottoms(symbols)
 
         if results:
-            response = f"📊 *DETECÇÃO DE TOPOS E FUNDOS*\n\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
+            # Data e hora atual da análise
+            data_analise = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            
+            response = f"📊 *DETECÇÃO DE TOPOS E FUNDOS*\n📅 {data_analise}\n\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
             buy_opportunities = [r for r in results if 'Compra' in r['signal']]
             sell_opportunities = [r for r in results if 'Venda' in r['signal']]
