@@ -2438,18 +2438,18 @@ with tab6:
         st.warning("⚠️ **Importante**: Nem todos os ativos/brokers permitem operações vendidas (short). Verifique as regras do seu provedor.")
 
         st.markdown("### 📌 Tipos de Stop Loss")
-        st.write("**🛡️ Sistema de Stop Loss Baseado em ATR**")
-        st.write("O sistema calcula stops baseados no ATR (Average True Range) de 14 períodos:")
+        st.write("**🛡️ Sistema de Stop Loss Baseado em Volatilidade**")
+        st.write("O sistema oferece três tipos de stop loss calculados dinamicamente com base na volatilidade do ativo:")
         
-        st.write("• **Stop Justo**: 2.0 x ATR (mais próximo, menos perdas por operação, mais stops atingidos)")
-        st.write("• **Stop Balanceado**: 2.5 x ATR (equilíbrio entre segurança e eficácia)")
-        st.write("• **Stop Largo**: 3.5 x ATR (mais distante, menos stops atingidos, perdas maiores quando ocorrem)")
+        st.write("• **Stop Justo**: Nível mais próximo ao preço (mais proteção, saídas mais frequentes)")
+        st.write("• **Stop Balanceado**: Nível intermediário (equilíbrio entre proteção e permanência)")
+        st.write("• **Stop Largo**: Nível mais distante (menos saídas por ruído, perdas maiores quando ocorrem)")
         
         st.write("**📊 Como Funciona**")
-        st.write("• ATR mede a volatilidade média do ativo")
-        st.write("• Stop se adapta automaticamente à volatilidade")
-        st.write("• Em posições de compra: Stop = Preço - (Fator x ATR)")
-        st.write("• Em posições de venda: Stop = Preço + (Fator x ATR)")
+        st.write("• O sistema calcula automaticamente os níveis com base na volatilidade atual")
+        st.write("• Stop se adapta automaticamente às condições de mercado")
+        st.write("• Cada tipo oferece um perfil diferente de risco/retorno")
+        st.write("• Recomenda-se testar diferentes tipos para encontrar o ideal para seu perfil")
 
         st.markdown("### 📌 Limitações dos Dados")
         st.warning("**⚠️ Limitações do Yahoo Finance**")
