@@ -1784,7 +1784,7 @@ with tab4:
 
         # Date range selection
         default_end_screening = datetime.now().date()
-        default_start_screening = default_end_screening - timedelta(days=30)
+        default_start_screening = default_end_screening - timedelta(days=365)
 
         col_date1, col_date2 = st.columns(2)
         with col_date1:
@@ -2076,7 +2076,7 @@ with tab5:
 
         # Date range selection
         default_end_bb = datetime.now().date()
-        default_start_bb = default_end_bb - timedelta(days=30)
+        default_start_bb = default_end_bb - timedelta(days=365)
 
         col_date1, col_date2 = st.columns(2)
         with col_date1:
