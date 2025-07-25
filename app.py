@@ -363,6 +363,22 @@ with tab1:
     </div>
     """, unsafe_allow_html=True)
 
+    st.markdown("### 🤖 Bot Telegram - Atualizações Recentes")
+    st.markdown("""
+    <div class="metric-card" style="border-left: 4px solid #25D366;">
+        <p><strong>🚀 Novas Funcionalidades do Bot @Ovecchia_bot</strong></p>
+        <ul>
+            <li><strong>📊 Análise Individual com Gráficos:</strong> Comando /analise agora gera gráficos personalizados</li>
+            <li><strong>📅 Datas Personalizadas:</strong> Especifique período de análise com formato YYYY-MM-DD</li>
+            <li><strong>⏰ Múltiplos Timeframes:</strong> Suporte completo para 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk</li>
+            <li><strong>🎯 Estratégias Aprimoradas:</strong> Análise agressiva, balanceada e conservadora</li>
+            <li><strong>📈 Gráficos Automáticos:</strong> Visualização profissional enviada como imagem</li>
+        </ul>
+        <p style="margin-top: 1rem; font-size: 0.9rem; color: #25D366;"><strong>💡 Exemplo:</strong> 
+        <code>/analise balanceada PETR4.SA 1d 2024-01-01 2024-06-01</code></p>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("### 🛠️ Recursos Disponíveis")
 
     col1, col2, col3 = st.columns(3)
@@ -2200,6 +2216,40 @@ with tab6:
         <strong>NÃO constituem recomendações de investimento</strong>. Trading e investimentos envolvem riscos 
         significativos e você pode perder parte ou todo o seu capital investido.</p>
         <p><strong>Sempre consulte um profissional qualificado antes de tomar decisões de investimento.</strong></p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("### 🤖 Atualizações Recentes do Bot Telegram")
+    st.markdown("""
+    <div class="metric-card" style="border-left: 4px solid #25D366;">
+        <p><strong>🚀 Versão 2.0 - Bot @Ovecchia_bot</strong></p>
+        
+        <p><strong>📊 Nova Funcionalidade: Análise Individual com Gráficos</strong></p>
+        <ul>
+            <li><strong>Comando Aprimorado:</strong> <code>/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]</code></li>
+            <li><strong>Gráficos Automáticos:</strong> Geração de gráficos profissionais com matplotlib</li>
+            <li><strong>Períodos Personalizados:</strong> Defina suas próprias datas de análise</li>
+            <li><strong>Múltiplos Timeframes:</strong> De 1 minuto até 1 semana</li>
+        </ul>
+        
+        <p><strong>🔧 Melhorias Técnicas:</strong></p>
+        <ul>
+            <li><strong>Performance Otimizada:</strong> Processamento mais rápido de dados</li>
+            <li><strong>Tratamento de Erros:</strong> Mensagens mais claras para o usuário</li>
+            <li><strong>Validação de Dados:</strong> Verificação automática de formatos de data</li>
+            <li><strong>Cleanup Automático:</strong> Limpeza de arquivos temporários</li>
+        </ul>
+        
+        <p><strong>📈 Exemplos de Uso Avançado:</strong></p>
+        <ul>
+            <li><code>/analise balanceada BTC-USD 4h 2024-01-01 2024-01-31</code></li>
+            <li><code>/analise agressiva PETR4.SA 1d 2024-06-01 2024-12-01</code></li>
+            <li><code>/analise conservadora AAPL 1h</code> (período automático)</li>
+        </ul>
+        
+        <p style="margin-top: 1rem; padding: 0.5rem; background: #f0f8f0; border-radius: 5px; color: #25D366;">
+        <strong>💡 Dica:</strong> Use datas personalizadas para analisar períodos específicos de interesse ou eventos de mercado!
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
