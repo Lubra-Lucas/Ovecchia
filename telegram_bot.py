@@ -539,8 +539,8 @@ def screening_command(message):
 
         # Realizar screening (limitado a 50 ativos por vez para evitar timeout)
         if len(symbols) > 50:
-            bot.reply_to(message, f"⚠️ Lista muito grande ({len(symbols)} ativos). Analisando os primeiros 50 ativos...", parse_mode='Markdown')
-            symbols = symbols[:50]
+            bot.reply_to(message, f"⚠️ Lista muito grande ({len(symbols)} ativos). Analisando os ativos...", parse_mode='Markdown')
+            symbols = symbols[:200]
 
         # Realizar screening
         results = trading_bot.perform_screening(symbols, strategy)
@@ -697,8 +697,8 @@ def topos_fundos_command(message):
 
         # Limitação para evitar timeout
         if len(symbols) > 50:
-            bot.reply_to(message, f"⚠️ Lista muito grande ({len(symbols)} ativos). Analisando os primeiros 50 ativos...", parse_mode='Markdown')
-            symbols = symbols[:50]
+            bot.reply_to(message, f"⚠️ Lista muito grande ({len(symbols)} ativos). Analisando os primeiros 200 ativos...", parse_mode='Markdown')
+            symbols = symbols[:200]
 
         bot.reply_to(message, f"🔄 Analisando topos e fundos para {len(symbols)} ativos...", parse_mode='Markdown')
 
