@@ -550,8 +550,8 @@ def screening_command(message):
         results = trading_bot.perform_screening(symbols, strategy)
 
         if results:
-            # Data e hora atual da análise
-            data_analise = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            # Data atual da análise
+            data_analise = datetime.now().strftime("%d/%m/%Y")
             
             response = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n📅 {data_analise}\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
@@ -716,8 +716,8 @@ def topos_fundos_command(message):
         results = trading_bot.detect_tops_bottoms(symbols)
 
         if results:
-            # Data e hora atual da análise
-            data_analise = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            # Data atual da análise
+            data_analise = datetime.now().strftime("%d/%m/%Y")
             
             response = f"📊 *DETECÇÃO DE TOPOS E FUNDOS*\n📅 {data_analise}\n\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
