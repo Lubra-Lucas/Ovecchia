@@ -10,6 +10,9 @@ import threading
 import time
 import os
 import sys
+import difflib
+import unicodedata
+import re
 
 warnings.filterwarnings('ignore')
 
@@ -25,6 +28,137 @@ BOT_TOKEN = "8487471783:AAElQBvIhVcbtVmEoPEdnuafMUR4mwGJh1k"
 
 # Initialize bot
 bot = telebot.TeleBot(BOT_TOKEN)
+
+# Funções auxiliares para tolerância a erros
+def normalize_text(text):
+    """Normaliza texto removendo acentos e convertendo para minúsculas"""
+    if not text:
+        return ""
+    # Remove acentos
+    text = unicodedata.normalize('NFD', text)
+    text = ''.join(char for char in text if unicodedata.category(char) != 'Mn')
+    # Converte para minúsculas
+    return text.lower().strip()
+
+def calculate_similarity(text1, text2):
+    """Calcula similaridade entre dois textos usando SequenceMatcher"""
+    return difflib.SequenceMatcher(None, normalize_text(text1), normalize_text(text2)).ratio()
+
+def find_best_match(input_text, options, threshold=0.6):
+    """Encontra a melhor correspondência em uma lista de opções"""
+    if not input_text or not options:
+        return None
+    
+    normalized_input = normalize_text(input_text)
+    best_match = None
+    best_score = 0
+    
+    for option in options:
+        score = calculate_similarity(normalized_input, option)
+        if score > best_score and score >= threshold:
+            best_score = score
+            best_match = option
+    
+    return best_match
+
+def fuzzy_command_match(user_input):
+    """Identifica comandos com tolerância a erros"""
+    commands = {
+        'start': ['start', 'iniciar', 'comecar', 'inicio'],
+        'analise': ['analise', 'analisar', 'analysis', 'analyze', 'grafico', 'chart'],
+        'screening': ['screening', 'screnning', 'screning', 'screen', 'varredura', 'busca'],
+        'topos_fundos': ['topos_fundos', 'toposfundos', 'topo_fundo', 'topofundo', 'reversao', 'oportunidades'],
+        'status': ['status', 'estado', 'situacao', 'info'],
+        'restart': ['restart', 'reiniciar', 'reboot', 'reset'],
+        'help': ['help', 'ajuda', 'ajudar', 'comandos', '?']
+    }
+    
+    user_input = normalize_text(user_input.replace('/', ''))
+    
+    for command, variations in commands.items():
+        for variation in variations:
+            if calculate_similarity(user_input, variation) >= 0.7:
+                return command
+    
+    return None
+
+def fuzzy_strategy_match(user_input):
+    """Identifica estratégias com tolerância a erros"""
+    strategies = {
+        'agressiva': ['agressiva', 'agressivo', 'agressive', 'rapida', 'forte'],
+        'balanceada': ['balanceada', 'balanceado', 'balanced', 'equilibrada', 'media', 'normal'],
+        'conservadora': ['conservadora', 'conservador', 'conservative', 'segura', 'cautelosa']
+    }
+    
+    normalized_input = normalize_text(user_input)
+    
+    for strategy, variations in strategies.items():
+        for variation in variations:
+            if calculate_similarity(normalized_input, variation) >= 0.7:
+                return strategy
+    
+    return None
+
+def fuzzy_list_match(user_input):
+    """Identifica listas com tolerância a erros"""
+    lists = {
+        'açõesbr': ['acoesbr', 'açõesbr', 'acoes_br', 'açoes_br', 'brasileiras', 'brasil', 'br'],
+        'açõeseua': ['acoeseua', 'açõeseua', 'acoes_eua', 'açoes_eua', 'americanas', 'eua', 'usa', 'us'],
+        'criptos': ['criptos', 'crypto', 'cripto', 'moedas', 'bitcoin', 'criptomoedas'],
+        'forex': ['forex', 'fx', 'cambio', 'moedas', 'divisas'],
+        'commodities': ['commodities', 'commodity', 'mercadorias', 'materias']
+    }
+    
+    normalized_input = normalize_text(user_input)
+    
+    for list_name, variations in lists.items():
+        for variation in variations:
+            if calculate_similarity(normalized_input, variation) >= 0.7:
+                return list_name
+    
+    return None
+
+def parse_flexible_command(message_text):
+    """Analisa comandos com tolerância a erros"""
+    parts = message_text.strip().split()
+    if not parts:
+        return None
+    
+    # Identificar comando
+    first_part = parts[0]
+    if first_part.startswith('/'):
+        command = fuzzy_command_match(first_part)
+    else:
+        command = fuzzy_command_match(first_part)
+    
+    if not command:
+        return None
+    
+    # Processar argumentos baseado no comando
+    args = parts[1:] if len(parts) > 1 else []
+    processed_args = []
+    
+    for arg in args:
+        # Tentar identificar estratégia
+        strategy = fuzzy_strategy_match(arg)
+        if strategy:
+            processed_args.append(strategy)
+            continue
+        
+        # Tentar identificar lista
+        list_match = fuzzy_list_match(arg)
+        if list_match:
+            processed_args.append(list_match)
+            continue
+        
+        # Manter argumento original se não encontrar correspondência
+        processed_args.append(arg)
+    
+    return {
+        'command': command,
+        'args': processed_args,
+        'original_text': message_text
+    }
 
 class OvecchiaTradingBot:
     def __init__(self):
@@ -411,8 +545,12 @@ def screening_command(message):
         user_name = message.from_user.first_name
         logger.info(f"Comando /screening recebido de {user_name}")
 
-        # Parse arguments
-        args = message.text.split()[1:]  # Remove /screening from the list
+        # Parse arguments with fuzzy matching
+        parsed = parse_flexible_command(message.text)
+        if parsed and parsed['command'] == 'screening':
+            args = parsed['args']
+        else:
+            args = message.text.split()[1:]  # Fallback para método original
 
         # Listas pré-definidas
         predefined_lists = {
@@ -595,7 +733,12 @@ def topos_fundos_command(message):
         user_name = message.from_user.first_name
         logger.info(f"Comando /topos_fundos recebido de {user_name}")
 
-        args = message.text.split()[1:]  # Remove /topos_fundos from the list
+        # Parse arguments with fuzzy matching
+        parsed = parse_flexible_command(message.text)
+        if parsed and parsed['command'] == 'topos_fundos':
+            args = parsed['args']
+        else:
+            args = message.text.split()[1:]  # Fallback para método original
 
         # Listas pré-definidas (mesmas do screening)
         predefined_lists = {
@@ -793,7 +936,12 @@ def analise_command(message):
         user_name = message.from_user.first_name
         logger.info(f"Comando /analise recebido de {user_name}")
 
-        args = message.text.split()[1:]  # Remove /analise from the list
+        # Parse arguments with fuzzy matching
+        parsed = parse_flexible_command(message.text)
+        if parsed and parsed['command'] == 'analise':
+            args = parsed['args']
+        else:
+            args = message.text.split()[1:]  # Fallback para método original
 
         if len(args) < 3:
             help_message = """📊 ANÁLISE INDIVIDUAL DE ATIVO
@@ -995,17 +1143,43 @@ def help_command(message):
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     try:
-        user_message = message.text.lower()
+        user_message = message.text
         user_name = message.from_user.first_name
 
         logger.info(f"Mensagem recebida de {user_name}: {user_message}")
 
-        if any(word in user_message for word in ['oi', 'olá', 'hello', 'hi']):
+        # Tentar identificar comando com fuzzy matching
+        parsed = parse_flexible_command(user_message)
+        
+        if parsed:
+            command = parsed['command']
+            logger.info(f"Comando fuzzy identificado: {command} (original: {parsed['original_text']})")
+            
+            # Redirecionar para o handler apropriado
+            if command == 'start':
+                start_command(message)
+            elif command == 'analise':
+                analise_command(message)
+            elif command == 'screening':
+                screening_command(message)
+            elif command == 'topos_fundos':
+                topos_fundos_command(message)
+            elif command == 'status':
+                status_command(message)
+            elif command == 'restart':
+                restart_command(message)
+            elif command == 'help':
+                help_command(message)
+            return
+        
+        # Mensagens de saudação
+        user_message_lower = user_message.lower()
+        if any(word in user_message_lower for word in ['oi', 'olá', 'hello', 'hi']):
             bot.reply_to(message, "👋 Olá! Use /help para ver os comandos disponíveis.")
-        elif 'ajuda' in user_message:
+        elif any(word in user_message_lower for word in ['ajuda', 'help']):
             help_command(message)
         else:
-            bot.reply_to(message, "🤖 Use /help para ver os comandos disponíveis.")
+            bot.reply_to(message, "🤖 Use /help para ver os comandos disponíveis.\n\n💡 Dica: Você pode digitar comandos mesmo com pequenos erros de digitação!")
 
     except Exception as e:
         logger.error(f"Erro ao processar mensagem: {str(e)}")
