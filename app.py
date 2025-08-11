@@ -6,39 +6,187 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import warnings
+from contextlib import contextmanager
+
+# Importar MT5 com tratamento de erro
+try:
+    import MetaTrader5 as mt5
+    MT5_AVAILABLE = True
+except ImportError:
+    MT5_AVAILABLE = False
+    st.warning("⚠️ MetaTrader5 não disponível. Apenas yfinance será usado.")
+
 warnings.filterwarnings('ignore')
 
-def get_market_data(symbol, start_date, end_date, interval):
-    """Função principal para coletar dados do mercado usando Yahoo Finance para todos os ativos"""
-    try:
-        df = yf.download(symbol, start=start_date, end=end_date, interval=interval)
+# --- MT5 Integration Functions ---
+if MT5_AVAILABLE:
+    # Mapa de timeframes MT5
+    TIMEFRAME_MAP = {
+        mt5.TIMEFRAME_M1: "1 Minuto",
+        mt5.TIMEFRAME_M5: "5 Minutos",
+        mt5.TIMEFRAME_M15: "15 Minutos",
+        mt5.TIMEFRAME_M30: "30 Minutos",
+        mt5.TIMEFRAME_H1: "1 Hora",
+        mt5.TIMEFRAME_H4: "4 Horas",
+        mt5.TIMEFRAME_D1: "Diário",
+        mt5.TIMEFRAME_W1: "Semanal",
+        mt5.TIMEFRAME_MN1: "Mensal",
+    }
 
-        if df is None or df.empty:
+    # Mapeamento reverso para UI
+    TIMEFRAME_OPTIONS = {
+        "1 Minuto": mt5.TIMEFRAME_M1,
+        "5 Minutos": mt5.TIMEFRAME_M5,
+        "15 Minutos": mt5.TIMEFRAME_M15,
+        "30 Minutos": mt5.TIMEFRAME_M30,
+        "1 Hora": mt5.TIMEFRAME_H1,
+        "4 Horas": mt5.TIMEFRAME_H4,
+        "Diário": mt5.TIMEFRAME_D1,
+        "Semanal": mt5.TIMEFRAME_W1,
+        "Mensal": mt5.TIMEFRAME_MN1,
+    }
+
+    @contextmanager
+    def mt5_connection():
+        """Garante init/shutdown do MT5 com tratamento de erro."""
+        if not mt5.initialize():
+            raise RuntimeError(f"Falha ao inicializar MT5: {mt5.last_error()}")
+        try:
+            yield
+        finally:
+            mt5.shutdown()
+
+    def _normalize_df(rates) -> pd.DataFrame:
+        """Converte retorno do MT5 em DataFrame padronizado."""
+        if rates is None or len(rates) == 0:
+            raise ValueError("Nenhum dado retornado pelo MT5.")
+        df = pd.DataFrame(rates)
+        # converter timestamp e normalizar colunas
+        if "time" in df.columns:
+            df["time"] = pd.to_datetime(df["time"], unit="s")
+        # remover colunas não essenciais (se existirem)
+        for col in ["spread", "tick_volume", "real_volume"]:
+            if col in df.columns:
+                df.drop(columns=col, inplace=True)
+        # garantir tipos numéricos
+        for col in ["open","high","low","close","volume"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        # ordenar e setar índice (opcional)
+        df.sort_values("time", inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        return df[["time","open","high","low","close","volume"]]
+
+    def _ensure_symbol(symbol: str):
+        """Garante que o símbolo está visível/assinável no MT5."""
+        info = mt5.symbol_info(symbol)
+        if info is None:
+            raise ValueError(f"Símbolo '{symbol}' não encontrado no MT5.")
+        if not info.visible:
+            if not mt5.symbol_select(symbol, True):
+                raise RuntimeError(f"Não foi possível selecionar '{symbol}' no MT5.")
+
+    def fetch_mt5_by_range(symbol: str, timeframe: int, start: datetime, end: datetime) -> pd.DataFrame:
+        """
+        Coleta candles do MT5 por intervalo de datas [start, end).
+        Retorna DataFrame com colunas: time, open, high, low, close, volume.
+        """
+        with mt5_connection():
+            _ensure_symbol(symbol)
+            rates = mt5.copy_rates_range(symbol, timeframe, start, end)
+        return _normalize_df(rates)
+
+    def fetch_mt5_last_n(symbol: str, timeframe: int, n: int = 500) -> pd.DataFrame:
+        """
+        Coleta os últimos N candles disponíveis no MT5.
+        Útil para atualizações rápidas/tempo real.
+        """
+        if n <= 0:
+            raise ValueError("n deve ser > 0")
+        with mt5_connection():
+            _ensure_symbol(symbol)
+            rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, n)
+        return _normalize_df(rates)
+
+    def get_mt5_market_data(symbol, start_date=None, end_date=None, timeframe=mt5.TIMEFRAME_D1, mode="range", n_candles=500):
+        """Função principal para coletar dados do MetaTrader 5"""
+        try:
+            if mode == "range" and start_date and end_date:
+                # Validar que start < end
+                if start_date >= end_date:
+                    raise ValueError("Data inicial deve ser menor que data final")
+                
+                start_dt = datetime.combine(start_date, datetime.min.time()) if hasattr(start_date, 'date') else start_date
+                end_dt = datetime.combine(end_date, datetime.max.time()) if hasattr(end_date, 'date') else end_date
+                
+                df = fetch_mt5_by_range(symbol, timeframe, start_dt, end_dt)
+            else:
+                # Modo "últimos N"
+                df = fetch_mt5_last_n(symbol, timeframe, n_candles)
+
+            if df.empty:
+                st.error(f"Nenhum dado encontrado para {symbol} no período especificado")
+                return pd.DataFrame()
+
+            st.success(f"✅ Dados MT5 coletados: {len(df)} candles para {symbol}")
+            return df
+
+        except Exception as e:
+            error_msg = f"Erro ao coletar dados MT5: {str(e)}"
+            if MT5_AVAILABLE:
+                mt5_error = mt5.last_error()
+                if mt5_error != (0, 'Success'):
+                    error_msg += f" | MT5 Error: {mt5_error}"
+            st.error(error_msg)
             return pd.DataFrame()
 
-        # Handle multi-level columns if present
-        if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
-            df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
+def get_market_data(symbol, start_date, end_date, interval, data_source="yfinance", mt5_timeframe=None, mt5_mode="range", n_candles=500):
+    """Função principal para coletar dados do mercado - suporta Yahoo Finance e MetaTrader 5"""
+    
+    if data_source == "mt5" and MT5_AVAILABLE:
+        # Usar MetaTrader 5
+        if mt5_timeframe is None:
+            mt5_timeframe = mt5.TIMEFRAME_D1  # Default para diário
+        
+        # Converter string dates para datetime se necessário
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        if isinstance(end_date, str):
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+            
+        return get_mt5_market_data(symbol, start_date, end_date, mt5_timeframe, mt5_mode, n_candles)
+    
+    else:
+        # Usar Yahoo Finance (comportamento original)
+        try:
+            df = yf.download(symbol, start=start_date, end=end_date, interval=interval)
 
-        df.reset_index(inplace=True)
+            if df is None or df.empty:
+                return pd.DataFrame()
 
-        # Standardize column names
-        column_mapping = {
-            "Datetime": "time", 
-            "Date": "time", 
-            "Open": "open", 
-            "High": "high", 
-            "Low": "low", 
-            "Close": "close",
-            "Volume": "volume"
-        }
-        df.rename(columns=column_mapping, inplace=True)
+            # Handle multi-level columns if present
+            if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
+                df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
 
-        return df
+            df.reset_index(inplace=True)
 
-    except Exception as e:
-        st.error(f"Erro ao coletar dados do Yahoo Finance para {symbol}: {str(e)}")
-        return pd.DataFrame()
+            # Standardize column names
+            column_mapping = {
+                "Datetime": "time", 
+                "Date": "time", 
+                "Open": "open", 
+                "High": "high", 
+                "Low": "low", 
+                "Close": "close",
+                "Volume": "volume"
+            }
+            df.rename(columns=column_mapping, inplace=True)
+
+            return df
+
+        except Exception as e:
+            st.error(f"Erro ao coletar dados do Yahoo Finance para {symbol}: {str(e)}")
+            return pd.DataFrame()
 
 def calcular_bollinger_bands(df, period=20):
     """Função para calcular as Bandas de Bollinger"""
@@ -487,6 +635,23 @@ with tab2:
         st.write("• **Para iniciantes**: Recomenda-se manter ativado para maior segurança")
         st.write("• **Para testes**: Desative para avaliar puramente a eficácia do critério de saída escolhido")
 
+        st.markdown("### 📌 Integração com MetaTrader 5")
+        if MT5_AVAILABLE:
+            st.write("**🎯 MetaTrader 5 Integrado**")
+            st.write("O sistema agora suporta coleta de dados diretamente do MetaTrader 5:")
+            st.write("• **Requisitos**: Terminal MT5 instalado e logado em conta válida")
+            st.write("• **Símbolos**: Use códigos específicos do seu corretor (ex: BTCUSD-T, WIN$, WDO$)")
+            st.write("• **Timeframes**: Todos os timeframes padrão do MT5 disponíveis")
+            st.write("• **Modos de coleta**: Intervalo de datas ou últimos N candles")
+            st.write("• **Compatibilidade**: Funciona em análise individual, screening e topos/fundos")
+            st.success("✅ **MetaTrader 5 detectado e disponível para uso!**")
+        else:
+            st.write("**⚠️ MetaTrader 5 Não Disponível**")
+            st.write("Para usar a integração com MT5, é necessário:")
+            st.write("• Instalar a biblioteca: `pip install MetaTrader5`")
+            st.write("• Ter o terminal MT5 instalado na mesma máquina")
+            st.write("• Terminal deve estar aberto e logado em conta válida")
+        
         st.markdown("### 📌 Funcionalidade de Otimização")
         st.write("**🎯 Otimização Automática de Parâmetros**")
         st.write("O sistema oferece uma funcionalidade única de otimização automática que testa diferentes configurações para encontrar os melhores parâmetros para o ativo e período selecionados:")
@@ -795,11 +960,30 @@ with tab3:
     with col1:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         st.markdown("#### 💹 Configuração de Ativo")
-        symbol = st.text_input(
-            "Ticker",
-            value="BTC-USD",
-            help="Examples: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
-        ).strip()
+        
+        # Seleção da fonte de dados
+        if MT5_AVAILABLE:
+            data_source_options = ["Yahoo Finance", "MetaTrader 5"]
+            data_source = st.selectbox("Fonte de Dados", data_source_options, index=0)
+            data_source_key = "yfinance" if data_source == "Yahoo Finance" else "mt5"
+        else:
+            data_source = "Yahoo Finance"
+            data_source_key = "yfinance"
+            st.info("📊 **Fonte de Dados:** Yahoo Finance")
+        
+        # Símbolo com exemplos específicos por fonte
+        if data_source_key == "mt5":
+            symbol = st.text_input(
+                "Símbolo MT5",
+                value="BTCUSD-T",
+                help="Exemplos: BTCUSD-T, WIN$, WDO$, EURUSD-T"
+            ).strip()
+        else:
+            symbol = st.text_input(
+                "Ticker",
+                value="BTC-USD",
+                help="Examples: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
+            ).strip()
 
         st.markdown("#### 📅 Intervalo de Data")
         default_end = datetime.now().date()
@@ -812,13 +996,38 @@ with tab3:
             end_date = st.date_input("Data Final", value=default_end, min_value=start_date, max_value=default_end)
 
         st.markdown("#### ⏱️ Intervalo de Tempo")
-        interval_options = {
-            "1 minute": "1m", "2 minutes": "2m", "5 minutes": "5m", "15 minutes": "15m",
-            "30 minutes": "30m", "60 minutes": "60m", "90 minutes": "90m", "4 hours": "4h",
-            "1 day": "1d", "5 days": "5d", "1 week": "1wk", "1 month": "1mo", "3 months": "3mo"
-        }
-        interval_display = st.selectbox("Intervalo", list(interval_options.keys()), index=8)
-        interval = interval_options[interval_display]
+        
+        if data_source_key == "mt5" and MT5_AVAILABLE:
+            # Opções específicas do MT5
+            timeframe_display = st.selectbox("Timeframe MT5", list(TIMEFRAME_OPTIONS.keys()), index=6)  # Diário como padrão
+            mt5_timeframe = TIMEFRAME_OPTIONS[timeframe_display]
+            interval = "1d"  # Para compatibilidade com o resto do código
+            
+            # Modo de coleta MT5
+            st.markdown("#### 📊 Modo de Coleta MT5")
+            mt5_mode = st.radio(
+                "Modo:",
+                ["Intervalo de datas", "Últimos N candles"],
+                index=0
+            )
+            
+            if mt5_mode == "Últimos N candles":
+                n_candles = st.number_input("Número de candles", min_value=1, max_value=10000, value=1000)
+            else:
+                n_candles = 500
+                
+        else:
+            # Opções do Yahoo Finance
+            interval_options = {
+                "1 minute": "1m", "2 minutes": "2m", "5 minutes": "5m", "15 minutes": "15m",
+                "30 minutes": "30m", "60 minutes": "60m", "90 minutes": "90m", "4 hours": "4h",
+                "1 day": "1d", "5 days": "5d", "1 week": "1wk", "1 month": "1mo", "3 months": "3mo"
+            }
+            interval_display = st.selectbox("Intervalo", list(interval_options.keys()), index=8)
+            interval = interval_options[interval_display]
+            mt5_timeframe = None
+            mt5_mode = "range"
+            n_candles = 500
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -925,7 +1134,17 @@ with tab3:
             end_str = end_date.strftime("%Y-%m-%d")
 
             # Download data using appropriate API
-            df = get_market_data(symbol, start_str, end_str, interval)
+            mt5_mode_key = "last_n" if data_source_key == "mt5" and mt5_mode == "Últimos N candles" else "range"
+            df = get_market_data(
+                symbol, 
+                start_str, 
+                end_str, 
+                interval, 
+                data_source=data_source_key,
+                mt5_timeframe=mt5_timeframe,
+                mt5_mode=mt5_mode_key,
+                n_candles=n_candles
+            )
 
             if df is None or df.empty:
                 st.error(f"Sem data encontrada para '{symbol}' nesse período de tempo.")
@@ -1819,6 +2038,15 @@ with tab4:
     with col2:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         st.markdown("#### 📅 Configurações de Análise")
+        
+        # Seleção da fonte de dados para screening
+        if MT5_AVAILABLE:
+            screening_data_source_options = ["Yahoo Finance", "MetaTrader 5"]
+            screening_data_source = st.selectbox("Fonte de Dados", screening_data_source_options, index=0, key="screening_source")
+            screening_data_source_key = "yfinance" if screening_data_source == "Yahoo Finance" else "mt5"
+        else:
+            screening_data_source = "Yahoo Finance"
+            screening_data_source_key = "yfinance"
 
         # Fixed period: 2 years
         default_end_screening = datetime.now().date()
@@ -1827,8 +2055,14 @@ with tab4:
         start_date_screening = default_start_screening
         end_date_screening = default_end_screening
         
-        st.info("📅 **Período fixo:** 2 anos de dados históricos")
-        st.info("⏰ **Timeframe fixo:** 1 dia")
+        if screening_data_source_key == "mt5":
+            st.info("📅 **Período:** 2 anos de dados históricos")
+            st.info("⏰ **Timeframe:** Diário (MT5)")
+            screening_mt5_timeframe = mt5.TIMEFRAME_D1
+        else:
+            st.info("📅 **Período fixo:** 2 anos de dados históricos")
+            st.info("⏰ **Timeframe fixo:** 1 dia")
+            screening_mt5_timeframe = None
 
         # Fixed interval: 1 day
         interval_screening = "1d"
@@ -1897,7 +2131,16 @@ with tab4:
                     end_str = end_date_screening.strftime("%Y-%m-%d")
 
                     # Download data using appropriate API
-                    df_temp = get_market_data(current_symbol, start_str, end_str, interval_screening)
+                    df_temp = get_market_data(
+                        current_symbol, 
+                        start_str, 
+                        end_str, 
+                        interval_screening,
+                        data_source=screening_data_source_key,
+                        mt5_timeframe=screening_mt5_timeframe,
+                        mt5_mode="range",
+                        n_candles=1000
+                    )
 
                     if df_temp is None or df_temp.empty:
                         screening_results.append({
@@ -2151,6 +2394,15 @@ with tab5:
     with col2:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         st.markdown("#### 📅 Configurações de Análise")
+        
+        # Seleção da fonte de dados para topos e fundos
+        if MT5_AVAILABLE:
+            bb_data_source_options = ["Yahoo Finance", "MetaTrader 5"]
+            bb_data_source = st.selectbox("Fonte de Dados", bb_data_source_options, index=0, key="bb_source")
+            bb_data_source_key = "yfinance" if bb_data_source == "Yahoo Finance" else "mt5"
+        else:
+            bb_data_source = "Yahoo Finance"
+            bb_data_source_key = "yfinance"
 
         # Fixed period: 2 years
         default_end_bb = datetime.now().date()
@@ -2159,8 +2411,14 @@ with tab5:
         start_date_bb = default_start_bb
         end_date_bb = default_end_bb
         
-        st.info("📅 **Período fixo:** 2 anos de dados históricos")
-        st.info("⏰ **Timeframe fixo:** 1 dia")
+        if bb_data_source_key == "mt5":
+            st.info("📅 **Período:** 2 anos de dados históricos")
+            st.info("⏰ **Timeframe:** Diário (MT5)")
+            bb_mt5_timeframe = mt5.TIMEFRAME_D1
+        else:
+            st.info("📅 **Período fixo:** 2 anos de dados históricos")
+            st.info("⏰ **Timeframe fixo:** 1 dia")
+            bb_mt5_timeframe = None
 
         # Fixed interval: 1 day
         interval_bb = "1d"
@@ -2194,7 +2452,16 @@ with tab5:
                     end_str = end_date_bb.strftime("%Y-%m-%d")
 
                     # Download data
-                    df_temp = get_market_data(current_symbol, start_str, end_str, interval_bb)
+                    df_temp = get_market_data(
+                        current_symbol, 
+                        start_str, 
+                        end_str, 
+                        interval_bb,
+                        data_source=bb_data_source_key,
+                        mt5_timeframe=bb_mt5_timeframe,
+                        mt5_mode="range",
+                        n_candles=1000
+                    )
 
                     if df_temp is None or df_temp.empty:
                         bb_results.append({
