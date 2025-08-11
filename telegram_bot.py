@@ -13,30 +13,6 @@ import sys
 import difflib
 import unicodedata
 import re
-from contextlib import contextmanager
-
-# Importar MT5 com tratamento de erro
-try:
-    import MetaTrader5 as mt5
-    MT5_AVAILABLE = True
-
-    # Mapa de timeframes MT5 para bot
-    TIMEFRAME_MAP = {
-        mt5.TIMEFRAME_M1: "1 Minuto",
-        mt5.TIMEFRAME_M5: "5 Minutos",
-        mt5.TIMEFRAME_M15: "15 Minutos",
-        mt5.TIMEFRAME_M30: "30 Minutos",
-        mt5.TIMEFRAME_H1: "1 Hora",
-        mt5.TIMEFRAME_H4: "4 Horas",
-        mt5.TIMEFRAME_D1: "Diário",
-        mt5.TIMEFRAME_W1: "Semanal",
-        mt5.TIMEFRAME_MN1: "Mensal",
-    }
-
-except ImportError:
-    MT5_AVAILABLE = False
-    TIMEFRAME_MAP = {}
-    logger.warning("⚠️ MetaTrader5 não disponível. Apenas yfinance será usado.")
 
 warnings.filterwarnings('ignore')
 
@@ -72,17 +48,17 @@ def find_best_match(input_text, options, threshold=0.6):
     """Encontra a melhor correspondência em uma lista de opções"""
     if not input_text or not options:
         return None
-
+    
     normalized_input = normalize_text(input_text)
     best_match = None
     best_score = 0
-
+    
     for option in options:
         score = calculate_similarity(normalized_input, option)
         if score > best_score and score >= threshold:
             best_score = score
             best_match = option
-
+    
     return best_match
 
 def fuzzy_command_match(user_input):
@@ -96,14 +72,14 @@ def fuzzy_command_match(user_input):
         'restart': ['restart', 'reiniciar', 'reboot', 'reset'],
         'help': ['help', 'ajuda', 'ajudar', 'comandos', '?']
     }
-
+    
     user_input = normalize_text(user_input.replace('/', ''))
-
+    
     for command, variations in commands.items():
         for variation in variations:
             if calculate_similarity(user_input, variation) >= 0.7:
                 return command
-
+    
     return None
 
 def fuzzy_strategy_match(user_input):
@@ -113,14 +89,14 @@ def fuzzy_strategy_match(user_input):
         'balanceada': ['balanceada', 'balanceado', 'balanced', 'equilibrada', 'media', 'normal'],
         'conservadora': ['conservadora', 'conservador', 'conservative', 'segura', 'cautelosa']
     }
-
+    
     normalized_input = normalize_text(user_input)
-
+    
     for strategy, variations in strategies.items():
         for variation in variations:
             if calculate_similarity(normalized_input, variation) >= 0.7:
                 return strategy
-
+    
     return None
 
 def fuzzy_list_match(user_input):
@@ -132,14 +108,14 @@ def fuzzy_list_match(user_input):
         'forex': ['forex', 'fx', 'cambio', 'moedas', 'divisas'],
         'commodities': ['commodities', 'commodity', 'mercadorias', 'materias']
     }
-
+    
     normalized_input = normalize_text(user_input)
-
+    
     for list_name, variations in lists.items():
         for variation in variations:
             if calculate_similarity(normalized_input, variation) >= 0.7:
                 return list_name
-
+    
     return None
 
 def parse_flexible_command(message_text):
@@ -147,37 +123,37 @@ def parse_flexible_command(message_text):
     parts = message_text.strip().split()
     if not parts:
         return None
-
+    
     # Identificar comando
     first_part = parts[0]
     if first_part.startswith('/'):
         command = fuzzy_command_match(first_part)
     else:
         command = fuzzy_command_match(first_part)
-
+    
     if not command:
         return None
-
+    
     # Processar argumentos baseado no comando
     args = parts[1:] if len(parts) > 1 else []
     processed_args = []
-
+    
     for arg in args:
         # Tentar identificar estratégia
         strategy = fuzzy_strategy_match(arg)
         if strategy:
             processed_args.append(strategy)
             continue
-
+        
         # Tentar identificar lista
         list_match = fuzzy_list_match(arg)
         if list_match:
             processed_args.append(list_match)
             continue
-
+        
         # Manter argumento original se não encontrar correspondência
         processed_args.append(arg)
-
+    
     return {
         'command': command,
         'args': processed_args,
@@ -188,206 +164,39 @@ class OvecchiaTradingBot:
     def __init__(self):
         self.users_config = {}
 
-    def get_market_data_yf(self, symbol, start_date, end_date, interval="1d"):
-        """Função para coletar dados do mercado via yfinance"""
+    def get_market_data(self, symbol, start_date, end_date, interval="1d"):
+        """Função para coletar dados do mercado"""
         try:
-            logger.info(f"Coletando dados YF para {symbol} de {start_date} a {end_date} com intervalo {interval}")
+            logger.info(f"Coletando dados para {symbol}")
             df = yf.download(symbol, start=start_date, end=end_date, interval=interval, progress=False)
 
             if df is None or df.empty:
-                logger.warning(f"Sem dados YF para {symbol}")
+                logger.warning(f"Sem dados para {symbol}")
                 return pd.DataFrame()
 
-            # Handle multi-level columns if present (e.g., from specific yfinance versions or data sources)
+            # Handle multi-level columns if present
             if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
-                # Attempt to find columns like ('Open', 'Adj Close'), etc.
-                # This is a heuristic and might need adjustment based on the exact yfinance output
-                for col_name in ['open', 'high', 'low', 'close', 'volume']:
-                    if col_name in df.columns.get_level_values(0):
-                        df.rename(columns={col_name: col_name.capitalize()}, inplace=True) # Standardize for xs
-                
-                # Try to get the primary data, often under the symbol name itself if it's a multi-ticker download
-                if symbol in df.columns.get_level_values(1):
-                    df = df.xs(symbol, level=1, axis=1, drop_level=False)
-                elif 'Adj Close' in df.columns.get_level_values(0): # Common case
-                    df = df.xs('Adj Close', level=0, axis=1, drop_level=True)
-                else: # Fallback if structure is unexpected
-                    logger.info(f"Estrutura de colunas inesperada para {symbol} em YF. Tentando acessar colunas básicas.")
-                    df = df.droplevel(0, axis=1) # Drop the top level if it's just noise
-
+                df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
 
             df.reset_index(inplace=True)
 
             # Standardize column names
             column_mapping = {
-                "Datetime": "time",
-                "Date": "time",
-                "Open": "open",
-                "High": "high",
-                "Low": "low",
+                "Datetime": "time", 
+                "Date": "time", 
+                "Open": "open", 
+                "High": "high", 
+                "Low": "low", 
                 "Close": "close",
-                "Adj Close": "close", # Use Adj Close if available, otherwise 'close'
                 "Volume": "volume"
             }
-            
-            # Rename columns, keeping only the standard ones and handling potential missing columns
-            df = df.rename(columns=column_mapping)
+            df.rename(columns=column_mapping, inplace=True)
 
-            # Ensure standard columns exist, fill with None/NaN if missing
-            standard_cols = ['time', 'open', 'high', 'low', 'close', 'volume']
-            for col in standard_cols:
-                if col not in df.columns:
-                    df[col] = pd.NA
-
-            # Select and order standard columns
-            df = df[standard_cols]
-            
-            # Convert time column to datetime and set as index if needed
-            if 'time' in df.columns:
-                df['time'] = pd.to_datetime(df['time'])
-                df.set_index('time', inplace=True)
-                
-            # Ensure 'close' is numeric, coercing errors
-            df['close'] = pd.to_numeric(df['close'], errors='coerce')
-            df.dropna(subset=['close'], inplace=True) # Remove rows where close price is NaN
-
-
-            logger.info(f"Dados YF coletados com sucesso para {symbol}: {len(df)} registros")
-            return df.reset_index() # Return with 'time' as a column
+            logger.info(f"Dados coletados com sucesso para {symbol}: {len(df)} registros")
+            return df
         except Exception as e:
-            logger.error(f"Erro YF ao coletar dados para {symbol}: {str(e)}")
+            logger.error(f"Erro ao coletar dados para {symbol}: {str(e)}")
             return pd.DataFrame()
-
-    def get_market_data_mt5(self, symbol, timeframe_mt5, num_candles):
-        """
-        Coleta dados históricos do MetaTrader 5.
-        Retorna um DataFrame com colunas: time, open, high, low, close, volume.
-        """
-        if not MT5_AVAILABLE:
-            logger.error("Tentativa de usar MT5 quando não está disponível.")
-            return pd.DataFrame()
-
-        try:
-            logger.info(f"Conectando ao MT5 para obter {num_candles} candles de {symbol} ({TIMEFRAME_MAP.get(timeframe_mt5, str(timeframe_mt5))})...")
-            
-            # Conectar ao MetaTrader 5
-            if not mt5.initialize():
-                logger.error(f"Falha ao inicializar MT5: {mt5.last_error()}")
-                return pd.DataFrame()
-
-            # Obter os dados históricos
-            rates = mt5.copy_rates_from_symbol(symbol, timeframe_mt5, num_candles)
-
-            # Desconectar do MT5
-            mt5.shutdown()
-
-            if rates is None or len(rates) == 0:
-                logger.warning(f"Nenhum dado retornado pelo MT5 para {symbol}.")
-                return pd.DataFrame()
-
-            # Converter para DataFrame
-            df = pd.DataFrame(rates)
-
-            # Renomear colunas para o padrão
-            df.rename(columns={
-                'time': 'time',
-                'open': 'open',
-                'high': 'high',
-                'low': 'low',
-                'close': 'close',
-                'tick_volume': 'volume', # Usar tick_volume ou volume dependendo do que está disponível
-                'spread': 'spread' # Opcional, pode ser mantido ou removido
-            }, inplace=True)
-
-            # Garantir que a coluna 'volume' exista, se não, usar 'tick_volume' ou criar coluna vazia
-            if 'volume' not in df.columns and 'tick_volume' in df.columns:
-                df['volume'] = df['tick_volume']
-            elif 'volume' not in df.columns:
-                df['volume'] = 0 # Ou pd.NA, dependendo do que for mais apropriado
-
-            # Selecionar e reordenar colunas padrão
-            standard_columns = ['time', 'open', 'high', 'low', 'close', 'volume']
-            df = df[standard_columns]
-
-            # Converter 'time' para datetime e definir como índice
-            df['time'] = pd.to_datetime(df['time'], unit='s') # MT5 retorna timestamp em segundos
-            df.set_index('time', inplace=True)
-
-            logger.info(f"Dados MT5 coletados com sucesso para {symbol}: {len(df)} registros.")
-            return df.reset_index() # Retornar com 'time' como coluna
-
-        except Exception as e:
-            logger.error(f"Erro MT5 ao coletar dados para {symbol}: {str(e)}")
-            if mt5.is_connected():
-                mt5.shutdown()
-            return pd.DataFrame()
-
-    def get_market_data(self, symbol, start_date, end_date, interval="1d", data_source="yfinance"):
-        """
-        Função unificada para coletar dados do mercado.
-        Permite escolher a fonte: "yfinance" ou "MetaTrader5".
-        Para MT5, o 'interval' é mapeado para o timeframe MT5 correspondente.
-        """
-        logger.info(f"Tentando coletar dados para {symbol} da fonte: {data_source}")
-
-        if data_source == "MetaTrader5":
-            if not MT5_AVAILABLE:
-                logger.error("MetaTrader5 não está instalado ou disponível. Usando yfinance como fallback.")
-                data_source = "yfinance" # Fallback para yfinance se MT5 não estiver disponível
-
-            # Mapear o intervalo do bot para os timeframes do MT5
-            timeframe_mt5 = None
-            if interval == "1m": timeframe_mt5 = mt5.TIMEFRAME_M1
-            elif interval == "5m": timeframe_mt5 = mt5.TIMEFRAME_M5
-            elif interval == "15m": timeframe_mt5 = mt5.TIMEFRAME_M15
-            elif interval == "30m": timeframe_mt5 = mt5.TIMEFRAME_M30
-            elif interval == "1h": timeframe_mt5 = mt5.TIMEFRAME_H1
-            elif interval == "4h": timeframe_mt5 = mt5.TIMEFRAME_H4
-            elif interval == "1d": timeframe_mt5 = mt5.TIMEFRAME_D1
-            elif interval == "1wk": timeframe_mt5 = mt5.TIMEFRAME_W1
-            # Adicionar outros timeframes se necessário (ex: '1M' para mensal)
-
-            if not timeframe_mt5:
-                logger.error(f"Timeframe '{interval}' não suportado pelo MT5. Usando yfinance.")
-                data_source = "yfinance" # Fallback se o timeframe não for compatível com MT5
-
-            if data_source == "MetaTrader5": # Verificar novamente após o mapeamento
-                try:
-                    # Calcular o número de candles com base nas datas
-                    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-                    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-                    # Uma estimativa simples, pode ser refinada
-                    if interval == "1m": num_candles = int((end_dt - start_dt).total_seconds() / 60)
-                    elif interval == "5m": num_candles = int((end_dt - start_dt).total_seconds() / (60*5))
-                    elif interval == "15m": num_candles = int((end_dt - start_dt).total_seconds() / (60*15))
-                    elif interval == "30m": num_candles = int((end_dt - start_dt).total_seconds() / (60*30))
-                    elif interval == "1h": num_candles = int((end_dt - start_dt).total_seconds() / (60*60))
-                    elif interval == "4h": num_candles = int((end_dt - start_dt).total_seconds() / (60*60*4))
-                    elif interval == "1d": num_candles = (end_dt - start_dt).days
-                    elif interval == "1wk": num_candles = (end_dt - start_dt).days // 7
-                    else: num_candles = (end_dt - start_dt).days # Default para dias
-
-                    # Limitar o número de candles para evitar problemas de memória/timeout
-                    max_candles = 5000 # Definir um limite razoável
-                    num_candles = min(num_candles, max_candles)
-                    
-                    if num_candles <= 0:
-                         logger.warning(f"Número de candles calculado é zero ou negativo para {symbol}. Verifique as datas.")
-                         return pd.DataFrame()
-
-                    return self.get_market_data_mt5(symbol, timeframe_mt5, num_candles)
-
-                except Exception as e:
-                    logger.error(f"Erro ao preparar dados para MT5 de {symbol}: {str(e)}")
-                    data_source = "yfinance" # Fallback em caso de erro na preparação
-
-        # Se a fonte for yfinance ou fallback
-        if data_source == "yfinance":
-            return self.get_market_data_yf(symbol, start_date, end_date, interval)
-        
-        logger.error(f"Fonte de dados desconhecida: {data_source}")
-        return pd.DataFrame()
-
 
     def calculate_indicators_and_signals(self, df, strategy_type="Balanceado"):
         """Calcula indicadores e gera sinais"""
@@ -881,7 +690,7 @@ def screening_command(message):
         if results:
             # Data atual da análise
             data_analise = datetime.now().strftime("%d/%m/%Y")
-
+            
             response = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n📅 {data_analise}\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
             for result in results:
@@ -896,14 +705,14 @@ def screening_command(message):
             if len(response) > 4000:
                 parts = response.split('\n\n')
                 current_message = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n📅 {data_analise}\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia\n📈 Total analisado: {len(symbols)} ativos\n\n"
-
+                
                 for part in parts[1:]:  # Skip header
                     if len(current_message + part + '\n\n') > 4000:
                         bot.reply_to(message, current_message, parse_mode='Markdown')
                         current_message = part + '\n\n'
                     else:
                         current_message += part + '\n\n'
-
+                
                 if current_message.strip():
                     bot.reply_to(message, current_message, parse_mode='Markdown')
             else:
@@ -1019,7 +828,7 @@ def topos_fundos_command(message):
             return
 
         symbols = []
-
+        
         # Verificar se é uma lista pré-definida ou ativos individuais
         if len(args) == 1 and args[0].lower() in predefined_lists:
             list_name = args[0].lower()
@@ -1052,7 +861,7 @@ def topos_fundos_command(message):
         if results:
             # Data atual da análise
             data_analise = datetime.now().strftime("%d/%m/%Y")
-
+            
             response = f"📊 *DETECÇÃO DE TOPOS E FUNDOS*\n📅 {data_analise}\n\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
             buy_opportunities = [r for r in results if 'Compra' in r['signal']]
@@ -1246,8 +1055,8 @@ def restart_command(message):
 ⏳ Aguarde alguns segundos e tente novamente.
 
 🤖 Status: Reiniciando sistema...
- 📡 Reconectando aos serviços...
- 🔧 Limpando cache e memória...
+📡 Reconectando aos serviços...
+🔧 Limpando cache e memória...
 
 ✅ O bot voltará online em instantes!"""
 
@@ -1341,11 +1150,11 @@ def handle_message(message):
 
         # Tentar identificar comando com fuzzy matching
         parsed = parse_flexible_command(user_message)
-
+        
         if parsed:
             command = parsed['command']
             logger.info(f"Comando fuzzy identificado: {command} (original: {parsed['original_text']})")
-
+            
             # Redirecionar para o handler apropriado
             if command == 'start':
                 start_command(message)
@@ -1362,7 +1171,7 @@ def handle_message(message):
             elif command == 'help':
                 help_command(message)
             return
-
+        
         # Mensagens de saudação
         user_message_lower = user_message.lower()
         if any(word in user_message_lower for word in ['oi', 'olá', 'hello', 'hi']):
