@@ -7,56 +7,44 @@ from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import warnings
 from sklearn.ensemble import RandomForestClassifier
-from binance.client import Client
+import requests
 
 warnings.filterwarnings('ignore')
 
-# Credenciais da Binance (salvas no .env) - Para uso em produção, é recomendado usar variáveis de ambiente.
-# Para este exemplo, as credenciais estão diretamente aqui para demonstração.
-# É CRUCIAL MANTÊ-LAS SEGURAS E NÃO COMPARTILHÁ-LAS PUBLICAMENTE.
-BINANCE_API_KEY = 'kagmRJ2TNwr7No68i3aRG2MZdm5MPDTBncwnrKUv2Wv8arpXXxuikVUij981Wxvu'
-BINANCE_API_SECRET = 'VAYi1m9r0sLy7T8vbqPBSxaOjL4BI58KnMS13USRatbULqrUdoDJnILjyyz4skgx'
-
-
-
-# Inicializa o cliente Binance
-try:
-    client_binance = Client(BINANCE_API_KEY, BINANCE_API_SECRET,testnet=True)
-except Exception as e:
-    st.error(f"Erro ao inicializar cliente Binance: {e}. Verifique suas credenciais ou conexão.")
-    client_binance = None
-
-# Testnet Spot
-client_binance = Client(BINANCE_API_KEY, BINANCE_API_SECRET, testnet=True)
-client_binance.API_URL = 'https://testnet.binance.vision/api'  # garante a base da testnet
-
-
-# Função para puxar dados históricos da Binance
-def get_historical_klines_binance(symbol, interval, lookback):
+# Função para puxar dados históricos da Binance usando API REST
+def get_historical_klines_binance(symbol, interval, limit=1000):
     """
-    Puxa dados históricos de candles da Binance.
+    Puxa dados históricos de candles da Binance usando API REST.
     """
-    if not client_binance:
-        st.error("Cliente Binance não inicializado.")
-        return pd.DataFrame()
-
     try:
-        klines = client_binance.get_historical_klines(symbol, interval, lookback)
-        if not klines:
+        url = "https://api.binance.com/api/v3/klines"
+        params = {"symbol": symbol, "interval": interval, "limit": limit}
+        
+        response = requests.get(url, params=params, timeout=15)
+        response.raise_for_status()
+        data = response.json()
+        
+        if not data:
             return pd.DataFrame()
             
-        df = pd.DataFrame(klines, columns=[
-            'timestamp', 'open', 'high', 'low', 'close', 'volume',
-            'close_time', 'quote_asset_volume', 'number_of_trades',
-            'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'
-        ])
-        df = df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
-        df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
-        df = df.drop('timestamp', axis=1)
-        df = df.astype({'open': float, 'high': float, 'low': float, 'close': float, 'volume': float})
-        # Reordenar colunas
-        df = df[['time', 'open', 'high', 'low', 'close', 'volume']]
+        # Colunas na ordem retornada pela Binance
+        cols = [
+            "open_time","open","high","low","close","volume",
+            "close_time","quote_asset_volume","trades",
+            "taker_buy_base","taker_buy_quote","ignore"
+        ]
+        
+        df = pd.DataFrame(data, columns=cols)
+        
+        # Converte tempo e tipos numéricos
+        df["time"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
+        df[["open","high","low","close","volume"]] = df[["open","high","low","close","volume"]].astype(float)
+        
+        # Mantém só OHLCV e tempo
+        df = df[["time","open","high","low","close","volume"]].sort_values("time")
+        
         return df
+        
     except Exception as e:
         raise Exception(f"Erro ao buscar dados da Binance para {symbol}: {e}")
 
@@ -91,20 +79,8 @@ def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yaho
                     st.error(f"Ações brasileiras {symbol} não suportadas pela Binance. Use Yahoo Finance.")
                     return pd.DataFrame()
 
-                # Usar lookback fixo de 1 day ago UTC para simplificar
-                lookback_str = "1 day ago UTC"
-                
-                # Para períodos maiores, ajustar o lookback
-                start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-                end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
-                days_diff = (end_date - start_date).days
-                
-                if days_diff > 30:
-                    lookback_str = f"{days_diff} day ago UTC"
-                elif days_diff > 7:
-                    lookback_str = "30 day ago UTC"
-
-                df = get_historical_klines_binance(binance_symbol, binance_interval, lookback_str)
+                # Usar sempre 1000 candles (máximo da API)
+                df = get_historical_klines_binance(binance_symbol, binance_interval, 1000)
                 return df
 
             except Exception as e:

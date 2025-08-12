@@ -14,7 +14,7 @@ import difflib
 import unicodedata
 import re
 from sklearn.ensemble import RandomForestClassifier
-from binance.client import Client
+import requests
 
 warnings.filterwarnings('ignore')
 
@@ -166,68 +166,41 @@ class OvecchiaTradingBot:
     def __init__(self):
         self.users_config = {}
 
-    def get_binance_data(self, symbol, start_date, end_date, interval="1d"):
-        """Função para coletar dados da Binance API"""
+    def get_binance_data(self, symbol, start_date, end_date, interval="1d", limit=1000):
+        """Função para coletar dados da Binance usando API REST"""
         try:
-            # Credenciais da Binance
-            api_key = 'kagmRJ2TNwr7No68i3aRG2MZdm5MPDTBncwnrKUv2Wv8arpXXxuikVUij981Wxvu'
-            api_secret = 'VAYi1m9r0sLy7T8vbqPBSxaOjL4BI58KnMS13USRatbULqrUdoDJnILjyyz4skgx'
-            
-            # Inicializa o cliente
-            client = Client(api_key, api_secret)
-            
             # Converter símbolo para formato Binance
             binance_symbol = symbol.replace('-USD', 'USDT').replace('-USDT', 'USDT')
             
-            # Usar lookback fixo como sugerido
-            lookback_str = "1 day ago UTC"
+            url = "https://api.binance.com/api/v3/klines"
+            params = {"symbol": binance_symbol, "interval": interval, "limit": limit}
             
-            # Para períodos maiores, ajustar o lookback
-            if isinstance(start_date, str):
-                start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
-            else:
-                start_datetime = start_date
-                
-            if isinstance(end_date, str):
-                end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
-            else:
-                end_datetime = end_date
-                
-            days_diff = (end_datetime - start_datetime).days
-            if days_diff > 30:
-                lookback_str = f"{days_diff} day ago UTC"
-            elif days_diff > 7:
-                lookback_str = "30 day ago UTC"
+            response = requests.get(url, params=params, timeout=15)
+            response.raise_for_status()
+            data = response.json()
             
-            # Puxar dados históricos usando formato simplificado
-            klines = client.get_historical_klines(binance_symbol, interval, lookback_str)
-            
-            if not klines:
+            if not data:
                 return pd.DataFrame()
+                
+            # Colunas na ordem retornada pela Binance
+            cols = [
+                "open_time","open","high","low","close","volume",
+                "close_time","quote_asset_volume","trades",
+                "taker_buy_base","taker_buy_quote","ignore"
+            ]
             
-            # Criar DataFrame com formato simplificado
-            df = pd.DataFrame(klines, columns=[
-                'timestamp', 'open', 'high', 'low', 'close', 'volume', 
-                'close_time', 'quote_asset_volume', 'number_of_trades', 
-                'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'
-            ])
+            df = pd.DataFrame(data, columns=cols)
             
-            # Selecionar apenas colunas necessárias
-            df = df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
+            # Converte tempo e tipos numéricos
+            df["time"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
+            df[["open","high","low","close","volume"]] = df[["open","high","low","close","volume"]].astype(float)
             
-            # Converter timestamp para datetime
-            df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
-            df = df.drop('timestamp', axis=1)
-            
-            # Converter para float
-            df = df.astype({'open': float, 'high': float, 'low': float, 'close': float, 'volume': float})
-            
-            # Reordenar colunas
-            df = df[['time', 'open', 'high', 'low', 'close', 'volume']]
+            # Mantém só OHLCV e tempo
+            df = df[["time","open","high","low","close","volume"]].sort_values("time")
             
             logger.info(f"Dados Binance coletados com sucesso para {symbol}: {len(df)} registros")
             return df
-
+            
         except Exception as e:
             logger.error(f"Erro ao coletar dados Binance para {symbol}: {str(e)}")
             return pd.DataFrame()
