@@ -14,6 +14,7 @@ import difflib
 import unicodedata
 import re
 from sklearn.ensemble import RandomForestClassifier
+from binance.client import Client
 
 warnings.filterwarnings('ignore')
 
@@ -165,36 +166,122 @@ class OvecchiaTradingBot:
     def __init__(self):
         self.users_config = {}
 
-    def get_market_data(self, symbol, start_date, end_date, interval="1d"):
+    def get_binance_data(self, symbol, start_date, end_date, interval="1d"):
+        """Função para coletar dados da Binance API"""
+        try:
+            # Credenciais da Binance
+            api_key = 'kagmRJ2TNwr7No68i3aRG2MZdm5MPDTBncwnrKUv2Wv8arpXXxuikVUij981Wxvu'
+            api_secret = 'VAYi1m9r0sLy7T8vbqPBSxaOjL4BI58KnMS13USRatbULqrUdoDJnILjyyz4skgx'
+            
+            # Inicializa o cliente
+            client = Client(api_key, api_secret)
+            
+            # Mapear intervalos
+            interval_mapping = {
+                "1m": Client.KLINE_INTERVAL_1MINUTE,
+                "5m": Client.KLINE_INTERVAL_5MINUTE,
+                "15m": Client.KLINE_INTERVAL_15MINUTE,
+                "30m": Client.KLINE_INTERVAL_30MINUTE,
+                "1h": Client.KLINE_INTERVAL_1HOUR,
+                "4h": Client.KLINE_INTERVAL_4HOUR,
+                "1d": Client.KLINE_INTERVAL_1DAY,
+                "1wk": Client.KLINE_INTERVAL_1WEEK
+            }
+            
+            binance_interval = interval_mapping.get(interval, Client.KLINE_INTERVAL_1DAY)
+            
+            # Converter símbolo para formato Binance
+            binance_symbol = symbol.replace('-USD', 'USDT').replace('-USDT', 'USDT')
+            
+            # Converter datas
+            if isinstance(start_date, str):
+                start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
+            else:
+                start_datetime = start_date
+                
+            if isinstance(end_date, str):
+                end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
+            else:
+                end_datetime = end_date
+            
+            # Puxar dados históricos
+            klines = client.get_historical_klines(
+                binance_symbol, 
+                binance_interval, 
+                start_datetime.strftime("%d %b %Y"),
+                end_datetime.strftime("%d %b %Y")
+            )
+            
+            if not klines:
+                return pd.DataFrame()
+            
+            # Criar DataFrame
+            df = pd.DataFrame(klines, columns=[
+                'timestamp', 'open', 'high', 'low', 'close', 'volume', 
+                'close_time', 'quote_asset_volume', 'number_of_trades', 
+                'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'
+            ])
+            
+            # Selecionar apenas colunas necessárias
+            df = df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
+            
+            # Converter timestamp para datetime
+            df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df = df.drop('timestamp', axis=1)
+            
+            # Converter para float
+            for col in ['open', 'high', 'low', 'close', 'volume']:
+                df[col] = df[col].astype(float)
+            
+            # Reordenar colunas
+            df = df[['time', 'open', 'high', 'low', 'close', 'volume']]
+            
+            logger.info(f"Dados Binance coletados com sucesso para {symbol}: {len(df)} registros")
+            return df
+
+        except Exception as e:
+            logger.error(f"Erro ao coletar dados Binance para {symbol}: {str(e)}")
+            return pd.DataFrame()
+
+    def get_market_data(self, symbol, start_date, end_date, interval="1d", data_source="yahoo"):
         """Função para coletar dados do mercado"""
         try:
-            logger.info(f"Coletando dados para {symbol}")
-            df = yf.download(symbol, start=start_date, end=end_date, interval=interval, progress=False)
+            logger.info(f"Coletando dados para {symbol} via {data_source}")
+            
+            # Detectar automaticamente se é cripto e usar Binance se solicitado
+            is_crypto = any(symbol.upper().endswith(suffix) for suffix in ['USDT', '-USD', 'USD'])
+            
+            if data_source == "binance" and is_crypto:
+                return self.get_binance_data(symbol, start_date, end_date, interval)
+            else:
+                # Yahoo Finance (código original)
+                df = yf.download(symbol, start=start_date, end=end_date, interval=interval, progress=False)
 
-            if df is None or df.empty:
-                logger.warning(f"Sem dados para {symbol}")
-                return pd.DataFrame()
+                if df is None or df.empty:
+                    logger.warning(f"Sem dados para {symbol}")
+                    return pd.DataFrame()
 
-            # Handle multi-level columns if present
-            if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
-                df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
+                # Handle multi-level columns if present
+                if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
+                    df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
 
-            df.reset_index(inplace=True)
+                df.reset_index(inplace=True)
 
-            # Standardize column names
-            column_mapping = {
-                "Datetime": "time", 
-                "Date": "time", 
-                "Open": "open", 
-                "High": "high", 
-                "Low": "low", 
-                "Close": "close",
-                "Volume": "volume"
-            }
-            df.rename(columns=column_mapping, inplace=True)
+                # Standardize column names
+                column_mapping = {
+                    "Datetime": "time", 
+                    "Date": "time", 
+                    "Open": "open", 
+                    "High": "high", 
+                    "Low": "low", 
+                    "Close": "close",
+                    "Volume": "volume"
+                }
+                df.rename(columns=column_mapping, inplace=True)
 
-            logger.info(f"Dados coletados com sucesso para {symbol}: {len(df)} registros")
-            return df
+                logger.info(f"Dados coletados com sucesso para {symbol}: {len(df)} registros")
+                return df
+                
         except Exception as e:
             logger.error(f"Erro ao coletar dados para {symbol}: {str(e)}")
             return pd.DataFrame()

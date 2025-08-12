@@ -7,39 +7,122 @@ from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import warnings
 from sklearn.ensemble import RandomForestClassifier
+from binance.client import Client
 
 warnings.filterwarnings('ignore')
 
-def get_market_data(symbol, start_date, end_date, interval):
-    """Função principal para coletar dados do mercado usando Yahoo Finance para todos os ativos"""
+# Credenciais da Binance (salvas no .env) - Para uso em produção, é recomendado usar variáveis de ambiente.
+# Para este exemplo, as credenciais estão diretamente aqui para demonstração.
+# É CRUCIAL MANTÊ-LAS SEGURAS E NÃO COMPARTILHÁ-LAS PUBLICAMENTE.
+BINANCE_API_KEY = 'kagmRJ2TNwr7No68i3aRG2MZdm5MPDTBncwnrKUv2Wv8arpXXxuikVUij981Wxvu'
+BINANCE_API_SECRET = 'VAYi1m9r0sLy7T8vbqPBSxaOjL4BI58KnMS13USRatbULqrUdoDJnILjyyz4skgx'
+
+# Inicializa o cliente Binance
+try:
+    client_binance = Client(BINANCE_API_KEY, BINANCE_API_SECRET)
+except Exception as e:
+    st.error(f"Erro ao inicializar cliente Binance: {e}. Verifique suas credenciais ou conexão.")
+    client_binance = None
+
+# Função para puxar dados históricos da Binance
+def get_historical_klines_binance(symbol, interval, lookback):
+    """
+    Puxa dados históricos de candles da Binance.
+    """
+    if not client_binance:
+        st.error("Cliente Binance não inicializado.")
+        return pd.DataFrame()
+
     try:
-        df = yf.download(symbol, start=start_date, end=end_date, interval=interval)
-
-        if df is None or df.empty:
-            return pd.DataFrame()
-
-        # Handle multi-level columns if present
-        if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
-            df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
-
-        df.reset_index(inplace=True)
-
-        # Standardize column names
-        column_mapping = {
-            "Datetime": "time", 
-            "Date": "time", 
-            "Open": "open", 
-            "High": "high", 
-            "Low": "low", 
-            "Close": "close",
-            "Volume": "volume"
-        }
-        df.rename(columns=column_mapping, inplace=True)
-
+        klines = client_binance.get_historical_klines(symbol, interval, lookback)
+        df = pd.DataFrame(klines, columns=[
+            'timestamp', 'open', 'high', 'low', 'close', 'volume',
+            'close_time', 'quote_asset_volume', 'number_of_trades',
+            'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'
+        ])
+        df = df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        df.set_index('timestamp', inplace=True)
+        df = df.astype(float)
         return df
+    except Exception as e:
+        raise Exception(f"Erro ao buscar dados da Binance para {symbol}: {e}")
+
+def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yahoo Finance"):
+    """Função principal para coletar dados do mercado usando Yahoo Finance ou Binance"""
+    try:
+        if source == "Binance":
+            # Binance requires specific intervals and lookback periods that are string-based
+            # For simplicity, we'll convert date range to a lookback string if possible
+            # This part might need more robust date-to-lookback string conversion
+            try:
+                start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+                end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+                # A simple approximation for lookback; a more precise calculation might be needed
+                lookback_delta = end_date - start_date
+                lookback_str = f"{lookback_delta.days} day ago UTC"
+                # Binance interval mapping might be needed if not directly compatible
+                binance_interval_map = {
+                    "1m": "1m", "2m": "2m", "5m": "5m", "15m": "15m", "30m": "30m",
+                    "1h": "1h", "2h": "2h", "4h": "4h", "6h": "6h", "8h": "8h", "12h": "12h",
+                    "1d": "1d", "3d": "3d", "1w": "1w", "1M": "1M"
+                }
+                if interval in binance_interval_map:
+                    binance_interval = binance_interval_map[interval]
+                else:
+                    st.warning(f"Intervalo {interval} não suportado diretamente pela Binance. Usando '1d'.")
+                    binance_interval = "1d"
+                    lookback_str = "1 day ago UTC" # Fallback for unsupported intervals
+
+                # Binance symbols usually don't have .SA or =X etc.
+                binance_symbol = symbol.replace(".SA", "").replace("=X", "")
+                # Conventionally, Binance symbols are like BTCUSDT
+                # If input is like BTC-USD, convert to BTCUSDT if possible or handle appropriately
+                if "-USD" in binance_symbol:
+                    binance_symbol = binance_symbol.replace("-USD", "USDT") # Common pairing
+
+                df = get_historical_klines_binance(binance_symbol.upper(), binance_interval, lookback_str)
+                # Ensure columns are standardized for consistency
+                df.rename(columns={'time': 'timestamp'}, inplace=True) # Adjust column name if needed
+                df.reset_index(inplace=True)
+                df.rename(columns={'timestamp': 'time'}, inplace=True)
+                return df
+
+            except Exception as e:
+                st.error(f"Erro ao buscar dados da Binance para {symbol} com intervalo {interval}: {e}")
+                return pd.DataFrame()
+
+        else: # Default to Yahoo Finance
+            df = yf.download(symbol, start=start_date_str, end=end_date_str, interval=interval)
+
+            if df is None or df.empty:
+                return pd.DataFrame()
+
+            # Handle multi-level columns if present
+            if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
+                if symbol in df.columns.get_level_values('Ticker'):
+                    df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
+                else: # Sometimes ticker is not a level, just a direct column name
+                    pass
+
+            df.reset_index(inplace=True)
+
+            # Standardize column names
+            column_mapping = {
+                "Datetime": "time",
+                "Date": "time",
+                "Open": "open",
+                "High": "high",
+                "Low": "low",
+                "Close": "close",
+                "Volume": "volume"
+            }
+            df.rename(columns=column_mapping, inplace=True)
+
+            return df
 
     except Exception as e:
-        st.error(f"Erro ao coletar dados do Yahoo Finance para {symbol}: {str(e)}")
+        st.error(f"Erro ao coletar dados do {source} para {symbol}: {str(e)}")
         return pd.DataFrame()
 
 def calcular_bollinger_bands(df, period=20):
@@ -57,7 +140,7 @@ def calculate_ovelha_v2_signals(df, sma_short=60, sma_long=70, lookahead=3, thre
     try:
         # Fazer uma cópia para não alterar o DataFrame original
         df_work = df.copy()
-        
+
         # =======================
         # CÁLCULO DAS FEATURES
         # =======================
@@ -557,12 +640,12 @@ with tab2:
         st.write("• **Agressiva 🔥**: gera mais sinais, oferecendo mais oportunidades, porém com maior risco associado.")
         st.write("• **Balanceada ⚖️**: equilíbrio entre frequência de sinais e confiabilidade.")
         st.write("• **Conservadora 🛡️**: menos sinais, mas com alta confiabilidade, reduzindo a exposição ao risco.")
-        
+
         st.write("Por exemplo, imagine que você deseja investir em PETR4.SA (Petrobras). É fundamental saber exatamente o momento certo para entrar ou sair desse ativo, protegendo seu patrimônio e maximizando lucros. Os melhores momentos são claramente exibidos no gráfico de preços com sinais coloridos:")
         st.write("• **Linha Azul 🔵**: indica ao usuário para se manter em posição comprada (apostando na alta).")
         st.write("• **Linha Vermelha 🔴**: sugere ao usuário manter posição vendida (apostando na baixa).")
         st.write("• **Linha Preta ⚫**: indica que é melhor ficar fora do mercado naquele momento.")
-        
+
         st.write("A grande vantagem do sistema está em identificar mudanças de estado: quando o gráfico passa de vermelho para azul, é um sinal claro para entrar comprado. Da mesma forma, de azul para vermelho, é a hora de assumir uma posição vendida ou sair de uma posição comprada, aumentindo a probabilidade de capturar grandes movimentos de mercado.")
         st.write("Você também pode entrar em uma operação já em andamento e usar os pontos de Stop Loss para limitar perdas caso o mercado vá contra sua posição ou para surfar uma tendência já estabelecida, garantindo segurança e tranquilidade operacional.")
 
@@ -575,31 +658,32 @@ with tab2:
         st.write("• **Direção da Operação 🎯**: Escolha entre operar em ambas direções (comprado e vendido), somente comprado ou somente vendido.")
 
         st.markdown("### 📌 Critérios de Saída")
+        st.write("**🎯 Critérios de Saída Personalizados**")
         st.write("O sistema permite que você teste estratégias variadas para saída das posições, podendo escolher entre:")
         st.write("• **Mudança de Estado 🔄**: A operação é encerrada automaticamente sempre que o estado dos sinais mudar (de compra para venda ou vice-versa).")
         st.write("• **Stop Loss 🛑**: Você define um preço limite de perda. Se o preço do ativo atingir este limite em relação ao preço de entrada, a operação é encerrada automaticamente. É um critério importante para gestão de risco eficiente.")
         st.write("• **Alvo Fixo 🎯**: Estabelece uma meta percentual de lucro e um limite percentual de perda. Ao alcançar qualquer um deles, a operação é encerrada.")
-        st.write("• **Média Móvel 📉**: Neste critério, a operação é encerrada sempre que o preço cruza uma média móvel previamente configurada. A ideia é que enquanto o ativo estiver em tendência favorável, o preço estará sempre de um lado da média móvel. Caso o preço volte a cruzá-la, isso pode indicar enfraquecimento da tendência, sendo prudente sair da operação.")
         st.write("• **Tempo ⏳**: A saída ocorre após um número fixo de candles desde a entrada. Este método garante operações mais curtas e disciplinadas, reduzindo riscos de exposição prolongada. Contudo, pode limitar ganhos em tendências mais duradouras.")
+        st.write("• **Média Móvel 📉**: Neste critério, a operação é encerrada sempre que o preço cruza uma média móvel previamente configurada. A ideia é que enquanto o ativo estiver em tendência favorável, o preço estará sempre de um lado da média móvel. Caso o preço volte a cruzá-la, isso pode indicar enfraquecimento da tendência, sendo prudente sair da operação.")
 
         st.markdown("### 📌 Checkbox 'Sair por Mudança de Estado'")
         st.write("**🔄 Funcionalidade do Checkbox 'Sair por mudança de estado?'**")
         st.write("Este checkbox controla se as operações devem ser encerradas automaticamente quando o sistema detecta uma mudança no estado dos sinais, independentemente do critério de saída principal escolhido.")
-        
+
         st.write("**✅ Quando ATIVADO (Marcado):**")
         st.write("• **Saída Automática**: A operação é encerrada imediatamente quando o estado muda (ex: de Buy para Sell, de Sell para Stay Out, etc.)")
         st.write("• **Prioridade Máxima**: A mudança de estado tem precedência sobre outros critérios de saída")
         st.write("• **Maior Segurança**: Evita manter posições quando o sistema já indica mudança de tendência")
         st.write("• **Operações mais Curtas**: Tende a gerar operações de menor duração")
         st.write("• **Exemplo**: Se você está comprado em PETR4 e o sistema muda de 'Buy' para 'Sell', a posição é encerrada automaticamente")
-        
+
         st.write("**❌ Quando DESATIVADO (Desmarcado):**")
         st.write("• **Ignora Mudanças**: Operações continuam ativas mesmo com mudança de estado")
         st.write("• **Critério Principal**: Apenas o critério de saída selecionado (Stop Loss, Alvo Fixo, etc.) encerra a operação")
         st.write("• **Operações mais Longas**: Permite que operações durem mais tempo")
         st.write("• **Maior Exposição**: Mantém posições mesmo quando sistema indica reversão")
         st.write("• **Exemplo**: Se você está comprado e o sistema muda para 'Sell', você permanece comprado até atingir seu stop loss ou alvo")
-        
+
         st.write("**💡 Recomendações de Uso:**")
         st.write("• **Ative** para estratégias mais conservadoras e seguir sinais do sistema")
         st.write("• **Desative** para testar estratégias específicas de saída sem interferência dos sinais")
@@ -652,18 +736,18 @@ with tab2:
         st.write("• **🟢 Para Compra**: Ativos que mudaram para sinal de compra")
         st.write("• **🔴 Para Venda**: Ativos que mudaram para sinal de venda")
         st.write("• **⚫ Para Fora**: Ativos que mudaram para 'stay out'")
-        
+
         st.write("**📊 Resumo Geral**")
         st.write("• **Total de Ativos**: Quantidade total analisada")
         st.write("• **Análises Bem-sucedidas**: Ativos processados sem erro")
         st.write("• **Sinais Atuais**: Distribuição dos sinais por tipo")
 
         st.markdown("### 📌 Melhores Práticas")
-        st.write("• **🕐 Frequência**: Execute o screening diariamente para capturar mudanças recentes")
-        st.write("• **📋 Listas Focadas**: Use listas específicas por categoria para análises mais direcionadas")
-        st.write("• **🔍 Acompanhamento**: Monitore ativos que mudaram de estado para oportunidades")
-        st.write("• **⚖️ Estratégia Balanceada**: Recomendada para screening geral")
-        st.write("• **📊 Análise Complementar**: Use a análise individual para estudar ativos identificados no screening")
+        st.write("**💡 Frequência**: Execute o screening diariamente para capturar mudanças recentes")
+        st.write("**📋 Listas Focadas**: Use listas específicas por categoria para análises mais direcionadas")
+        st.write("**🔍 Acompanhamento**: Monitore ativos que mudaram de estado para oportunidades")
+        st.write("**⚖️ Estratégia Balanceada**: Recomendada para screening geral")
+        st.write("**📊 Análise Complementar**: Use a análise individual para estudar ativos identificados no screening")
 
     with guide_tab3:
         st.markdown("## 📊 Guia de Utilização - Detecção de Topos e Fundos")
@@ -685,7 +769,7 @@ with tab2:
         st.write("• Potencial de elevação dos preços a partir do estado atual")
         st.write("• Oportunidade para apostas compradas")
         st.write("• Maior desvio = maior potencial de correção")
-        
+
         st.write("**🔴 Possível Topo (Oportunidade de Venda)**")
         st.write("Quando há sinais de excesso de compra:")
         st.write("• O ativo é considerado supervalorizado")
@@ -714,7 +798,7 @@ with tab2:
         st.write("• Utilize uma abordagem de entrada gradual em diferentes pontos de preço")
         st.write("• Implementar stop loss abaixo do preço mais baixo detectado")
         st.write("• Objetivo: Retorno à média esperada de comportamento")
-        
+
         st.write("**📉 Para Operações de Venda (Excesso de Compra)**")
         st.write("• Aguarde até que o ativo esteja em território de compra excessiva")
         st.write("• Recomenda-se encerrar posições longas")
@@ -755,41 +839,41 @@ with tab2:
         st.markdown("### 📌 Comando /analise - Análise Individual")
         st.write("**📊 Sintaxe Completa**")
         st.code("/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]")
-        
+
         st.write("**📝 Parâmetros**")
         st.write("• **estrategia**: agressiva, balanceada ou conservadora")
         st.write("• **ativo**: ticker do ativo (ex: PETR4.SA, BTC-USD, AAPL)")
         st.write("• **timeframe**: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk")
         st.write("• **data_inicio**: formato YYYY-MM-DD (opcional)")
         st.write("• **data_fim**: formato YYYY-MM-DD (opcional)")
-        
+
         st.write("**💡 Exemplos**")
         st.code("/analise balanceada PETR4.SA 1d")
         st.code("/analise agressiva BTC-USD 4h 2024-01-01 2024-06-01")
         st.code("/analise conservadora AAPL 1d")
-        
+
         st.success("**📈 Resultado**: O bot gerará um gráfico personalizado e enviará como imagem junto com análise detalhada")
 
         st.markdown("### 📌 Comando /screening - Múltiplos Ativos")
         st.write("**🔍 Sintaxe**")
         st.code("/screening [estrategia] [ativo1] [ativo2] [ativo3] ...")
-        
+
         st.write("**💡 Exemplos**")
         st.code("/screening balanceada BTC-USD ETH-USD")
         st.code("/screening agressiva PETR4.SA VALE3.SA ITUB4.SA")
         st.code("/screening conservadora AAPL GOOGL MSFT")
-        
+
         st.success("**📊 Resultado**: Lista mudanças de estado recentes nos ativos especificados")
 
         st.markdown("### 📌 Comando /topos_fundos - Extremos")
         st.write("**📊 Sintaxe**")
         st.code("/topos_fundos [ativo1] [ativo2] [ativo3] ...")
-        
+
         st.write("**💡 Exemplos**")
         st.code("/topos_fundos PETR4.SA VALE3.SA")
         st.code("/topos_fundos BTC-USD ETH-USD BNB-USD")
         st.code("/topos_fundos AAPL GOOGL")
-        
+
         st.success("**📈 Resultado**: Identifica possíveis topos e fundos usando Bandas de Bollinger")
 
         st.markdown("### 📌 Recursos Especiais do Bot")
@@ -817,7 +901,7 @@ with tab2:
         st.write("• **Erro de data**: Use formato YYYY-MM-DD (ex: 2024-01-15)")
         st.write("• **Timeframe inválido**: Use apenas: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk")
         st.write("• **Comando não reconhecido**: Use /help para ver lista completa")
-        
+
         st.write("**📊 Verificar Status**")
         st.write("• Use `/status` para verificar se o bot está funcionando")
         st.write("• Resposta esperada: informações sobre tempo online e status dos serviços")
@@ -846,21 +930,21 @@ with tab2:
 
         st.markdown("### 📌 Estratégias de Trading")
         st.write("**🎯 Perfis de Estratégia**")
-        
+
         st.write("**🔥 Estratégia Agressiva**")
         st.write("• Algoritmo calibrado para maior sensibilidade")
         st.write("• Gera mais sinais de entrada")
         st.write("• Maior frequência de operações")
         st.write("• Maior potencial de lucro, mas também maior risco")
         st.write("• Ideal para: Traders experientes, mercados com tendência clara")
-        
+
         st.write("**⚖️ Estratégia Balanceada**")
         st.write("• Configuração otimizada para equilíbrio")
         st.write("• Equilíbrio entre frequência e confiabilidade")
         st.write("• Recomendada para maioria dos usuários")
         st.write("• Boa relação risco/retorno")
         st.write("• Ideal para: Investidores intermediários, carteiras diversificadas")
-        
+
         st.write("**🛡️ Estratégia Conservadora**")
         st.write("• Parâmetros ajustados para maior segurança")
         st.write("• Menos sinais, mas mais confiáveis")
@@ -878,11 +962,11 @@ with tab2:
         st.markdown("### 📌 Tipos de Stop Loss")
         st.write("**🛡️ Sistema de Stop Loss Baseado em Volatilidade**")
         st.write("O sistema oferece três tipos de stop loss calculados dinamicamente com base na volatilidade do ativo:")
-        
+
         st.write("• **Stop Justo**: Nível mais próximo ao preço (mais proteção, saídas mais frequentes)")
         st.write("• **Stop Balanceado**: Nível intermediário (equilíbrio entre proteção e permanência)")
         st.write("• **Stop Largo**: Nível mais distante (menos saídas por ruído, perdas maiores quando ocorrem)")
-        
+
         st.write("**📊 Como Funciona**")
         st.write("• O sistema calcula automaticamente os níveis com base na volatilidade atual")
         st.write("• Stop se adapta automaticamente às condições de mercado")
@@ -896,7 +980,7 @@ with tab2:
         st.write("• **Feriados**: Dados podem estar indisponíveis em feriados locais")
         st.write("• **Ativos Descontinuados**: Alguns tickers podem não ter dados atualizados")
         st.write("• **Splits/Dividendos**: Podem causar descontinuidades nos dados históricos")
-        
+
         st.info("**💡 Dicas para Evitar Problemas**")
         st.write("• Use timeframe 1d para análises históricas longas")
         st.write("• Verifique se o ticker está correto antes de analisar")
@@ -914,6 +998,15 @@ with tab3:
     with col1:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         st.markdown("#### 💹 Configuração de Ativo")
+        
+        # Source selection for data
+        data_source = st.selectbox(
+            "Fonte de Dados",
+            ["Yahoo Finance", "Binance"],
+            index=0,
+            help="Selecione a fonte dos dados de mercado."
+        )
+
         symbol = st.text_input(
             "Ticker",
             value="BTC-USD",
@@ -943,7 +1036,7 @@ with tab3:
 
     with col2:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
-        
+
 
         st.markdown("#### 🤖 Modelo de Sinais")
         model_type = st.selectbox(
@@ -977,14 +1070,14 @@ with tab3:
             </p>
         </div>
         """, unsafe_allow_html=True)
-        
+
         strategy_type = st.radio(
             "Tipo de Estratégia:",
             ["Balanceado", "Agressivo", "Conservador"],
             index=0,
             help="Escolha a estratégia baseada no seu perfil de risco e frequência desejada de sinais"
         )
-        
+
         # Definir parâmetros baseado na estratégia selecionada
         if strategy_type == "Agressivo":
             sma_short = 10
@@ -1060,22 +1153,20 @@ with tab3:
             status_text.text("Coletando dados de mercado...")
             progress_bar.progress(20)
 
-            # Convert dates to strings
-            start_str = start_date.strftime("%Y-%m-%d")
-            end_str = end_date.strftime("%Y-%m-%d")
-
             # Download data using appropriate API
-            df = get_market_data(symbol, start_str, end_str, interval)
+            df = get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
+                                        end_date.strftime("%Y-%m-%d"), interval, data_source)
+
 
             if df is None or df.empty:
-                st.error(f"Sem data encontrada para '{symbol}' nesse período de tempo.")
+                st.error(f"Sem data encontrada para '{symbol}' ({data_source}) nesse período de tempo.")
                 st.stop()
 
             progress_bar.progress(40)
             status_text.text("Processando indicadores...")
 
             # Data preprocessing
-            symbol_label = symbol.replace("=X", "").replace("-USD", "")
+            symbol_label = symbol.replace("=X", "").replace("-USD", "").replace(".SA", "")
 
             # Ensure we have the required columns
             required_columns = ['time', 'open', 'high', 'low', 'close']
@@ -1594,7 +1685,7 @@ with tab3:
 
             # Display results
             if optimize_params and optimization_results:
-                st.success(f"✅ Análise e otimização completa para {symbol_label}")
+                st.success(f"✅ Análise e otimização completa para {symbol_label} ({data_source})")
 
                 # Show optimization results
                 st.subheader("🎯 Resultados da Otimização")
@@ -1618,14 +1709,39 @@ with tab3:
                 st.subheader("📊 Comparação de Parâmetros")
                 comparison_df = pd.DataFrame(all_results)
                 comparison_df = comparison_df.sort_values('total_return', ascending=False)
-                st.dataframe(comparison_df, use_container_width=True)
 
+                # Format columns
+                comparison_df['total_return'] = comparison_df['total_return'].round(2)
+                comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
+                comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
+
+                # Rename columns for better display
+                comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
+
+                # Color code the best result
+                def highlight_best(s):
+                    if s.name == 'Retorno Total (%)':
+                        is_max = s == s.max()
+                        return ['background-color: lightgreen' if v else '' for v in is_max]
+                    return ['' for _ in s]
+
+                styled_df = comparison_df.style.apply(highlight_best, axis=0)
+                st.dataframe(styled_df, use_container_width=True)
+
+                # Show summary statistics
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Melhor Retorno Total", f"{comparison_df['Retorno Total (%)'].max():.2f}%")
+                with col2:
+                    st.metric("Pior Retorno Total", f"{comparison_df['Retorno Total (%)'].min():.2f}%")
+                with col3:
+                    st.metric("Diferença", f"{comparison_df['Retorno Total (%)'].max() - comparison_df['Retorno Total (%)'].min():.2f}%")
             else:
-                st.success(f"✅ Análise completa para  {symbol_label}")
+                st.success(f"✅ Análise completa para  {symbol_label} ({data_source})")
 
-            # Current status display with improved styling
+            # Current status display with improved layout
             modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
-            
+
             st.markdown(f"### 📊 Status Atual do Mercado - Modelo: {modelo_nome}")
 
             col1, col2, col3, col4 = st.columns(4)
@@ -1675,7 +1791,7 @@ with tab3:
 
             # Create the interactive chart
             modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
-            titulo_grafico = f"OVECCHIA TRADING - {symbol_label} - {modelo_nome} - Timeframe: {interval.upper()}"
+            titulo_grafico = f"OVECCHIA TRADING - {symbol_label} ({data_source}) - {modelo_nome} - Timeframe: {interval.upper()}"
 
             fig = make_subplots(
                 rows=2, cols=1,
@@ -1714,12 +1830,13 @@ with tab3:
             }
 
             for stop_type, color in stop_colors.items():
-                fig.add_trace(go.Scatter(
-                    x=df['time'], y=df[stop_type],
-                    mode="lines", name=stop_type.replace("_", " "),
-                    line=dict(color=color, width=2, dash="dot"),
-                    hovertemplate=f"<b>{stop_type.replace('_', ' ')}:</b> %{{y:.2f}}<extra></extra>"
-                ), row=1, col=1)
+                if stop_type in df.columns: # Check if column exists
+                    fig.add_trace(go.Scatter(
+                        x=df['time'], y=df[stop_type],
+                        mode="lines", name=stop_type.replace("_", " "),
+                        line=dict(color=color, width=2, dash="dot"),
+                        hovertemplate=f"<b>{stop_type.replace('_', ' ')}:</b> %{{y:.2f}}<extra></extra>"
+                    ), row=1, col=1)
 
             # Add signal indicator
             fig.add_trace(go.Scatter(
@@ -1894,7 +2011,7 @@ with tab4:
     st.markdown("## 🔍 Screening de Múltiplos Ativos")
     st.info("ℹ️ **Screening Mode:** O screening focará apenas na detecção de mudanças de estado dos sinais.")
 
-    # Screening parameters
+    # Parameters section
     col1, col2 = st.columns(2)
 
     with col1:
@@ -1981,14 +2098,22 @@ with tab4:
 
         start_date_screening = default_start_screening
         end_date_screening = default_end_screening
-        
+
         st.info("📅 **Período fixo:** 2 anos de dados históricos")
         st.info("⏰ **Timeframe fixo:** 1 dia")
 
         # Fixed interval: 1 day
         interval_screening = "1d"
 
-        
+        # Source selection for data
+        data_source_screening = st.selectbox(
+            "Fonte de Dados",
+            ["Yahoo Finance", "Binance"],
+            index=0,
+            help="Selecione a fonte dos dados de mercado para o screening.",
+            key="source_screening"
+        )
+
 
         # Strategy selection
         st.markdown("#### 📈 Estratégia de Sinais")
@@ -2002,7 +2127,7 @@ with tab4:
             </p>
         </div>
         """, unsafe_allow_html=True)
-        
+
         strategy_type_screening = st.radio(
             "Tipo de Estratégia:",
             ["Balanceado", "Agressivo", "Conservador"],
@@ -2010,7 +2135,7 @@ with tab4:
             key="strategy_screening",
             help="Escolha a estratégia baseada no seu perfil de risco e frequência desejada de sinais"
         )
-        
+
         # Definir parâmetros baseado na estratégia selecionada
         if strategy_type_screening == "Agressivo":
             sma_short_screening = 10
@@ -2047,12 +2172,9 @@ with tab4:
                 progress_bar.progress(int((idx / total_symbols) * 100))
 
                 try:
-                    # Convert dates to strings
-                    start_str = start_date_screening.strftime("%Y-%m-%d")
-                    end_str = end_date_screening.strftime("%Y-%m-%d")
-
                     # Download data using appropriate API
-                    df_temp = get_market_data(current_symbol, start_str, end_str, interval_screening)
+                    df_temp = get_market_data(current_symbol, start_date_screening.strftime("%Y-%m-%d"), 
+                                                end_date_screening.strftime("%Y-%m-%d"), interval_screening, data_source_screening)
 
                     if df_temp is None or df_temp.empty:
                         screening_results.append({
@@ -2152,7 +2274,7 @@ with tab4:
             status_text.text("Screening Completo!")
 
             # Display screening results
-            st.success(f"✅ Screening completo para {len(symbols_list)} ativos")
+            st.success(f"✅ Screening completo para {len(symbols_list)} ativos ({data_source_screening})")
 
             # Filter and display assets with state changes
             state_changes = [r for r in screening_results if r['state_change']]
@@ -2313,12 +2435,21 @@ with tab5:
 
         start_date_bb = default_start_bb
         end_date_bb = default_end_bb
-        
+
         st.info("📅 **Período fixo:** 2 anos de dados históricos")
         st.info("⏰ **Timeframe fixo:** 1 dia")
 
         # Fixed interval: 1 day
         interval_bb = "1d"
+        
+        # Source selection for data
+        data_source_bb = st.selectbox(
+            "Fonte de Dados",
+            ["Yahoo Finance", "Binance"],
+            index=0,
+            help="Selecione a fonte dos dados de mercado para a detecção de topos e fundos.",
+            key="source_bb"
+        )
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -2344,12 +2475,9 @@ with tab5:
                 progress_bar.progress(int((idx / total_symbols) * 100))
 
                 try:
-                    # Convert dates to strings
-                    start_str = start_date_bb.strftime("%Y-%m-%d")
-                    end_str = end_date_bb.strftime("%Y-%m-%d")
-
                     # Download data
-                    df_temp = get_market_data(current_symbol, start_str, end_str, interval_bb)
+                    df_temp = get_market_data(current_symbol, start_date_bb.strftime("%Y-%m-%d"), 
+                                                end_date_bb.strftime("%Y-%m-%d"), interval_bb, data_source_bb)
 
                     if df_temp is None or df_temp.empty:
                         bb_results.append({
@@ -2368,7 +2496,7 @@ with tab5:
                     bb_period = 20
                     bb_std = 2.0
                     min_distance_pct = 0.0
-                    
+
                     sma = df_temp['close'].rolling(window=bb_period).mean()
                     std = df_temp['close'].rolling(window=bb_period).std()
                     banda_superior = sma + (bb_std * std)
@@ -2421,7 +2549,7 @@ with tab5:
             status_text.text("Detecção Completa!")
 
             # Display results
-            st.success(f"✅ Análise de Topos e Fundos completa para {len(symbols_list_bb)} ativos")
+            st.success(f"✅ Análise de Topos e Fundos completa para {len(symbols_list_bb)} ativos ({data_source_bb})")
 
             # Use all results
             signal_results = bb_results
@@ -2494,21 +2622,21 @@ with tab5:
 
             # Full results table
             st.subheader("📋 Resultados Detalhados")
-            
+
             # Create summary dataframe with only essential columns
             summary_df = pd.DataFrame(bb_results)
-            
+
             # Select only required columns
             essential_columns = ['symbol', 'status', 'signal']
             summary_df_display = summary_df[essential_columns].copy()
-            
+
             # Rename columns for better display
             display_columns = {
                 'symbol': 'Ativo',
                 'status': 'Status',
                 'signal': 'Sinal'
             }
-            
+
             summary_df_display = summary_df_display.rename(columns=display_columns)
             st.dataframe(summary_df_display, use_container_width=True)
 
@@ -2543,15 +2671,15 @@ with tab6:
 
     # How to use section
     st.markdown("### 📋 Como Usar o Bot")
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.markdown("#### 🚀 Primeiros Passos")
         st.markdown("""
         **1. Adicione o bot:**
         No Telegram, procure por **@Ovecchia_bot** e clique em "Iniciar"
-        
+
         **2. Comandos disponíveis:**
         - `/start` - Iniciar o bot e ver boas-vindas
         - `/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]` - Análise individual com gráfico
@@ -2568,17 +2696,17 @@ with tab6:
         - **🔥 agressiva:** Mais sinais, maior frequência
         - **⚖️ balanceada:** Equilíbrio entre sinais e confiabilidade
         - **🛡️ conservadora:** Sinais mais confiáveis, menor frequência
-        
+
         **Timeframes suportados:** 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
-        **Período padrão de análise:** Baseado no timeframe escolhido
+        **Período de dados:** Baseado no comando específico
         **Datas personalizadas:** Formato YYYY-MM-DD (opcional)
         """)
 
     # Bot status section
     st.markdown("### 📊 Informações do Bot")
-    
+
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
         st.markdown(f"""
         <div class="metric-card">
@@ -2628,7 +2756,7 @@ with tab6:
 
     # Example alerts section
     st.markdown("### 📢 Exemplos de Alertas")
-    
+
     st.markdown("""
     <div class="metric-card">
         <p><strong>🔍 Exemplo de Screening:</strong></p>
@@ -2676,7 +2804,7 @@ with tab6:
 
     # Technical information
     st.markdown("### 🔧 Informações Técnicas")
-    
+
     st.markdown("""
     <div class="metric-card">
         <p><strong>Especificações do Bot:</strong></p>
@@ -2684,8 +2812,8 @@ with tab6:
             <li><strong>Polling:</strong> Verifica mensagens a cada 2 segundos</li>
             <li><strong>Timeout:</strong> 10 segundos para requisições</li>
             <li><strong>Análise automática:</strong> A cada 4 horas (configurável)</li>
-            <li><strong>Fonte de dados:</strong> Yahoo Finance API</li>
-            <li><strong>Período de dados:</strong> 365 dias históricos</li>
+            <li><strong>Fonte de dados:</strong> Yahoo Finance API e Binance API</li>
+            <li><strong>Período de dados:</strong> 365 dias históricos (Yahoo), 2 anos (Binance para T&F)</li>
             <li><strong>Processamento:</strong> Thread separada para não bloquear interface</li>
         </ul>
     </div>
