@@ -199,7 +199,7 @@ class OvecchiaTradingBot:
             logger.error(f"Erro ao coletar dados para {symbol}: {str(e)}")
             return pd.DataFrame()
 
-    def calculate_ovelha_v2_signals(self, df, strategy_type="Balanceado", sma_short=60, sma_long=70, lookahead=3, threshold=0.002):
+    def calculate_ovelha_v2_signals(self, df, strategy_type="Balanceado", sma_short=60, sma_long=70, lookahead=3, threshold=0.002, buffer=0.0015):
         """Função para calcular sinais usando o modelo OVELHA V2 com Random Forest"""
         try:
             if df.empty:
@@ -281,23 +281,26 @@ class OvecchiaTradingBot:
             df.loc[X.index, 'Signal_model'] = model.predict(X)
 
             # =======================
-            # FILTRO DE TENDÊNCIA
+            # FILTRO DE TENDÊNCIA + HISTERESE
             # =======================
             df['Signal'] = 'Stay Out'
             for i in range(1, len(df)):
                 prev_estado = df['Signal'].iloc[i-1]
 
-                # Sugestão de compra
+                price = df['close'].iloc[i]
+                sma_s = df[f'SMA_{sma_short}'].iloc[i]
+                sma_l = df[f'SMA_{sma_long}'].iloc[i]
+
+                # BUY - com buffer para evitar falsos cruzamentos
                 if df['Signal_model'].iloc[i] == 1:
-                    if (df['close'].iloc[i] > df[f'SMA_{sma_short}'].iloc[i] and 
-                        df['close'].iloc[i] > df[f'SMA_{sma_long}'].iloc[i]):
+                    if price > sma_s * (1 + buffer) and price > sma_l * (1 + buffer):
                         df.loc[df.index[i], 'Signal'] = 'Buy'
                     else:
                         df.loc[df.index[i], 'Signal'] = prev_estado
 
-                # Sugestão de venda
+                # SELL - com buffer para evitar falsos cruzamentos
                 elif df['Signal_model'].iloc[i] == -1:
-                    if df['close'].iloc[i] < df[f'SMA_{sma_short}'].iloc[i]:
+                    if price < sma_s * (1 - buffer):
                         df.loc[df.index[i], 'Signal'] = 'Sell'
                     else:
                         df.loc[df.index[i], 'Signal'] = prev_estado

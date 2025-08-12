@@ -52,7 +52,7 @@ def calcular_bollinger_bands(df, period=20):
     banda_inferior = sma - (2 * std)
     return banda_superior, banda_inferior
 
-def calculate_ovelha_v2_signals(df, sma_short=60, sma_long=70, lookahead=3, threshold=0.002):
+def calculate_ovelha_v2_signals(df, sma_short=60, sma_long=70, lookahead=3, threshold=0.002, buffer=0.0015):
     """Função para calcular sinais usando o modelo OVELHA V2 com Random Forest"""
     try:
         # Fazer uma cópia para não alterar o DataFrame original
@@ -123,23 +123,26 @@ def calculate_ovelha_v2_signals(df, sma_short=60, sma_long=70, lookahead=3, thre
         df_work.loc[X.index, 'Signal_model'] = model.predict(X)
 
         # =======================
-        # FILTRO DE TENDÊNCIA
+        # FILTRO DE TENDÊNCIA + HISTERESE
         # =======================
         df_work['Signal'] = 'Stay Out'
         for i in range(1, len(df_work)):
             prev_estado = df_work['Signal'].iloc[i-1]
 
-            # Sugestão de compra
+            price = df_work['close'].iloc[i]
+            sma_s = df_work[f'SMA_{sma_short}'].iloc[i]
+            sma_l = df_work[f'SMA_{sma_long}'].iloc[i]
+
+            # BUY - com buffer para evitar falsos cruzamentos
             if df_work['Signal_model'].iloc[i] == 1:
-                if (df_work['close'].iloc[i] > df_work[f'SMA_{sma_short}'].iloc[i] and 
-                    df_work['close'].iloc[i] > df_work[f'SMA_{sma_long}'].iloc[i]):
+                if price > sma_s * (1 + buffer) and price > sma_l * (1 + buffer):
                     df_work.loc[df_work.index[i], 'Signal'] = 'Buy'
                 else:
                     df_work.loc[df_work.index[i], 'Signal'] = prev_estado
 
-            # Sugestão de venda
+            # SELL - com buffer para evitar falsos cruzamentos
             elif df_work['Signal_model'].iloc[i] == -1:
-                if df_work['close'].iloc[i] < df_work[f'SMA_{sma_short}'].iloc[i]:
+                if price < sma_s * (1 - buffer):
                     df_work.loc[df_work.index[i], 'Signal'] = 'Sell'
                 else:
                     df_work.loc[df_work.index[i], 'Signal'] = prev_estado
@@ -950,6 +953,19 @@ with tab3:
             help="OVELHA: Modelo clássico baseado em indicadores técnicos | OVELHA V2: Modelo avançado com Random Forest"
         )
 
+        # Buffer para OVELHA V2
+        buffer_value = 0.0015  # valor padrão
+        if model_type == "OVELHA V2 (Machine Learning)":
+            st.markdown("#### 🔧 Configuração de Buffer (Histerese)")
+            buffer_value = st.number_input(
+                "Buffer para Médias Móveis (%)",
+                min_value=0.0,
+                max_value=2.0,
+                value=0.15,
+                step=0.05,
+                help="Buffer (histerese) para evitar falsos cruzamentos nas médias. Valor em percentual (ex: 0.15 = 0.15%)"
+            ) / 100  # converter para decimal
+
         st.markdown("#### 📈 Estratégia de Sinais")
         st.markdown("""
         <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
@@ -1093,10 +1109,10 @@ with tab3:
 
             # Escolher modelo baseado na seleção do usuário
             if model_type == "OVELHA V2 (Machine Learning)":
-                df_with_signals = calculate_ovelha_v2_signals(df, sma_short, sma_long)
+                df_with_signals = calculate_ovelha_v2_signals(df, sma_short, sma_long, buffer=buffer_value)
                 if df_with_signals is not None:
                     df = df_with_signals
-                    st.info("✅ Modelo OVELHA V2 (Random Forest) aplicado com sucesso!")
+                    st.info(f"✅ Modelo OVELHA V2 (Random Forest) aplicado com sucesso! Buffer: {buffer_value*100:.2f}%")
                 else:
                     # Fallback para modelo clássico se houver erro
                     model_type = "OVELHA (Clássico)"
