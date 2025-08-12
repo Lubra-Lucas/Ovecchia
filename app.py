@@ -42,15 +42,20 @@ def get_historical_klines_binance(symbol, interval, lookback):
 
     try:
         klines = client_binance.get_historical_klines(symbol, interval, lookback)
+        if not klines:
+            return pd.DataFrame()
+            
         df = pd.DataFrame(klines, columns=[
             'timestamp', 'open', 'high', 'low', 'close', 'volume',
             'close_time', 'quote_asset_volume', 'number_of_trades',
             'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'
         ])
         df = df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        df.set_index('timestamp', inplace=True)
-        df = df.astype(float)
+        df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
+        df = df.drop('timestamp', axis=1)
+        df = df.astype({'open': float, 'high': float, 'low': float, 'close': float, 'volume': float})
+        # Reordenar colunas
+        df = df[['time', 'open', 'high', 'low', 'close', 'volume']]
         return df
     except Exception as e:
         raise Exception(f"Erro ao buscar dados da Binance para {symbol}: {e}")
@@ -59,44 +64,51 @@ def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yaho
     """Função principal para coletar dados do mercado usando Yahoo Finance ou Binance"""
     try:
         if source == "Binance":
-            # Binance requires specific intervals and lookback periods that are string-based
-            # For simplicity, we'll convert date range to a lookback string if possible
-            # This part might need more robust date-to-lookback string conversion
             try:
-                start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-                end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
-                # A simple approximation for lookback; a more precise calculation might be needed
-                lookback_delta = end_date - start_date
-                lookback_str = f"{lookback_delta.days} day ago UTC"
-                # Binance interval mapping might be needed if not directly compatible
+                # Mapear intervalos para Binance
                 binance_interval_map = {
                     "1m": "1m", "2m": "2m", "5m": "5m", "15m": "15m", "30m": "30m",
                     "1h": "1h", "2h": "2h", "4h": "4h", "6h": "6h", "8h": "8h", "12h": "12h",
                     "1d": "1d", "3d": "3d", "1w": "1w", "1M": "1M"
                 }
+                
                 if interval in binance_interval_map:
                     binance_interval = binance_interval_map[interval]
                 else:
-                    st.warning(f"Intervalo {interval} não suportado diretamente pela Binance. Usando '1d'.")
+                    st.warning(f"Intervalo {interval} não suportado pela Binance. Usando '1d'.")
                     binance_interval = "1d"
-                    lookback_str = "1 day ago UTC" # Fallback for unsupported intervals
 
-                # Binance symbols usually don't have .SA or =X etc.
-                binance_symbol = symbol.replace(".SA", "").replace("=X", "")
-                # Conventionally, Binance symbols are like BTCUSDT
-                # If input is like BTC-USD, convert to BTCUSDT if possible or handle appropriately
+                # Converter símbolo para formato Binance
+                binance_symbol = symbol.upper()
                 if "-USD" in binance_symbol:
-                    binance_symbol = binance_symbol.replace("-USD", "USDT") # Common pairing
+                    binance_symbol = binance_symbol.replace("-USD", "USDT")
+                elif "=X" in binance_symbol:
+                    # Forex não suportado pela Binance
+                    st.error(f"Forex {symbol} não suportado pela Binance. Use Yahoo Finance.")
+                    return pd.DataFrame()
+                elif ".SA" in binance_symbol:
+                    # Ações brasileiras não suportadas pela Binance
+                    st.error(f"Ações brasileiras {symbol} não suportadas pela Binance. Use Yahoo Finance.")
+                    return pd.DataFrame()
 
-                df = get_historical_klines_binance(binance_symbol.upper(), binance_interval, lookback_str)
-                # Ensure columns are standardized for consistency
-                df.rename(columns={'time': 'timestamp'}, inplace=True) # Adjust column name if needed
-                df.reset_index(inplace=True)
-                df.rename(columns={'timestamp': 'time'}, inplace=True)
+                # Usar lookback fixo de 1 day ago UTC para simplificar
+                lookback_str = "1 day ago UTC"
+                
+                # Para períodos maiores, ajustar o lookback
+                start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+                end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+                days_diff = (end_date - start_date).days
+                
+                if days_diff > 30:
+                    lookback_str = f"{days_diff} day ago UTC"
+                elif days_diff > 7:
+                    lookback_str = "30 day ago UTC"
+
+                df = get_historical_klines_binance(binance_symbol, binance_interval, lookback_str)
                 return df
 
             except Exception as e:
-                st.error(f"Erro ao buscar dados da Binance para {symbol} com intervalo {interval}: {e}")
+                st.error(f"Erro ao buscar dados da Binance para {symbol}: {e}")
                 return pd.DataFrame()
 
         else: # Default to Yahoo Finance

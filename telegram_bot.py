@@ -176,24 +176,13 @@ class OvecchiaTradingBot:
             # Inicializa o cliente
             client = Client(api_key, api_secret)
             
-            # Mapear intervalos
-            interval_mapping = {
-                "1m": Client.KLINE_INTERVAL_1MINUTE,
-                "5m": Client.KLINE_INTERVAL_5MINUTE,
-                "15m": Client.KLINE_INTERVAL_15MINUTE,
-                "30m": Client.KLINE_INTERVAL_30MINUTE,
-                "1h": Client.KLINE_INTERVAL_1HOUR,
-                "4h": Client.KLINE_INTERVAL_4HOUR,
-                "1d": Client.KLINE_INTERVAL_1DAY,
-                "1wk": Client.KLINE_INTERVAL_1WEEK
-            }
-            
-            binance_interval = interval_mapping.get(interval, Client.KLINE_INTERVAL_1DAY)
-            
             # Converter símbolo para formato Binance
             binance_symbol = symbol.replace('-USD', 'USDT').replace('-USDT', 'USDT')
             
-            # Converter datas
+            # Usar lookback fixo como sugerido
+            lookback_str = "1 day ago UTC"
+            
+            # Para períodos maiores, ajustar o lookback
             if isinstance(start_date, str):
                 start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
             else:
@@ -203,19 +192,20 @@ class OvecchiaTradingBot:
                 end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
             else:
                 end_datetime = end_date
+                
+            days_diff = (end_datetime - start_datetime).days
+            if days_diff > 30:
+                lookback_str = f"{days_diff} day ago UTC"
+            elif days_diff > 7:
+                lookback_str = "30 day ago UTC"
             
-            # Puxar dados históricos
-            klines = client.get_historical_klines(
-                binance_symbol, 
-                binance_interval, 
-                start_datetime.strftime("%d %b %Y"),
-                end_datetime.strftime("%d %b %Y")
-            )
+            # Puxar dados históricos usando formato simplificado
+            klines = client.get_historical_klines(binance_symbol, interval, lookback_str)
             
             if not klines:
                 return pd.DataFrame()
             
-            # Criar DataFrame
+            # Criar DataFrame com formato simplificado
             df = pd.DataFrame(klines, columns=[
                 'timestamp', 'open', 'high', 'low', 'close', 'volume', 
                 'close_time', 'quote_asset_volume', 'number_of_trades', 
@@ -230,8 +220,7 @@ class OvecchiaTradingBot:
             df = df.drop('timestamp', axis=1)
             
             # Converter para float
-            for col in ['open', 'high', 'low', 'close', 'volume']:
-                df[col] = df[col].astype(float)
+            df = df.astype({'open': float, 'high': float, 'low': float, 'close': float, 'volume': float})
             
             # Reordenar colunas
             df = df[['time', 'open', 'high', 'low', 'close', 'volume']]
