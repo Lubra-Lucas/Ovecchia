@@ -1608,6 +1608,8 @@ with tab3:
                 st.success(f"✅ Análise completa para  {symbol_label}")
 
             # Current status display with improved styling
+            modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
+            
             st.markdown(f"### 📊 Status Atual do Mercado - Modelo: {modelo_nome}")
 
             col1, col2, col3, col4 = st.columns(4)
