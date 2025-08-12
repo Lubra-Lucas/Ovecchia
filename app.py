@@ -17,12 +17,19 @@ warnings.filterwarnings('ignore')
 BINANCE_API_KEY = 'kagmRJ2TNwr7No68i3aRG2MZdm5MPDTBncwnrKUv2Wv8arpXXxuikVUij981Wxvu'
 BINANCE_API_SECRET = 'VAYi1m9r0sLy7T8vbqPBSxaOjL4BI58KnMS13USRatbULqrUdoDJnILjyyz4skgx'
 
+
+
 # Inicializa o cliente Binance
 try:
-    client_binance = Client(BINANCE_API_KEY, BINANCE_API_SECRET)
+    client_binance = Client(BINANCE_API_KEY, BINANCE_API_SECRET,testnet=True)
 except Exception as e:
     st.error(f"Erro ao inicializar cliente Binance: {e}. Verifique suas credenciais ou conexão.")
     client_binance = None
+
+# Testnet Spot
+client_binance = Client(BINANCE_API_KEY, BINANCE_API_SECRET, testnet=True)
+client_binance.API_URL = 'https://testnet.binance.vision/api'  # garante a base da testnet
+
 
 # Função para puxar dados históricos da Binance
 def get_historical_klines_binance(symbol, interval, lookback):
