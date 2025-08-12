@@ -6,6 +6,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import warnings
+from sklearn.ensemble import RandomForestClassifier
+
 warnings.filterwarnings('ignore')
 
 def get_market_data(symbol, start_date, end_date, interval):
@@ -49,6 +51,120 @@ def calcular_bollinger_bands(df, period=20):
     banda_superior = sma + (2 * std)
     banda_inferior = sma - (2 * std)
     return banda_superior, banda_inferior
+
+def calculate_ovelha_v2_signals(df, sma_short=60, sma_long=70, lookahead=3, threshold=0.002):
+    """Função para calcular sinais usando o modelo OVELHA V2 com Random Forest"""
+    try:
+        # Fazer uma cópia para não alterar o DataFrame original
+        df_work = df.copy()
+        
+        # =======================
+        # CÁLCULO DAS FEATURES
+        # =======================
+        # SMAs
+        df_work[f'SMA_{sma_short}'] = df_work['close'].rolling(window=sma_short).mean()
+        df_work[f'SMA_{sma_long}'] = df_work['close'].rolling(window=sma_long).mean()
+        df_work['SMA_20'] = df_work['close'].rolling(window=20).mean()
+
+        # RSI(14)
+        delta = df_work['close'].diff()
+        gain = np.where(delta > 0, delta, 0.0)
+        loss = np.where(delta < 0, -delta, 0.0)
+        avg_gain = pd.Series(gain).rolling(window=14, min_periods=14).mean()
+        avg_loss = pd.Series(loss).rolling(window=14, min_periods=14).mean()
+        rs = avg_gain / avg_loss.replace(0, np.nan)
+        df_work['RSI_14'] = 100 - (100 / (1 + rs))
+        df_work['RSI_14'] = df_work['RSI_14'].fillna(method='bfill')
+
+        # RSL(20)
+        df_work['RSL_20'] = df_work['close'] / df_work['SMA_20']
+
+        # ATR(14)
+        df_work['prior_close'] = df_work['close'].shift(1)
+        df_work['tr1'] = df_work['high'] - df_work['low']
+        df_work['tr2'] = (df_work['high'] - df_work['prior_close']).abs()
+        df_work['tr3'] = (df_work['low'] - df_work['prior_close']).abs()
+        df_work['TR'] = df_work[['tr1', 'tr2', 'tr3']].max(axis=1)
+        df_work['ATR'] = df_work['TR'].rolling(window=14).mean()
+
+        # Retorno, aceleração e volatilidade intrínseca
+        df_work['ret_1'] = df_work['close'].pct_change()
+        df_work['accel'] = df_work['ret_1'].diff()
+        df_work['decel'] = -df_work['accel']
+        df_work['atr_norm'] = df_work['ATR'] / df_work['close']
+
+        # =======================
+        # CRIAÇÃO DO TARGET Y
+        # =======================
+        df_work['future_ret'] = df_work['close'].shift(-lookahead) / df_work['close'] - 1
+        df_work['y'] = 0
+        df_work.loc[df_work['future_ret'] > threshold, 'y'] = 1
+        df_work.loc[df_work['future_ret'] < -threshold, 'y'] = -1
+
+        # =======================
+        # TREINAMENTO DO MODELO
+        # =======================
+        features = ['RSI_14', 'RSL_20', 'ATR', 'ret_1', 'accel', 'decel', 'atr_norm']
+        X = df_work[features].dropna()
+        y = df_work.loc[X.index, 'y']
+
+        # Verificar se temos dados suficientes para treinar
+        if len(X) < 50:
+            st.warning("⚠️ Dados insuficientes para treinar o modelo OVELHA V2. Usando modelo clássico.")
+            return None
+
+        model = RandomForestClassifier(n_estimators=200, random_state=42)
+        model.fit(X, y)
+
+        # =======================
+        # PREVISÕES
+        # =======================
+        df_work['Signal_model'] = np.nan
+        df_work.loc[X.index, 'Signal_model'] = model.predict(X)
+
+        # =======================
+        # FILTRO DE TENDÊNCIA
+        # =======================
+        df_work['Signal'] = 'Stay Out'
+        for i in range(1, len(df_work)):
+            prev_estado = df_work['Signal'].iloc[i-1]
+
+            # Sugestão de compra
+            if df_work['Signal_model'].iloc[i] == 1:
+                if (df_work['close'].iloc[i] > df_work[f'SMA_{sma_short}'].iloc[i] and 
+                    df_work['close'].iloc[i] > df_work[f'SMA_{sma_long}'].iloc[i]):
+                    df_work.loc[df_work.index[i], 'Signal'] = 'Buy'
+                else:
+                    df_work.loc[df_work.index[i], 'Signal'] = prev_estado
+
+            # Sugestão de venda
+            elif df_work['Signal_model'].iloc[i] == -1:
+                if df_work['close'].iloc[i] < df_work[f'SMA_{sma_short}'].iloc[i]:
+                    df_work.loc[df_work.index[i], 'Signal'] = 'Sell'
+                else:
+                    df_work.loc[df_work.index[i], 'Signal'] = prev_estado
+            else:
+                df_work.loc[df_work.index[i], 'Signal'] = prev_estado
+
+        # State persistence - aplicar sinal imediatamente
+        df_work['Estado'] = 'Stay Out'
+        for i in range(len(df_work)):
+            if i == 0:
+                continue
+
+            estado_anterior = df_work['Estado'].iloc[i - 1]
+            sinal_atual = df_work['Signal'].iloc[i]
+
+            if sinal_atual != 'Stay Out':
+                df_work.loc[df_work.index[i], 'Estado'] = sinal_atual
+            else:
+                df_work.loc[df_work.index[i], 'Estado'] = estado_anterior
+
+        return df_work
+
+    except Exception as e:
+        st.error(f"Erro no modelo OVELHA V2: {str(e)}")
+        return None
 
 def display_returns_section(returns_data, criteria_name):
     """Helper function to display returns section"""
@@ -826,6 +942,14 @@ with tab3:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         
 
+        st.markdown("#### 🤖 Modelo de Sinais")
+        model_type = st.selectbox(
+            "Escolha o Modelo:",
+            ["OVELHA (Clássico)", "OVELHA V2 (Machine Learning)"],
+            index=0,
+            help="OVELHA: Modelo clássico baseado em indicadores técnicos | OVELHA V2: Modelo avançado com Random Forest"
+        )
+
         st.markdown("#### 📈 Estratégia de Sinais")
         st.markdown("""
         <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
@@ -967,46 +1091,58 @@ with tab3:
             progress_bar.progress(80)
             status_text.text("Gerando sinais de trading...")
 
-            # Signal generation
-            df['Signal'] = 'Stay Out'
-            for i in range(1, len(df)):
-                rsi_up = df['RSI_14'].iloc[i] > df['RSI_14'].iloc[i-1]
-                rsi_down = df['RSI_14'].iloc[i] < df['RSI_14'].iloc[i-1]
-                rsl = df['RSL_20'].iloc[i]
-                rsl_prev = df['RSL_20'].iloc[i-1]
-
-                rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
-                rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
-
-                if (
-                    df['close'].iloc[i] > df[f'SMA_{sma_short}'].iloc[i]
-                    and df['close'].iloc[i] > df[f'SMA_{sma_long}'].iloc[i]
-                    and rsi_up and rsl_buy
-                ):
-                    df.at[i, 'Signal'] = 'Buy'
-                elif (
-                    df['close'].iloc[i] < df[f'SMA_{sma_short}'].iloc[i]
-                    and rsi_down and rsl_sell
-                ):
-                    df.at[i, 'Signal'] = 'Sell'
-
-            # State persistence - aplicar sinal imediatamente
-            df['Estado'] = 'Stay Out'
-
-            for i in range(len(df)):
-                if i == 0:
-                    # Primeiro candle sempre Stay Out
-                    continue
-
-                # Estado anterior
-                estado_anterior = df['Estado'].iloc[i - 1]
-
-                # Aplicar sinal imediatamente
-                sinal_atual = df['Signal'].iloc[i]
-                if sinal_atual != 'Stay Out':
-                    df.loc[df.index[i], 'Estado'] = sinal_atual
+            # Escolher modelo baseado na seleção do usuário
+            if model_type == "OVELHA V2 (Machine Learning)":
+                df_with_signals = calculate_ovelha_v2_signals(df, sma_short, sma_long)
+                if df_with_signals is not None:
+                    df = df_with_signals
+                    st.info("✅ Modelo OVELHA V2 (Random Forest) aplicado com sucesso!")
                 else:
-                    df.loc[df.index[i], 'Estado'] = estado_anterior
+                    # Fallback para modelo clássico se houver erro
+                    model_type = "OVELHA (Clássico)"
+                    st.warning("⚠️ Usando modelo clássico OVELHA como fallback.")
+
+            if model_type == "OVELHA (Clássico)":
+                # Signal generation - Modelo Original
+                df['Signal'] = 'Stay Out'
+                for i in range(1, len(df)):
+                    rsi_up = df['RSI_14'].iloc[i] > df['RSI_14'].iloc[i-1]
+                    rsi_down = df['RSI_14'].iloc[i] < df['RSI_14'].iloc[i-1]
+                    rsl = df['RSL_20'].iloc[i]
+                    rsl_prev = df['RSL_20'].iloc[i-1]
+
+                    rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
+                    rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
+
+                    if (
+                        df['close'].iloc[i] > df[f'SMA_{sma_short}'].iloc[i]
+                        and df['close'].iloc[i] > df[f'SMA_{sma_long}'].iloc[i]
+                        and rsi_up and rsl_buy
+                    ):
+                        df.at[i, 'Signal'] = 'Buy'
+                    elif (
+                        df['close'].iloc[i] < df[f'SMA_{sma_short}'].iloc[i]
+                        and rsi_down and rsl_sell
+                    ):
+                        df.at[i, 'Signal'] = 'Sell'
+
+                # State persistence - aplicar sinal imediatamente
+                df['Estado'] = 'Stay Out'
+
+                for i in range(len(df)):
+                    if i == 0:
+                        # Primeiro candle sempre Stay Out
+                        continue
+
+                    # Estado anterior
+                    estado_anterior = df['Estado'].iloc[i - 1]
+
+                    # Aplicar sinal imediatamente
+                    sinal_atual = df['Signal'].iloc[i]
+                    if sinal_atual != 'Stay Out':
+                        df.loc[df.index[i], 'Estado'] = sinal_atual
+                    else:
+                        df.loc[df.index[i], 'Estado'] = estado_anterior
 
             # ATR and Stop Loss calculations
             df['prior_close'] = df['close'].shift(1)
@@ -1472,7 +1608,7 @@ with tab3:
                 st.success(f"✅ Análise completa para  {symbol_label}")
 
             # Current status display with improved styling
-            st.markdown("### 📊 Status Atual do Mercado")
+            st.markdown(f"### 📊 Status Atual do Mercado - Modelo: {modelo_nome}")
 
             col1, col2, col3, col4 = st.columns(4)
 
@@ -1520,7 +1656,8 @@ with tab3:
             st.markdown("<br>", unsafe_allow_html=True)
 
             # Create the interactive chart
-            titulo_grafico = f"OVECCHIA TRADING - {symbol_label} - Timeframe: {interval.upper()}"
+            modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
+            titulo_grafico = f"OVECCHIA TRADING - {symbol_label} - {modelo_nome} - Timeframe: {interval.upper()}"
 
             fig = make_subplots(
                 rows=2, cols=1,

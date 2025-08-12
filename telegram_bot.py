@@ -13,6 +13,7 @@ import sys
 import difflib
 import unicodedata
 import re
+from sklearn.ensemble import RandomForestClassifier
 
 warnings.filterwarnings('ignore')
 
@@ -198,6 +199,131 @@ class OvecchiaTradingBot:
             logger.error(f"Erro ao coletar dados para {symbol}: {str(e)}")
             return pd.DataFrame()
 
+    def calculate_ovelha_v2_signals(self, df, strategy_type="Balanceado", sma_short=60, sma_long=70, lookahead=3, threshold=0.002):
+        """Função para calcular sinais usando o modelo OVELHA V2 com Random Forest"""
+        try:
+            if df.empty:
+                return df
+
+            # Definir parâmetros baseado na estratégia
+            if strategy_type == "Agressivo":
+                sma_short = 10
+                sma_long = 21
+            elif strategy_type == "Conservador":
+                sma_short = 140
+                sma_long = 200
+            else:  # Balanceado
+                sma_short = 60
+                sma_long = 70
+
+            # =======================
+            # CÁLCULO DAS FEATURES
+            # =======================
+            # SMAs
+            df[f'SMA_{sma_short}'] = df['close'].rolling(window=sma_short).mean()
+            df[f'SMA_{sma_long}'] = df['close'].rolling(window=sma_long).mean()
+            df['SMA_20'] = df['close'].rolling(window=20).mean()
+
+            # RSI(14)
+            delta = df['close'].diff()
+            gain = np.where(delta > 0, delta, 0.0)
+            loss = np.where(delta < 0, -delta, 0.0)
+            avg_gain = pd.Series(gain).rolling(window=14, min_periods=14).mean()
+            avg_loss = pd.Series(loss).rolling(window=14, min_periods=14).mean()
+            rs = avg_gain / avg_loss.replace(0, np.nan)
+            df['RSI_14'] = 100 - (100 / (1 + rs))
+            df['RSI_14'] = df['RSI_14'].fillna(method='bfill')
+
+            # RSL(20)
+            df['RSL_20'] = df['close'] / df['SMA_20']
+
+            # ATR(14)
+            df['prior_close'] = df['close'].shift(1)
+            df['tr1'] = df['high'] - df['low']
+            df['tr2'] = (df['high'] - df['prior_close']).abs()
+            df['tr3'] = (df['low'] - df['prior_close']).abs()
+            df['TR'] = df[['tr1', 'tr2', 'tr3']].max(axis=1)
+            df['ATR'] = df['TR'].rolling(window=14).mean()
+
+            # Retorno, aceleração e volatilidade intrínseca
+            df['ret_1'] = df['close'].pct_change()
+            df['accel'] = df['ret_1'].diff()
+            df['decel'] = -df['accel']
+            df['atr_norm'] = df['ATR'] / df['close']
+
+            # =======================
+            # CRIAÇÃO DO TARGET Y
+            # =======================
+            df['future_ret'] = df['close'].shift(-lookahead) / df['close'] - 1
+            df['y'] = 0
+            df.loc[df['future_ret'] > threshold, 'y'] = 1
+            df.loc[df['future_ret'] < -threshold, 'y'] = -1
+
+            # =======================
+            # TREINAMENTO DO MODELO
+            # =======================
+            features = ['RSI_14', 'RSL_20', 'ATR', 'ret_1', 'accel', 'decel', 'atr_norm']
+            X = df[features].dropna()
+            y = df.loc[X.index, 'y']
+
+            # Verificar se temos dados suficientes para treinar
+            if len(X) < 50:
+                logger.warning("Dados insuficientes para OVELHA V2, usando modelo clássico")
+                return None
+
+            model = RandomForestClassifier(n_estimators=200, random_state=42)
+            model.fit(X, y)
+
+            # =======================
+            # PREVISÕES
+            # =======================
+            df['Signal_model'] = np.nan
+            df.loc[X.index, 'Signal_model'] = model.predict(X)
+
+            # =======================
+            # FILTRO DE TENDÊNCIA
+            # =======================
+            df['Signal'] = 'Stay Out'
+            for i in range(1, len(df)):
+                prev_estado = df['Signal'].iloc[i-1]
+
+                # Sugestão de compra
+                if df['Signal_model'].iloc[i] == 1:
+                    if (df['close'].iloc[i] > df[f'SMA_{sma_short}'].iloc[i] and 
+                        df['close'].iloc[i] > df[f'SMA_{sma_long}'].iloc[i]):
+                        df.loc[df.index[i], 'Signal'] = 'Buy'
+                    else:
+                        df.loc[df.index[i], 'Signal'] = prev_estado
+
+                # Sugestão de venda
+                elif df['Signal_model'].iloc[i] == -1:
+                    if df['close'].iloc[i] < df[f'SMA_{sma_short}'].iloc[i]:
+                        df.loc[df.index[i], 'Signal'] = 'Sell'
+                    else:
+                        df.loc[df.index[i], 'Signal'] = prev_estado
+                else:
+                    df.loc[df.index[i], 'Signal'] = prev_estado
+
+            # State persistence
+            df['Estado'] = 'Stay Out'
+            for i in range(len(df)):
+                if i == 0:
+                    continue
+
+                estado_anterior = df['Estado'].iloc[i - 1]
+                sinal_atual = df['Signal'].iloc[i]
+
+                if sinal_atual != 'Stay Out':
+                    df.loc[df.index[i], 'Estado'] = sinal_atual
+                else:
+                    df.loc[df.index[i], 'Estado'] = estado_anterior
+
+            return df
+
+        except Exception as e:
+            logger.error(f"Erro no modelo OVELHA V2: {str(e)}")
+            return None
+
     def calculate_indicators_and_signals(self, df, strategy_type="Balanceado"):
         """Calcula indicadores e gera sinais"""
         if df.empty:
@@ -365,7 +491,7 @@ class OvecchiaTradingBot:
 
         return results
 
-    def generate_analysis_chart(self, symbol, strategy_type, timeframe, custom_start_date=None, custom_end_date=None):
+    def generate_analysis_chart(self, symbol, strategy_type, timeframe, model_type="ovelha", custom_start_date=None, custom_end_date=None):
         """Gera gráfico de análise para um ativo específico usando matplotlib"""
         try:
             import matplotlib.pyplot as plt
@@ -396,8 +522,18 @@ class OvecchiaTradingBot:
             if df.empty:
                 return {'success': False, 'error': f'Sem dados encontrados para {symbol}'}
 
-            # Calcular indicadores e sinais
-            df = self.calculate_indicators_and_signals(df, strategy_type)
+            # Calcular indicadores e sinais baseado no modelo escolhido
+            if model_type == "ovelha2":
+                df_v2 = self.calculate_ovelha_v2_signals(df, strategy_type)
+                if df_v2 is not None:
+                    df = df_v2
+                    model_used = "OVELHA V2"
+                else:
+                    df = self.calculate_indicators_and_signals(df, strategy_type)
+                    model_used = "OVELHA (fallback)"
+            else:
+                df = self.calculate_indicators_and_signals(df, strategy_type)
+                model_used = "OVELHA"
 
             if df.empty:
                 return {'success': False, 'error': 'Erro ao calcular indicadores'}
@@ -420,7 +556,7 @@ class OvecchiaTradingBot:
                                          sharex=True)
 
             # Título principal
-            titulo_grafico = f"OVECCHIA TRADING - {symbol} - {timeframe.upper()}"
+            titulo_grafico = f"OVECCHIA TRADING - {symbol} - {model_used} - {timeframe.upper()}"
             fig.suptitle(titulo_grafico, fontsize=16, fontweight='bold')
 
             # Subplot 1: Preço com sinais
@@ -477,9 +613,9 @@ class OvecchiaTradingBot:
 
             # Caption com informações completas
             if custom_start_date and custom_end_date:
-                caption = f"📊 OVECCHIA TRADING - {symbol}\n🎯 {strategy_type} | ⏰ {timeframe.upper()}\n📅 {custom_start_date} até {custom_end_date}"
+                caption = f"📊 OVECCHIA TRADING - {symbol}\n🤖 {model_used} | 🎯 {strategy_type} | ⏰ {timeframe.upper()}\n📅 {custom_start_date} até {custom_end_date}"
             else:
-                caption = f"📊 OVECCHIA TRADING - {symbol}\n🎯 {strategy_type} | ⏰ {timeframe.upper()}\n📅 Período: {start_date} até {end_date}"
+                caption = f"📊 OVECCHIA TRADING - {symbol}\n🤖 {model_used} | 🎯 {strategy_type} | ⏰ {timeframe.upper()}\n📅 Período: {start_date} até {end_date}"
 
             return {
                 'success': True,
@@ -947,12 +1083,16 @@ def analise_command(message):
             help_message = """📊 ANÁLISE INDIVIDUAL DE ATIVO
 
 📝 Como usar:
-/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]
+/analise [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
 
 🎯 Estratégias disponíveis:
 • agressiva - Mais sinais, maior frequência
 • balanceada - Equilibrada (recomendada)
 • conservadora - Sinais mais confiáveis
+
+🤖 Modelos disponíveis:
+• ovelha - Modelo clássico (padrão)
+• ovelha2 - Modelo com Machine Learning
 
 ⏰ Timeframes disponíveis:
 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
@@ -962,8 +1102,8 @@ YYYY-MM-DD (exemplo: 2024-01-01)
 
 📈 Exemplos:
 /analise balanceada PETR4.SA 1d
-/analise agressiva BTC-USD 4h 2024-01-01 2024-01-31
-/analise conservadora AAPL 1d 2024-06-01 2024-12-01
+/analise agressiva BTC-USD 4h ovelha2
+/analise conservadora AAPL 1d ovelha 2024-06-01 2024-12-01
 
 💡 Ativos suportados:
 • Cripto: BTC-USD, ETH-USD, etc.
@@ -971,6 +1111,7 @@ YYYY-MM-DD (exemplo: 2024-01-01)
 • Ações US: AAPL, GOOGL, etc.
 • Forex: EURUSD=X, etc.
 
+ℹ️ Se não especificar modelo, será usado OVELHA clássico
 ℹ️ Se não especificar datas, será usado período padrão baseado no timeframe"""
             bot.reply_to(message, help_message)
             return
@@ -979,20 +1120,37 @@ YYYY-MM-DD (exemplo: 2024-01-01)
         symbol = args[1].upper()
         timeframe = args[2].lower()
 
-        # Datas opcionais
+        # Modelo opcional (4º argumento)
+        model_input = "ovelha"  # padrão
         start_date = None
         end_date = None
 
-        if len(args) >= 5:
-            try:
-                start_date = args[3]
-                end_date = args[4]
-                # Validar formato de data
-                datetime.strptime(start_date, '%Y-%m-%d')
-                datetime.strptime(end_date, '%Y-%m-%d')
-            except ValueError:
-                bot.reply_to(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
-                return
+        # Verificar se o 4º argumento é um modelo
+        if len(args) >= 4:
+            if args[3].lower() in ['ovelha', 'ovelha2']:
+                model_input = args[3].lower()
+                # Datas começam no 5º argumento
+                if len(args) >= 6:
+                    try:
+                        start_date = args[4]
+                        end_date = args[5]
+                        datetime.strptime(start_date, '%Y-%m-%d')
+                        datetime.strptime(end_date, '%Y-%m-%d')
+                    except ValueError:
+                        bot.reply_to(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
+                        return
+            else:
+                # 4º argumento não é modelo, deve ser data
+                try:
+                    start_date = args[3]
+                    end_date = args[4] if len(args) >= 5 else None
+                    if start_date:
+                        datetime.strptime(start_date, '%Y-%m-%d')
+                    if end_date:
+                        datetime.strptime(end_date, '%Y-%m-%d')
+                except ValueError:
+                    bot.reply_to(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
+                    return
 
         # Mapear estratégias
         strategy_map = {
@@ -1013,13 +1171,15 @@ YYYY-MM-DD (exemplo: 2024-01-01)
             bot.reply_to(message, f"❌ Timeframe inválido. Use: {', '.join(valid_timeframes)}")
             return
 
+        model_display = "OVELHA V2" if model_input == "ovelha2" else "OVELHA"
+        
         if start_date and end_date:
-            bot.reply_to(message, f"🔄 Analisando {symbol} de {start_date} até {end_date} com estratégia {strategy_input} no timeframe {timeframe}...")
+            bot.reply_to(message, f"🔄 Analisando {symbol} de {start_date} até {end_date} com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...")
         else:
-            bot.reply_to(message, f"🔄 Analisando {symbol} com estratégia {strategy_input} no timeframe {timeframe}...")
+            bot.reply_to(message, f"🔄 Analisando {symbol} com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...")
 
         # Gerar análise e gráfico
-        chart_result = trading_bot.generate_analysis_chart(symbol, strategy, timeframe, start_date, end_date)
+        chart_result = trading_bot.generate_analysis_chart(symbol, strategy, timeframe, model_input, start_date, end_date)
 
         if chart_result['success']:
             # Enviar gráfico
@@ -1093,9 +1253,10 @@ def help_command(message):
 
 🏠 /start - Iniciar o bot
 
-📊 /analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]
+📊 /analise [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
    Exemplo: /analise balanceada PETR4.SA 1d
-   Com datas: /analise balanceada PETR4.SA 1d 2024-01-01 2024-06-01
+   Com modelo: /analise balanceada PETR4.SA 1d ovelha2
+   Com datas: /analise balanceada PETR4.SA 1d ovelha 2024-01-01 2024-06-01
    ⚠️ Timeframes personalizáveis: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
 
 🔍 /screening [estrategia] [lista/ativos]
@@ -1119,6 +1280,10 @@ def help_command(message):
 • balanceada - Equilibrada
 • conservadora - Mais confiável
 
+🤖 MODELOS:
+• ovelha - Modelo clássico (padrão)
+• ovelha2 - Machine Learning (Random Forest)
+
 📊 LISTAS PRÉ-DEFINIDAS:
 • açõesBR - Ações brasileiras (126 ativos)
 • açõesEUA - Ações americanas (100+ ativos)
@@ -1134,7 +1299,8 @@ def help_command(message):
 💡 EXEMPLOS:
 • /screening balanceada açõesBR
 • /topos_fundos criptos
-• /analise agressiva NVDA 4h"""
+• /analise agressiva NVDA 4h
+• /analise balanceada PETR4.SA 1d ovelha2"""
         bot.reply_to(message, help_message)
     except Exception as e:
         logger.error(f"Erro no comando /help: {str(e)}")
