@@ -1661,29 +1661,62 @@ def list_alerts_command(message):
     try:
         user_id = message.from_user.id
         user_name = message.from_user.first_name
+        logger.info(f"Comando /list_alerts recebido de {user_name} (ID: {user_id})")
         
         if user_id in trading_bot.active_alerts:
             alert_config = trading_bot.active_alerts[user_id]
+            
+            # Verificar se todas as chaves necessárias existem
+            required_keys = ['symbols', 'source', 'strategy', 'model', 'timeframe']
+            missing_keys = [key for key in required_keys if key not in alert_config]
+            
+            if missing_keys:
+                logger.error(f"Chaves faltando na configuração de alerta para usuário {user_id}: {missing_keys}")
+                bot.reply_to(message, f"❌ Erro na configuração do alerta. Chaves faltando: {', '.join(missing_keys)}. Use /stop_alerts e configure novamente.")
+                return
+            
+            # Validar se symbols é uma lista
+            if not isinstance(alert_config['symbols'], list):
+                logger.error(f"Campo 'symbols' não é uma lista para usuário {user_id}: {type(alert_config['symbols'])}")
+                bot.reply_to(message, "❌ Erro na configuração dos símbolos. Use /stop_alerts e configure novamente.")
+                return
+            
             symbols_list = ', '.join(alert_config['symbols'])
             
-            alert_info = f"""📋 *ALERTA ATIVO*
+            # Construir mensagem de forma segura
+            try:
+                source = str(alert_config['source']).upper()
+                strategy = str(alert_config['strategy'])
+                model = str(alert_config['model']).upper()
+                timeframe = str(alert_config['timeframe'])
+                
+                alert_info = f"""📋 *ALERTA ATIVO*
 
-🔗 Fonte: {alert_config['source'].upper()}
-🎯 Estratégia: {alert_config['strategy']}
-🤖 Modelo: {alert_config['model'].upper()}
-⏰ Intervalo: {alert_config['timeframe']}
+🔗 Fonte: {source}
+🎯 Estratégia: {strategy}
+🤖 Modelo: {model}
+⏰ Intervalo: {timeframe}
 
-📈 **Símbolos:** {symbols_list}
+📈 Símbolos ({len(alert_config['symbols'])}): {symbols_list}
 
 🔔 Use /stop_alerts para interromper"""
-            
-            bot.reply_to(message, alert_info, parse_mode='Markdown')
+                
+                bot.reply_to(message, alert_info, parse_mode='Markdown')
+                logger.info(f"Lista de alertas enviada para {user_name}: {len(alert_config['symbols'])} símbolos")
+                
+            except Exception as format_error:
+                logger.error(f"Erro ao formatar mensagem de alerta para usuário {user_id}: {str(format_error)}")
+                # Enviar mensagem básica sem formatação
+                basic_info = f"📋 ALERTA ATIVO\n\nFonte: {alert_config.get('source', 'N/A')}\nSímbolos: {len(alert_config.get('symbols', []))}\n\nUse /stop_alerts para interromper"
+                bot.reply_to(message, basic_info)
+                
         else:
             bot.reply_to(message, "ℹ️ Nenhum alerta automático ativo.")
+            logger.info(f"Nenhum alerta ativo para {user_name}")
             
     except Exception as e:
-        logger.error(f"Erro no comando /list_alerts: {str(e)}")
-        bot.reply_to(message, "❌ Erro ao listar alertas.")
+        logger.error(f"Erro geral no comando /list_alerts para usuário {user_id}: {str(e)}")
+        bot.reply_to(message, "❌ Erro ao listar alertas. Tente novamente ou use /stop_alerts se houver problemas.")
 
 @bot.message_handler(commands=['help'])
 def help_command(message):
