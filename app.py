@@ -1048,7 +1048,7 @@ with tab3:
             buffer_value = st.number_input(
                 "Buffer para Médias Móveis (%)",
                 min_value=0.0,
-                max_value=2.0,
+                max_value=10.0,
                 value=0.15,
                 step=0.05,
                 help="Buffer (histerese) para evitar falsos cruzamentos nas médias. Valor em percentual (ex: 0.15 = 0.15%)"
