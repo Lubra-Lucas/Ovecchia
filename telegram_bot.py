@@ -175,7 +175,7 @@ class OvecchiaTradingBot:
         """Função para coletar dados usando CCXT"""
         try:
             # Configuração da exchange
-            exchange = ccxt.binance({'enableRateLimit': True})
+            exchange = ccxt.binanceus({'enableRateLimit': True})
             
             # Normalizar símbolo para formato CCXT
             ccxt_symbol = symbol.upper()
