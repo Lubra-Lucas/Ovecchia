@@ -201,44 +201,7 @@ class OvecchiaTradingBot:
             logger.error(f"Erro ao coletar dados CCXT para {symbol}: {str(e)}")
             return pd.DataFrame()
 
-    def get_binance_data(self, symbol, start_date, end_date, interval="1d", limit=1000):
-        """Função para coletar dados da Binance usando API REST"""
-        try:
-            # Converter símbolo para formato Binance
-            binance_symbol = symbol.replace('-USD', 'USDT').replace('-USDT', 'USDT')
-            
-            url = "https://api.binance.com/api/v3/klines"
-            params = {"symbol": binance_symbol, "interval": interval, "limit": limit}
-            
-            response = requests.get(url, params=params, timeout=15)
-            response.raise_for_status()
-            data = response.json()
-            
-            if not data:
-                return pd.DataFrame()
-                
-            # Colunas na ordem retornada pela Binance
-            cols = [
-                "open_time","open","high","low","close","volume",
-                "close_time","quote_asset_volume","trades",
-                "taker_buy_base","taker_buy_quote","ignore"
-            ]
-            
-            df = pd.DataFrame(data, columns=cols)
-            
-            # Converte tempo e tipos numéricos
-            df["time"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
-            df[["open","high","low","close","volume"]] = df[["open","high","low","close","volume"]].astype(float)
-            
-            # Mantém só OHLCV e tempo
-            df = df[["time","open","high","low","close","volume"]].sort_values("time")
-            
-            logger.info(f"Dados Binance coletados com sucesso para {symbol}: {len(df)} registros")
-            return df
-            
-        except Exception as e:
-            logger.error(f"Erro ao coletar dados Binance para {symbol}: {str(e)}")
-            return pd.DataFrame()
+    
 
     def get_market_data(self, symbol, start_date, end_date, interval="1d", data_source="yahoo"):
         """Função para coletar dados do mercado"""
@@ -250,8 +213,6 @@ class OvecchiaTradingBot:
             
             if data_source == "ccxt" and is_crypto:
                 return self.get_ccxt_data(symbol, interval, 1000)
-            elif data_source == "binance" and is_crypto:
-                return self.get_binance_data(symbol, start_date, end_date, interval)
             else:
                 # Yahoo Finance (código original)
                 df = yf.download(symbol, start=start_date, end=end_date, interval=interval, progress=False)

@@ -47,45 +47,10 @@ def get_historical_klines_ccxt(symbol, interval, limit=1000):
     except Exception as e:
         raise Exception(f"Erro ao buscar dados via CCXT para {symbol}: {e}")
 
-# Função para puxar dados históricos da Binance usando API REST
-def get_historical_klines_binance(symbol, interval, limit=1000):
-    """
-    Puxa dados históricos de candles da Binance usando API REST.
-    """
-    try:
-        url = "https://api.binance.com/api/v3/klines"
-        params = {"symbol": symbol, "interval": interval, "limit": limit}
-        
-        response = requests.get(url, params=params, timeout=15)
-        response.raise_for_status()
-        data = response.json()
-        
-        if not data:
-            return pd.DataFrame()
-            
-        # Colunas na ordem retornada pela Binance
-        cols = [
-            "open_time","open","high","low","close","volume",
-            "close_time","quote_asset_volume","trades",
-            "taker_buy_base","taker_buy_quote","ignore"
-        ]
-        
-        df = pd.DataFrame(data, columns=cols)
-        
-        # Converte tempo e tipos numéricos
-        df["time"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
-        df[["open","high","low","close","volume"]] = df[["open","high","low","close","volume"]].astype(float)
-        
-        # Mantém só OHLCV e tempo
-        df = df[["time","open","high","low","close","volume"]].sort_values("time")
-        
-        return df
-        
-    except Exception as e:
-        raise Exception(f"Erro ao buscar dados da Binance para {symbol}: {e}")
+
 
 def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yahoo Finance"):
-    """Função principal para coletar dados do mercado usando Yahoo Finance, Binance ou CCXT"""
+    """Função principal para coletar dados do mercado usando Yahoo Finance ou CCXT"""
     try:
         if source == "CCXT (Binance)":
             try:
@@ -120,42 +85,6 @@ def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yaho
 
             except Exception as e:
                 st.error(f"Erro ao buscar dados via CCXT para {symbol}: {e}")
-                return pd.DataFrame()
-
-        elif source == "Binance":
-            try:
-                # Mapear intervalos para Binance
-                binance_interval_map = {
-                    "1m": "1m", "2m": "2m", "5m": "5m", "15m": "15m", "30m": "30m",
-                    "1h": "1h", "2h": "2h", "4h": "4h", "6h": "6h", "8h": "8h", "12h": "12h",
-                    "1d": "1d", "3d": "3d", "1w": "1w", "1M": "1M"
-                }
-                
-                if interval in binance_interval_map:
-                    binance_interval = binance_interval_map[interval]
-                else:
-                    st.warning(f"Intervalo {interval} não suportado pela Binance. Usando '1d'.")
-                    binance_interval = "1d"
-
-                # Converter símbolo para formato Binance
-                binance_symbol = symbol.upper()
-                if "-USD" in binance_symbol:
-                    binance_symbol = binance_symbol.replace("-USD", "USDT")
-                elif "=X" in binance_symbol:
-                    # Forex não suportado pela Binance
-                    st.error(f"Forex {symbol} não suportado pela Binance. Use Yahoo Finance.")
-                    return pd.DataFrame()
-                elif ".SA" in binance_symbol:
-                    # Ações brasileiras não suportadas pela Binance
-                    st.error(f"Ações brasileiras {symbol} não suportadas pela Binance. Use Yahoo Finance.")
-                    return pd.DataFrame()
-
-                # Usar sempre 1000 candles (máximo da API)
-                df = get_historical_klines_binance(binance_symbol, binance_interval, 1000)
-                return df
-
-            except Exception as e:
-                st.error(f"Erro ao buscar dados da Binance para {symbol}: {e}")
                 return pd.DataFrame()
 
         else: # Default to Yahoo Finance
@@ -1068,7 +997,7 @@ with tab3:
         # Source selection for data
         data_source = st.selectbox(
             "Fonte de Dados",
-            ["Yahoo Finance", "Binance", "CCXT (Binance)"],
+            ["Yahoo Finance", "CCXT (Binance)"],
             index=0,
             help="Selecione a fonte dos dados de mercado. CCXT é recomendado para criptomoedas com dados mais confiáveis."
         )
@@ -2174,7 +2103,7 @@ with tab4:
         # Source selection for data
         data_source_screening = st.selectbox(
             "Fonte de Dados",
-            ["Yahoo Finance", "Binance", "CCXT (Binance)"],
+            ["Yahoo Finance", "CCXT (Binance)"],
             index=0,
             help="Selecione a fonte dos dados de mercado para o screening. CCXT é recomendado para criptomoedas.",
             key="source_screening"
@@ -2511,7 +2440,7 @@ with tab5:
         # Source selection for data
         data_source_bb = st.selectbox(
             "Fonte de Dados",
-            ["Yahoo Finance", "Binance", "CCXT (Binance)"],
+            ["Yahoo Finance", "CCXT (Binance)"],
             index=0,
             help="Selecione a fonte dos dados de mercado para a detecção de topos e fundos. CCXT é recomendado para criptomoedas.",
             key="source_bb"
