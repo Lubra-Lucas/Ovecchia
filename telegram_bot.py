@@ -177,13 +177,34 @@ class OvecchiaTradingBot:
             # Configuração da exchange
             exchange = ccxt.binance({'enableRateLimit': True})
             
-            # Converter símbolo para formato CCXT (BTC-USD -> BTC/USDT)
-            ccxt_symbol = symbol.replace('-USD', '/USDT').replace('-USDT', '/USDT')
+            # Normalizar símbolo para formato CCXT
+            ccxt_symbol = symbol.upper()
+            
+            # Conversões de formato
+            if '-USD' in ccxt_symbol:
+                ccxt_symbol = ccxt_symbol.replace('-USD', '/USDT')
+            elif '-USDT' in ccxt_symbol:
+                ccxt_symbol = ccxt_symbol.replace('-USDT', '/USDT')
+            elif '/' not in ccxt_symbol:
+                # Se não tem barra, assumir que precisa de /USDT
+                ccxt_symbol = ccxt_symbol + '/USDT'
+            
+            # Verificar se o símbolo existe na exchange
+            markets = exchange.load_markets()
+            if ccxt_symbol not in markets:
+                logger.error(f"Símbolo {ccxt_symbol} não encontrado na Binance")
+                return pd.DataFrame()
+            
+            # Validar timeframe
+            if interval not in exchange.timeframes:
+                logger.error(f"Timeframe {interval} não suportado pela Binance")
+                return pd.DataFrame()
             
             # Coletar dados OHLCV
             ohlcv = exchange.fetch_ohlcv(ccxt_symbol, timeframe=interval, limit=limit)
             
-            if not ohlcv:
+            if not ohlcv or len(ohlcv) == 0:
+                logger.warning(f"Nenhum dado OHLCV retornado para {ccxt_symbol}")
                 return pd.DataFrame()
                 
             # Criar DataFrame
@@ -195,14 +216,25 @@ class OvecchiaTradingBot:
             # Garantir que os tipos numéricos estão corretos
             df[["open", "high", "low", "close", "volume"]] = df[["open", "high", "low", "close", "volume"]].astype(float)
             
-            # Ordenar por tempo
-            df = df.sort_values("time")
+            # Verificar se há dados válidos
+            if df['close'].isna().all():
+                logger.error(f"Todos os preços de fechamento são NaN para {ccxt_symbol}")
+                return pd.DataFrame()
             
-            logger.info(f"Dados CCXT coletados com sucesso para {symbol}: {len(df)} registros")
+            # Ordenar por tempo
+            df = df.sort_values("time").reset_index(drop=True)
+            
+            logger.info(f"Dados CCXT coletados com sucesso para {ccxt_symbol}: {len(df)} registros")
             return df
             
+        except ccxt.NetworkError as e:
+            logger.error(f"Erro de rede ao acessar CCXT para {symbol}: {str(e)}")
+            return pd.DataFrame()
+        except ccxt.ExchangeError as e:
+            logger.error(f"Erro da exchange CCXT para {symbol}: {str(e)}")
+            return pd.DataFrame()
         except Exception as e:
-            logger.error(f"Erro ao coletar dados CCXT para {symbol}: {str(e)}")
+            logger.error(f"Erro geral ao coletar dados CCXT para {symbol}: {str(e)}")
             return pd.DataFrame()
 
     
@@ -212,42 +244,67 @@ class OvecchiaTradingBot:
         try:
             logger.info(f"Coletando dados para {symbol} via {data_source}")
             
-            # Detectar automaticamente se é cripto
-            is_crypto = any(symbol.upper().endswith(suffix) for suffix in ['USDT', '-USD', 'USD'])
+            # Detectar automaticamente se é cripto baseado no formato
+            is_crypto = any(symbol.upper().endswith(suffix) for suffix in ['USDT', '/USDT']) or \
+                       any(suffix in symbol.upper() for suffix in ['-USD', 'BTC/', 'ETH/', '/USD'])
             
-            if data_source == "ccxt" and is_crypto:
-                return self.get_ccxt_data(symbol, interval, 1000)
-            else:
-                # Yahoo Finance (código original)
-                df = yf.download(symbol, start=start_date, end=end_date, interval=interval, progress=False)
-
-                if df is None or df.empty:
-                    logger.warning(f"Sem dados para {symbol}")
-                    return pd.DataFrame()
-
-                # Handle multi-level columns if present
-                if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
-                    df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
-
-                df.reset_index(inplace=True)
-
-                # Standardize column names
-                column_mapping = {
-                    "Datetime": "time", 
-                    "Date": "time", 
-                    "Open": "open", 
-                    "High": "high", 
-                    "Low": "low", 
-                    "Close": "close",
-                    "Volume": "volume"
-                }
-                df.rename(columns=column_mapping, inplace=True)
-
-                logger.info(f"Dados coletados com sucesso para {symbol}: {len(df)} registros")
+            if data_source == "ccxt":
+                # Para CCXT, sempre tentar coletar dados independente do tipo
+                df = self.get_ccxt_data(symbol, interval, 1000)
+                if df.empty:
+                    logger.warning(f"CCXT não retornou dados para {symbol}")
                 return df
+            else:
+                # Yahoo Finance
+                try:
+                    df = yf.download(symbol, start=start_date, end=end_date, interval=interval, progress=False)
+
+                    if df is None or df.empty:
+                        logger.warning(f"Yahoo Finance: Sem dados para {symbol}")
+                        return pd.DataFrame()
+
+                    # Handle multi-level columns if present
+                    if hasattr(df.columns, 'nlevels') and df.columns.nlevels > 1:
+                        try:
+                            df = df.xs(symbol, level='Ticker', axis=1, drop_level=True)
+                        except KeyError:
+                            # Se não conseguir extrair por ticker, usar o primeiro nível
+                            df.columns = df.columns.droplevel(1)
+
+                    df.reset_index(inplace=True)
+
+                    # Standardize column names
+                    column_mapping = {
+                        "Datetime": "time", 
+                        "Date": "time", 
+                        "Open": "open", 
+                        "High": "high", 
+                        "Low": "low", 
+                        "Close": "close",
+                        "Volume": "volume",
+                        "Adj Close": "close"  # Usar Adj Close se disponível
+                    }
+                    df.rename(columns=column_mapping, inplace=True)
+
+                    # Verificar se temos as colunas necessárias
+                    required_columns = ['time', 'open', 'high', 'low', 'close']
+                    missing_columns = [col for col in required_columns if col not in df.columns]
+                    if missing_columns:
+                        logger.error(f"Colunas faltando para {symbol}: {missing_columns}")
+                        return pd.DataFrame()
+
+                    # Remover linhas com valores NaN nas colunas essenciais
+                    df = df.dropna(subset=['close'])
+
+                    logger.info(f"Dados Yahoo coletados com sucesso para {symbol}: {len(df)} registros")
+                    return df
+                    
+                except Exception as e:
+                    logger.error(f"Erro específico do Yahoo Finance para {symbol}: {str(e)}")
+                    return pd.DataFrame()
                 
         except Exception as e:
-            logger.error(f"Erro ao coletar dados para {symbol}: {str(e)}")
+            logger.error(f"Erro geral ao coletar dados para {symbol}: {str(e)}")
             return pd.DataFrame()
 
     def calculate_ovelha_v2_signals(self, df, strategy_type="Balanceado", sma_short=60, sma_long=70, lookahead=3, threshold=0.002, buffer=0.0015):
@@ -550,10 +607,18 @@ class OvecchiaTradingBot:
         try:
             current_states = {}
             changes_detected = []
+            successful_analyses = 0
             
             for symbol in symbols_list:
                 try:
                     logger.info(f"Analisando {symbol} para usuário {user_id}")
+                    
+                    # Validar símbolo antes de processar
+                    if not symbol or len(symbol.strip()) == 0:
+                        logger.warning(f"Símbolo vazio ou inválido: '{symbol}'")
+                        continue
+                    
+                    symbol = symbol.strip().upper()
                     
                     if source == "ccxt":
                         df = self.get_ccxt_data(symbol, timeframe, 1000)
@@ -564,29 +629,43 @@ class OvecchiaTradingBot:
                                                 end_date.strftime("%Y-%m-%d"), timeframe, "yahoo")
 
                     if df.empty:
-                        logger.warning(f"Sem dados para {symbol}")
+                        logger.warning(f"Sem dados disponíveis para {symbol} via {source}")
+                        continue
+
+                    # Verificar se há dados suficientes
+                    if len(df) < 50:
+                        logger.warning(f"Dados insuficientes para {symbol}: apenas {len(df)} registros")
                         continue
 
                     # Escolher modelo baseado na seleção do usuário
                     if model_type == "ovelha2":
                         df_with_signals = self.calculate_ovelha_v2_signals(df, strategy_type)
-                        if df_with_signals is not None:
+                        if df_with_signals is not None and not df_with_signals.empty:
                             df = df_with_signals
                         else:
+                            logger.info(f"Fallback para modelo clássico para {symbol}")
                             model_type = "ovelha"  # Fallback
                     
                     if model_type == "ovelha" or 'Estado' not in df.columns:
                         df = self.calculate_indicators_and_signals(df, strategy_type)
 
                     if df.empty or 'Estado' not in df.columns:
+                        logger.warning(f"Falha ao calcular indicadores para {symbol}")
                         continue
 
                     current_state = df['Estado'].iloc[-1]
                     current_price = df['close'].iloc[-1]
+                    
+                    # Validar estado
+                    if current_state not in ['Buy', 'Sell', 'Stay Out']:
+                        logger.warning(f"Estado inválido para {symbol}: {current_state}")
+                        continue
+                    
                     current_states[symbol] = {
                         'state': current_state,
                         'price': current_price
                     }
+                    successful_analyses += 1
 
                     # Verificar se houve mudança de estado
                     if user_id in self.alert_states and symbol in self.alert_states[user_id]:
@@ -600,7 +679,7 @@ class OvecchiaTradingBot:
                             })
 
                 except Exception as e:
-                    logger.error(f"Erro ao analisar {symbol}: {str(e)}")
+                    logger.error(f"Erro específico ao analisar {symbol}: {str(e)}")
                     continue
 
             # Atualizar estados salvos
@@ -608,10 +687,11 @@ class OvecchiaTradingBot:
                 self.alert_states[user_id] = {}
             self.alert_states[user_id].update(current_states)
 
+            logger.info(f"Screening completado para usuário {user_id}: {successful_analyses}/{len(symbols_list)} símbolos analisados com sucesso")
             return current_states, changes_detected
 
         except Exception as e:
-            logger.error(f"Erro no screening automatizado: {str(e)}")
+            logger.error(f"Erro geral no screening automatizado: {str(e)}")
             return {}, []
 
     def generate_analysis_chart(self, symbol, strategy_type, timeframe, model_type="ovelha", custom_start_date=None, custom_end_date=None):
@@ -1473,8 +1553,34 @@ Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
                 user_id, symbols_list, source, model_type, strategy_formatted, timeframe
             )
 
+            # Verificar se conseguiu analisar pelo menos um símbolo
+            if not current_states:
+                error_message = f"""❌ **ERRO AO CONFIGURAR ALERTA**
+
+🔍 **Problema:** Nenhum dos símbolos pôde ser analisado.
+
+🔧 **Possíveis causas:**
+• Símbolos inválidos ou não existem na fonte {source.upper()}
+• Problemas de conectividade
+• Timeframe {timeframe} não suportado para alguns símbolos
+
+💡 **Sugestões:**
+• Verifique se os símbolos estão corretos
+• Para CCXT: use formato BTC/USDT, ETH/USDT, etc.
+• Para Yahoo: use PETR4.SA, AAPL, BTC-USD, etc.
+• Tente um timeframe maior (4h, 1d)
+
+📝 **Exemplo correto:**
+`/screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT] ovelha2 balanceada 4h`"""
+                bot.reply_to(message, error_message, parse_mode='Markdown')
+                return
+
             # Programar alertas baseado no timeframe
             schedule_alerts_for_user(user_id, timeframe)
+
+            # Contar símbolos com sucesso e erro
+            success_count = len(current_states)
+            error_count = len(symbols_list) - success_count
 
             # Enviar confirmação
             confirmation_message = f"""✅ *ALERTA AUTOMÁTICO CONFIGURADO*
@@ -1485,16 +1591,21 @@ Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
 🤖 Modelo: {model_type.upper()}
 ⏰ Intervalo: {timeframe}
 
-📈 **Símbolos monitorados:**
+📈 **Resultado:** {success_count}/{len(symbols_list)} símbolos válidos
+
+📊 **Símbolos monitorados:**
 """
             for symbol in symbols_list:
                 if symbol in current_states:
                     state = current_states[symbol]['state']
                     price = current_states[symbol]['price']
                     state_icon = "🔵" if state == "Buy" else "🔴" if state == "Sell" else "⚫"
-                    confirmation_message += f"• {symbol}: {state_icon} {state} ({price:.2f})\n"
+                    confirmation_message += f"• {symbol}: {state_icon} {state} ({price:.4f})\n"
                 else:
                     confirmation_message += f"• {symbol}: ❌ Erro nos dados\n"
+
+            if error_count > 0:
+                confirmation_message += f"\n⚠️ **{error_count} símbolos com erro** - verifique os nomes"
 
             confirmation_message += f"\n🔔 Próximo alerta em: {timeframe}"
 
