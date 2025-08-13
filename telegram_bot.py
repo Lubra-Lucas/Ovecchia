@@ -1438,10 +1438,9 @@ def restart_command(message):
 ⚠️ O bot será reiniciado completamente.
 ⏳ Aguarde alguns segundos e tente novamente.
 
-🤖 Status: Parando todas as tarefas...
-📡 Interrompendo alertas automáticos...
+🤖 Status: Reiniciando sistema...
+📡 Reconectando aos serviços...
 🔧 Limpando cache e memória...
-🚀 Reiniciando processo completo...
 
 ✅ O bot voltará online em instantes!"""
 
@@ -1451,31 +1450,21 @@ def restart_command(message):
         # Aguardar um pouco para enviar a mensagem antes de reiniciar
         time.sleep(2)
 
-        # Parar todas as tarefas e reiniciar completamente
-        logger.info("🔄 Iniciando restart completo por comando do usuário...")
-        
-        # Limpar todos os alertas ativos
-        trading_bot.active_alerts.clear()
-        trading_bot.alert_states.clear()
-        
-        # Limpar todos os jobs do schedule
-        schedule.clear()
-        
-        # Parar o polling do bot
+        # Parar o bot e reiniciar o processo
+        logger.info("🔄 Reiniciando bot por comando do usuário...")
         bot.stop_polling()
-        
-        # Forçar saída do processo atual
-        logger.info("🛑 Parando processo atual...")
-        os._exit(0)
+
+        # Importar os módulos necessários para reiniciar
+        import os
+        import sys
+
+        # Reiniciar o processo Python
+        logger.info("🚀 Executando restart completo...")
+        os.execv(sys.executable, ['python'] + sys.argv)
 
     except Exception as e:
         logger.error(f"Erro no comando /restart: {str(e)}")
-        try:
-            bot.reply_to(message, "❌ Erro ao reiniciar o bot. Forçando restart...")
-            time.sleep(1)
-            os._exit(0)
-        except:
-            os._exit(0)
+        bot.reply_to(message, "❌ Erro ao reiniciar o bot. Tente novamente.")
 
 @bot.message_handler(commands=['screening_auto'])
 def screening_auto_command(message):
