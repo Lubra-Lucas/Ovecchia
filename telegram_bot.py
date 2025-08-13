@@ -53,17 +53,17 @@ def find_best_match(input_text, options, threshold=0.6):
     """Encontra a melhor correspondência em uma lista de opções"""
     if not input_text or not options:
         return None
-    
+
     normalized_input = normalize_text(input_text)
     best_match = None
     best_score = 0
-    
+
     for option in options:
         score = calculate_similarity(normalized_input, option)
         if score > best_score and score >= threshold:
             best_score = score
             best_match = option
-    
+
     return best_match
 
 def fuzzy_command_match(user_input):
@@ -77,14 +77,14 @@ def fuzzy_command_match(user_input):
         'restart': ['restart', 'reiniciar', 'reboot', 'reset'],
         'help': ['help', 'ajuda', 'ajudar', 'comandos', '?']
     }
-    
+
     user_input = normalize_text(user_input.replace('/', ''))
-    
+
     for command, variations in commands.items():
         for variation in variations:
             if calculate_similarity(user_input, variation) >= 0.7:
                 return command
-    
+
     return None
 
 def fuzzy_strategy_match(user_input):
@@ -94,14 +94,14 @@ def fuzzy_strategy_match(user_input):
         'balanceada': ['balanceada', 'balanceado', 'balanced', 'equilibrada', 'media', 'normal'],
         'conservadora': ['conservadora', 'conservador', 'conservative', 'segura', 'cautelosa']
     }
-    
+
     normalized_input = normalize_text(user_input)
-    
+
     for strategy, variations in strategies.items():
         for variation in variations:
             if calculate_similarity(normalized_input, variation) >= 0.7:
                 return strategy
-    
+
     return None
 
 def fuzzy_list_match(user_input):
@@ -113,14 +113,14 @@ def fuzzy_list_match(user_input):
         'forex': ['forex', 'fx', 'cambio', 'moedas', 'divisas'],
         'commodities': ['commodities', 'commodity', 'mercadorias', 'materias']
     }
-    
+
     normalized_input = normalize_text(user_input)
-    
+
     for list_name, variations in lists.items():
         for variation in variations:
             if calculate_similarity(normalized_input, variation) >= 0.7:
                 return list_name
-    
+
     return None
 
 def parse_flexible_command(message_text):
@@ -128,37 +128,37 @@ def parse_flexible_command(message_text):
     parts = message_text.strip().split()
     if not parts:
         return None
-    
+
     # Identificar comando
     first_part = parts[0]
     if first_part.startswith('/'):
         command = fuzzy_command_match(first_part)
     else:
         command = fuzzy_command_match(first_part)
-    
+
     if not command:
         return None
-    
+
     # Processar argumentos baseado no comando
     args = parts[1:] if len(parts) > 1 else []
     processed_args = []
-    
+
     for arg in args:
         # Tentar identificar estratégia
         strategy = fuzzy_strategy_match(arg)
         if strategy:
             processed_args.append(strategy)
             continue
-        
+
         # Tentar identificar lista
         list_match = fuzzy_list_match(arg)
         if list_match:
             processed_args.append(list_match)
             continue
-        
+
         # Manter argumento original se não encontrar correspondência
         processed_args.append(arg)
-    
+
     return {
         'command': command,
         'args': processed_args,
@@ -176,10 +176,10 @@ class OvecchiaTradingBot:
         try:
             # Configuração da exchange
             exchange = ccxt.binanceus({'enableRateLimit': True})
-            
+
             # Normalizar símbolo para formato CCXT
             ccxt_symbol = symbol.upper()
-            
+
             # Conversões de formato
             if '-USD' in ccxt_symbol:
                 ccxt_symbol = ccxt_symbol.replace('-USD', '/USDT')
@@ -188,45 +188,45 @@ class OvecchiaTradingBot:
             elif '/' not in ccxt_symbol:
                 # Se não tem barra, assumir que precisa de /USDT
                 ccxt_symbol = ccxt_symbol + '/USDT'
-            
+
             # Verificar se o símbolo existe na exchange
             markets = exchange.load_markets()
             if ccxt_symbol not in markets:
                 logger.error(f"Símbolo {ccxt_symbol} não encontrado na Binance")
                 return pd.DataFrame()
-            
+
             # Validar timeframe
             if interval not in exchange.timeframes:
                 logger.error(f"Timeframe {interval} não suportado pela Binance")
                 return pd.DataFrame()
-            
+
             # Coletar dados OHLCV
             ohlcv = exchange.fetch_ohlcv(ccxt_symbol, timeframe=interval, limit=limit)
-            
+
             if not ohlcv or len(ohlcv) == 0:
                 logger.warning(f"Nenhum dado OHLCV retornado para {ccxt_symbol}")
                 return pd.DataFrame()
-                
+
             # Criar DataFrame
             df = pd.DataFrame(ohlcv, columns=['time', 'open', 'high', 'low', 'close', 'volume'])
-            
+
             # Converter timestamp para datetime
             df['time'] = pd.to_datetime(df['time'], unit='ms')
-            
+
             # Garantir que os tipos numéricos estão corretos
             df[["open", "high", "low", "close", "volume"]] = df[["open", "high", "low", "close", "volume"]].astype(float)
-            
+
             # Verificar se há dados válidos
             if df['close'].isna().all():
                 logger.error(f"Todos os preços de fechamento são NaN para {ccxt_symbol}")
                 return pd.DataFrame()
-            
+
             # Ordenar por tempo
             df = df.sort_values("time").reset_index(drop=True)
-            
+
             logger.info(f"Dados CCXT coletados com sucesso para {ccxt_symbol}: {len(df)} registros")
             return df
-            
+
         except ccxt.NetworkError as e:
             logger.error(f"Erro de rede ao acessar CCXT para {symbol}: {str(e)}")
             return pd.DataFrame()
@@ -237,17 +237,17 @@ class OvecchiaTradingBot:
             logger.error(f"Erro geral ao coletar dados CCXT para {symbol}: {str(e)}")
             return pd.DataFrame()
 
-    
+
 
     def get_market_data(self, symbol, start_date, end_date, interval="1d", data_source="yahoo"):
         """Função para coletar dados do mercado"""
         try:
             logger.info(f"Coletando dados para {symbol} via {data_source}")
-            
+
             # Detectar automaticamente se é cripto baseado no formato
             is_crypto = any(symbol.upper().endswith(suffix) for suffix in ['USDT', '/USDT']) or \
                        any(suffix in symbol.upper() for suffix in ['-USD', 'BTC/', 'ETH/', '/USD'])
-            
+
             if data_source == "ccxt":
                 # Para CCXT, sempre tentar coletar dados independente do tipo
                 df = self.get_ccxt_data(symbol, interval, 1000)
@@ -298,11 +298,11 @@ class OvecchiaTradingBot:
 
                     logger.info(f"Dados Yahoo coletados com sucesso para {symbol}: {len(df)} registros")
                     return df
-                    
+
                 except Exception as e:
                     logger.error(f"Erro específico do Yahoo Finance para {symbol}: {str(e)}")
                     return pd.DataFrame()
-                
+
         except Exception as e:
             logger.error(f"Erro geral ao coletar dados para {symbol}: {str(e)}")
             return pd.DataFrame()
@@ -608,18 +608,18 @@ class OvecchiaTradingBot:
             current_states = {}
             changes_detected = []
             successful_analyses = 0
-            
+
             for symbol in symbols_list:
                 try:
                     logger.info(f"Analisando {symbol} para usuário {user_id}")
-                    
+
                     # Validar símbolo antes de processar
                     if not symbol or len(symbol.strip()) == 0:
                         logger.warning(f"Símbolo vazio ou inválido: '{symbol}'")
                         continue
-                    
+
                     symbol = symbol.strip().upper()
-                    
+
                     if source == "ccxt":
                         df = self.get_ccxt_data(symbol, timeframe, 1000)
                     else:
@@ -645,7 +645,7 @@ class OvecchiaTradingBot:
                         else:
                             logger.info(f"Fallback para modelo clássico para {symbol}")
                             model_type = "ovelha"  # Fallback
-                    
+
                     if model_type == "ovelha" or 'Estado' not in df.columns:
                         df = self.calculate_indicators_and_signals(df, strategy_type)
 
@@ -655,12 +655,12 @@ class OvecchiaTradingBot:
 
                     current_state = df['Estado'].iloc[-1]
                     current_price = df['close'].iloc[-1]
-                    
+
                     # Validar estado
                     if current_state not in ['Buy', 'Sell', 'Stay Out']:
                         logger.warning(f"Estado inválido para {symbol}: {current_state}")
                         continue
-                    
+
                     current_states[symbol] = {
                         'state': current_state,
                         'price': current_price
@@ -694,7 +694,7 @@ class OvecchiaTradingBot:
             logger.error(f"Erro geral no screening automatizado: {str(e)}")
             return {}, []
 
-    def generate_analysis_chart(self, symbol, strategy_type, timeframe, model_type="ovelha", custom_start_date=None, custom_end_date=None):
+    def generate_analysis_chart(self, symbol, strategy_type, timeframe, model_type="ovelha", custom_start_date=None, custom_end_date=None, data_source="yahoo"):
         """Gera gráfico de análise para um ativo específico usando matplotlib"""
         try:
             import matplotlib.pyplot as plt
@@ -718,9 +718,12 @@ class OvecchiaTradingBot:
                 end_date = datetime.now().date()
                 start_date = end_date - timedelta(days=days)
 
-            # Coletar dados
-            df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
-                                    end_date.strftime("%Y-%m-%d"), timeframe)
+            # Coletar dados baseado na fonte especificada
+            if data_source == "ccxt":
+                df = self.get_ccxt_data(symbol, timeframe, 1000)
+            else:
+                df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
+                                        end_date.strftime("%Y-%m-%d"), timeframe, "yahoo")
 
             if df.empty:
                 return {'success': False, 'error': f'Sem dados encontrados para {symbol}'}
@@ -843,25 +846,12 @@ def start_command(message):
 
         welcome_message = """🤖 Bem-vindo ao OVECCHIA TRADING BOT!
 
-👋 Olá! Sou o bot oficial do sistema OVECCHIA TRADING, desenvolvido para fornecer análises técnicas avançadas e sinais de trading profissionais.
+👋 Olá, {user_name}! Sou o seu assistente de trading pessoal, pronto para fornecer análises técnicas avançadas e sinais de compra/venda.
 
-📊 FUNCIONALIDADES PRINCIPAIS:
-• Análise individual de ativos com gráficos
-• Screening pontual de múltiplos ativos
-• Alertas automáticos personalizáveis
-• Detecção de topos e fundos
-• Suporte a múltiplas estratégias de trading
-
-🎯 COMANDOS PRINCIPAIS:
-/analise - 📊 Análise completa com gráfico de um ativo
-/screening - 🔍 Verificação instantânea de múltiplos ativos
-/screening_auto - 🔔 Alertas automáticos configuráveis
-/topos_fundos - 📈 Detectar oportunidades de reversão
-
-🔔 NOVIDADE: ALERTAS AUTOMÁTICOS!
-Use /screening_auto para receber alertas automáticos quando seus ativos mudarem de estado!
-
-Exemplo: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
+🤖 NOVIDADES:
+• 🔗 MÚLTIPLAS FONTES: Yahoo Finance + CCXT (Binance)
+• 🧠 MACHINE LEARNING: Modelo OVELHA V2 com Random Forest
+• 🔔 ALERTAS AUTOMÁTICOS: Monitoramento contínuo de portfólios
 
 🛠️ COMANDOS DE GESTÃO:
 /list_alerts - Ver seus alertas ativos
@@ -875,19 +865,21 @@ Exemplo: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
 • conservadora - Sinais mais confiáveis
 
 🤖 MODELOS:
-• ovelha - Modelo clássico
-• ovelha2 - Machine Learning avançado
+• ovelha - Modelo clássico baseado em indicadores técnicos
+• ovelha2 - Machine Learning avançado com Random Forest
 
-⏰ FONTES DE DADOS:
-• ccxt - Binance (ideal para criptos)
+🔗 FONTES DE DADOS:
 • yahoo - Yahoo Finance (ações, forex, commodities)
+• ccxt - Binance via CCXT (ideal para criptomoedas)
 
 🚀 EXEMPLOS RÁPIDOS:
-• Análise: /analise balanceada PETR4.SA 1d
+• Análise ação: /analise yahoo balanceada PETR4.SA 1d
+• Análise cripto ML: /analise ccxt agressiva BTC/USDT 4h ovelha2
 • Screening: /screening balanceada açõesBR
 • Alertas: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
 
-Comece agora mesmo digitando um comando!"""
+Comece agora mesmo digitando um comando ou usando /help para ver todas as funcionalidades!
+""".format(user_name=user_name)
 
         bot.reply_to(message, welcome_message)
         logger.info(f"Mensagem de boas-vindas enviada para {user_name}")
@@ -1020,7 +1012,7 @@ def screening_command(message):
             symbols = predefined_lists[list_name]
             list_display_name = {
                 'açõesbr': 'Ações Brasileiras',
-                'açõeseua': 'Ações Americanas',
+                'açõeseua': 'Ações Americanas', 
                 'criptos': 'Criptomoedas',
                 'forex': 'Forex',
                 'commodities': 'Commodities'
@@ -1046,7 +1038,7 @@ def screening_command(message):
         if results:
             # Data atual da análise
             data_analise = datetime.now().strftime("%d/%m/%Y")
-            
+
             response = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n📅 {data_analise}\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
             for result in results:
@@ -1061,14 +1053,14 @@ def screening_command(message):
             if len(response) > 4000:
                 parts = response.split('\n\n')
                 current_message = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n📅 {data_analise}\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia\n📈 Total analisado: {len(symbols)} ativos\n\n"
-                
+
                 for part in parts[1:]:  # Skip header
                     if len(current_message + part + '\n\n') > 4000:
                         bot.reply_to(message, current_message, parse_mode='Markdown')
                         current_message = part + '\n\n'
                     else:
                         current_message += part + '\n\n'
-                
+
                 if current_message.strip():
                     bot.reply_to(message, current_message, parse_mode='Markdown')
             else:
@@ -1184,7 +1176,7 @@ def topos_fundos_command(message):
             return
 
         symbols = []
-        
+
         # Verificar se é uma lista pré-definida ou ativos individuais
         if len(args) == 1 and args[0].lower() in predefined_lists:
             list_name = args[0].lower()
@@ -1217,7 +1209,7 @@ def topos_fundos_command(message):
         if results:
             # Data atual da análise
             data_analise = datetime.now().strftime("%d/%m/%Y")
-            
+
             response = f"📊 *DETECÇÃO DE TOPOS E FUNDOS*\n📅 {data_analise}\n\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
             buy_opportunities = [r for r in results if 'Compra' in r['signal']]
@@ -1299,11 +1291,16 @@ def analise_command(message):
         else:
             args = message.text.split()[1:]  # Fallback para método original
 
-        if len(args) < 3:
+        # Argumentos esperados: [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
+        if len(args) < 4: # Fonte, estratégia, ativo, timeframe são obrigatórios
             help_message = """📊 ANÁLISE INDIVIDUAL DE ATIVO
 
 📝 Como usar:
-/analise [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
+/analise [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
+
+🔗 Fontes disponíveis:
+• yahoo - Yahoo Finance (padrão)
+• ccxt - Binance via CCXT (criptomoedas)
 
 🎯 Estratégias disponíveis:
 • agressiva - Mais sinais, maior frequência
@@ -1312,7 +1309,7 @@ def analise_command(message):
 
 🤖 Modelos disponíveis:
 • ovelha - Modelo clássico (padrão)
-• ovelha2 - Modelo com Machine Learning
+• ovelha2 - Machine Learning (Random Forest)
 
 ⏰ Timeframes disponíveis:
 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
@@ -1321,49 +1318,49 @@ def analise_command(message):
 YYYY-MM-DD (exemplo: 2024-01-01)
 
 📈 Exemplos:
-/analise balanceada PETR4.SA 1d
-/analise agressiva BTC-USD 4h ovelha2
-/analise conservadora AAPL 1d ovelha 2024-06-01 2024-12-01
+/analise yahoo balanceada PETR4.SA 1d
+/analise ccxt agressiva BTC/USDT 4h ovelha2
+/analise yahoo conservadora AAPL 1d ovelha 2024-06-01 2024-12-01
 
 💡 Ativos suportados:
-• Cripto: BTC-USD, ETH-USD, etc.
-• Ações BR: PETR4.SA, VALE3.SA, etc.
-• Ações US: AAPL, GOOGL, etc.
-• Forex: EURUSD=X, etc.
+• Yahoo: PETR4.SA, VALE3.SA, AAPL, BTC-USD, EURUSD=X
+• CCXT: BTC/USDT, ETH/USDT, BNB/USDT
 
+ℹ️ Se não especificar fonte, será usado YAHOO
 ℹ️ Se não especificar modelo, será usado OVELHA clássico
 ℹ️ Se não especificar datas, será usado período padrão baseado no timeframe"""
             bot.reply_to(message, help_message)
             return
 
-        strategy_input = args[0].lower()
-        symbol = args[1].upper()
-        timeframe = args[2].lower()
+        source_input = args[0].lower()
+        strategy_input = args[1].lower()
+        symbol = args[2].upper()
+        timeframe = args[3].lower()
 
-        # Modelo opcional (4º argumento)
+        # Modelo e datas são opcionais
         model_input = "ovelha"  # padrão
         start_date = None
         end_date = None
 
-        # Verificar se o 4º argumento é um modelo
-        if len(args) >= 4:
-            if args[3].lower() in ['ovelha', 'ovelha2']:
-                model_input = args[3].lower()
-                # Datas começam no 5º argumento
-                if len(args) >= 6:
+        # Verificar se o 4º argumento (após timeframe) é um modelo
+        if len(args) >= 5:
+            if args[4].lower() in ['ovelha', 'ovelha2']:
+                model_input = args[4].lower()
+                # Datas começam no 6º argumento
+                if len(args) >= 7:
                     try:
-                        start_date = args[4]
-                        end_date = args[5]
+                        start_date = args[5]
+                        end_date = args[6]
                         datetime.strptime(start_date, '%Y-%m-%d')
                         datetime.strptime(end_date, '%Y-%m-%d')
                     except ValueError:
                         bot.reply_to(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
                         return
             else:
-                # 4º argumento não é modelo, deve ser data
+                # 5º argumento não é modelo, deve ser data
                 try:
-                    start_date = args[3]
-                    end_date = args[4] if len(args) >= 5 else None
+                    start_date = args[4]
+                    end_date = args[5] if len(args) >= 6 else None
                     if start_date:
                         datetime.strptime(start_date, '%Y-%m-%d')
                     if end_date:
@@ -1371,6 +1368,11 @@ YYYY-MM-DD (exemplo: 2024-01-01)
                 except ValueError:
                     bot.reply_to(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
                     return
+
+        # Validar fonte
+        if source_input not in ['yahoo', 'ccxt']:
+            bot.reply_to(message, "❌ Fonte inválida. Use: yahoo ou ccxt")
+            return
 
         # Mapear estratégias
         strategy_map = {
@@ -1392,14 +1394,14 @@ YYYY-MM-DD (exemplo: 2024-01-01)
             return
 
         model_display = "OVELHA V2" if model_input == "ovelha2" else "OVELHA"
-        
+
         if start_date and end_date:
-            bot.reply_to(message, f"🔄 Analisando {symbol} de {start_date} até {end_date} com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...")
+            bot.reply_to(message, f"🔄 Analisando {symbol} ({source_input}) de {start_date} até {end_date} com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...")
         else:
-            bot.reply_to(message, f"🔄 Analisando {symbol} com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...")
+            bot.reply_to(message, f"🔄 Analisando {symbol} ({source_input}) com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...")
 
         # Gerar análise e gráfico
-        chart_result = trading_bot.generate_analysis_chart(symbol, strategy, timeframe, model_input, start_date, end_date)
+        chart_result = trading_bot.generate_analysis_chart(symbol, strategy, timeframe, model_input, start_date, end_date, source_input)
 
         if chart_result['success']:
             # Enviar gráfico
@@ -1472,7 +1474,7 @@ def screening_auto_command(message):
         # Parse arguments
         args = message.text.split()[1:]
 
-        if len(args) < 4:
+        if len(args) < 5: # Fonte, símbolos, modelo, estratégia, timeframe são obrigatórios
             help_message = """
 🔄 *SCREENING AUTOMÁTICO*
 
@@ -1524,7 +1526,7 @@ Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
                 return
 
             symbols_list = [s.strip() for s in symbols_str[1:-1].split(',')]
-            
+
             if len(symbols_list) == 0 or len(symbols_list) > 10:
                 bot.reply_to(message, "❌ Lista deve conter entre 1 e 10 símbolos")
                 return
@@ -1540,7 +1542,7 @@ Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
                 'balanceada': 'Balanceado', 
                 'conservadora': 'Conservador'
             }
-            
+
             if strategy not in strategy_map:
                 bot.reply_to(message, "❌ Estratégia inválida. Use: agressiva, balanceada ou conservadora")
                 return
@@ -1565,7 +1567,7 @@ Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
 
             # Fazer primeira verificação
             bot.reply_to(message, f"🔄 Configurando alerta automático...\n📊 {len(symbols_list)} símbolos\n⏰ Intervalo: {timeframe}")
-            
+
             current_states, changes = trading_bot.perform_automated_screening(
                 user_id, symbols_list, source, model_type, strategy_formatted, timeframe
             )
@@ -1642,7 +1644,7 @@ def stop_alerts_command(message):
     try:
         user_id = message.from_user.id
         user_name = message.from_user.first_name
-        
+
         if user_id in trading_bot.active_alerts:
             del trading_bot.active_alerts[user_id]
             if user_id in trading_bot.alert_states:
@@ -1651,7 +1653,7 @@ def stop_alerts_command(message):
             logger.info(f"Alertas interrompidos para {user_name}")
         else:
             bot.reply_to(message, "ℹ️ Nenhum alerta automático ativo encontrado.")
-            
+
     except Exception as e:
         logger.error(f"Erro no comando /stop_alerts: {str(e)}")
         bot.reply_to(message, "❌ Erro ao interromper alertas.")
@@ -1662,34 +1664,34 @@ def list_alerts_command(message):
         user_id = message.from_user.id
         user_name = message.from_user.first_name
         logger.info(f"Comando /list_alerts recebido de {user_name} (ID: {user_id})")
-        
+
         if user_id in trading_bot.active_alerts:
             alert_config = trading_bot.active_alerts[user_id]
-            
+
             # Verificar se todas as chaves necessárias existem
             required_keys = ['symbols', 'source', 'strategy', 'model', 'timeframe']
             missing_keys = [key for key in required_keys if key not in alert_config]
-            
+
             if missing_keys:
                 logger.error(f"Chaves faltando na configuração de alerta para usuário {user_id}: {missing_keys}")
                 bot.reply_to(message, f"❌ Erro na configuração do alerta. Chaves faltando: {', '.join(missing_keys)}. Use /stop_alerts e configure novamente.")
                 return
-            
+
             # Validar se symbols é uma lista
             if not isinstance(alert_config['symbols'], list):
                 logger.error(f"Campo 'symbols' não é uma lista para usuário {user_id}: {type(alert_config['symbols'])}")
                 bot.reply_to(message, "❌ Erro na configuração dos símbolos. Use /stop_alerts e configure novamente.")
                 return
-            
+
             symbols_list = ', '.join(alert_config['symbols'])
-            
+
             # Construir mensagem de forma segura
             try:
                 source = str(alert_config['source']).upper()
                 strategy = str(alert_config['strategy'])
                 model = str(alert_config['model']).upper()
                 timeframe = str(alert_config['timeframe'])
-                
+
                 alert_info = f"""📋 *ALERTA ATIVO*
 
 🔗 Fonte: {source}
@@ -1700,20 +1702,20 @@ def list_alerts_command(message):
 📈 Símbolos ({len(alert_config['symbols'])}): {symbols_list}
 
 🔔 Use /stop_alerts para interromper"""
-                
+
                 bot.reply_to(message, alert_info, parse_mode='Markdown')
                 logger.info(f"Lista de alertas enviada para {user_name}: {len(alert_config['symbols'])} símbolos")
-                
+
             except Exception as format_error:
                 logger.error(f"Erro ao formatar mensagem de alerta para usuário {user_id}: {str(format_error)}")
                 # Enviar mensagem básica sem formatação
                 basic_info = f"📋 ALERTA ATIVO\n\nFonte: {alert_config.get('source', 'N/A')}\nSímbolos: {len(alert_config.get('symbols', []))}\n\nUse /stop_alerts para interromper"
                 bot.reply_to(message, basic_info)
-                
+
         else:
             bot.reply_to(message, "ℹ️ Nenhum alerta automático ativo.")
             logger.info(f"Nenhum alerta ativo para {user_name}")
-            
+
     except Exception as e:
         logger.error(f"Erro geral no comando /list_alerts para usuário {user_id}: {str(e)}")
         bot.reply_to(message, "❌ Erro ao listar alertas. Tente novamente ou use /stop_alerts se houver problemas.")
@@ -1729,23 +1731,27 @@ def help_command(message):
 
 🏠 /start - Iniciar o bot
 
-📊 /analise [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
+📊 /analise [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
    📝 ANÁLISE INDIVIDUAL COM GRÁFICO
    • Gera gráfico completo do ativo escolhido
    • Mostra sinais de compra/venda em tempo real
    • Suporte a múltiplos timeframes e estratégias
-   
-   Exemplo básico: /analise balanceada PETR4.SA 1d
-   Com modelo ML: /analise balanceada PETR4.SA 1d ovelha2
-   Com datas: /analise balanceada PETR4.SA 1d ovelha 2024-01-01 2024-06-01
-   ⚠️ Timeframes: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+
+   🔗 Fontes: yahoo (padrão), ccxt
+   🎯 Estratégias: agressiva, balanceada, conservadora
+   🤖 Modelos: ovelha (padrão), ovelha2
+   ⏰ Timeframes: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+   📅 Datas: YYYY-MM-DD
+
+   Exemplo básico: /analise yahoo balanceada PETR4.SA 1d
+   Com CCXT e ML: /analise ccxt agressiva BTC/USDT 4h ovelha2
 
 🔍 /screening [estrategia] [lista/ativos]
    📝 SCREENING PONTUAL DE MÚLTIPLOS ATIVOS
    • Verifica mudanças de estado em vários ativos
    • Detecta oportunidades de compra/venda
    • Análise instantânea de listas ou ativos individuais
-   
+
    Com lista: /screening balanceada açõesBR
    Individual: /screening balanceada BTC-USD ETH-USD PETR4.SA
    ⚠️ Configuração: Timeframe 1d fixo, 2 anos de dados
@@ -1756,18 +1762,11 @@ def help_command(message):
    • Envia alertas quando detecta mudanças de estado
    • Funciona no intervalo de tempo escolhido
    • Suporte a CCXT (Binance) e Yahoo Finance
-   
+
    Exemplo: /screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT] ovelha2 balanceada 4h
-   
-   📊 Fontes:
-   • ccxt - Binance via CCXT (melhor para criptos)
-   • yahoo - Yahoo Finance (ações, forex, commodities)
-   
+
+   🔗 Fontes: ccxt, yahoo
    ⏰ Timeframes: 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d
-   
-   📱 Formato dos símbolos:
-   • CCXT: BTC/USDT, ETH/USDT, ADA/USDT
-   • Yahoo: PETR4.SA, AAPL, BTC-USD
 
 📋 /list_alerts
    📝 VER ALERTAS ATIVOS
@@ -1787,9 +1786,9 @@ def help_command(message):
    • Identifica possíveis pontos de reversão
    • Usa Bollinger Bands para análise
    • Detecta oportunidades de compra e venda
-   
-   Com lista: /topos_fundos açõesEUA
-   Individual: /topos_fundos PETR4.SA VALE3.SA
+
+   Com lista: /topos_fundos criptos
+   Individual: /topos_fundos BTC-USD ETH-USD
    ⚠️ Configuração: Timeframe 1d fixo, 2 anos de dados
 
 📊 /status - Ver status do bot
@@ -1804,15 +1803,15 @@ def help_command(message):
 • conservadora - Sinais mais confiáveis, menor frequência
 
 🤖 MODELOS:
-• ovelha - Modelo clássico baseado em médias móveis e RSI
+• ovelha - Modelo clássico baseado em indicadores técnicos
 • ovelha2 - Machine Learning com Random Forest (mais avançado)
 
 📊 LISTAS PRÉ-DEFINIDAS:
-• açõesBR - 126 ações brasileiras principais (B3)
-• açõesEUA - 100+ ações americanas (NYSE/NASDAQ)
-• criptos - 20 criptomoedas principais
-• forex - 8 pares de moedas principais
-• commodities - 10 commodities principais
+• açõesBR - Ações brasileiras
+• açõesEUA - Ações americanas
+• criptos - Criptomoedas
+• forex - Pares de moedas
+• commodities - Commodities
 
 ⏰ TIMEFRAMES POR COMANDO:
 • /analise: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk (personalizável)
@@ -1821,10 +1820,11 @@ def help_command(message):
 • /topos_fundos: 1d fixo, 2 anos de dados históricos
 
 💡 EXEMPLOS PRÁTICOS:
-• Análise rápida: /analise balanceada PETR4.SA 1d
+• Análise rápida: /analise yahoo balanceada PETR4.SA 1d
+• Análise cripto ML: /analise ccxt agressiva BTC/USDT 4h ovelha2
 • Screening geral: /screening balanceada açõesBR
 • Alerta de criptos: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
-• Detectar reversões: /topos_fundos criptos"""
+"""
         bot.reply_to(message, help_message)
     except Exception as e:
         logger.error(f"Erro no comando /help: {str(e)}")
@@ -1840,11 +1840,11 @@ def handle_message(message):
 
         # Tentar identificar comando com fuzzy matching
         parsed = parse_flexible_command(user_message)
-        
+
         if parsed:
             command = parsed['command']
             logger.info(f"Comando fuzzy identificado: {command} (original: {parsed['original_text']})")
-            
+
             # Redirecionar para o handler apropriado
             if command == 'start':
                 start_command(message)
@@ -1861,7 +1861,7 @@ def handle_message(message):
             elif command == 'help':
                 help_command(message)
             return
-        
+
         # Mensagens de saudação
         user_message_lower = user_message.lower()
         if any(word in user_message_lower for word in ['oi', 'olá', 'hello', 'hi']):
@@ -1879,7 +1879,7 @@ def schedule_alerts_for_user(user_id, timeframe):
     try:
         # Cancelar jobs existentes para este usuário
         schedule.clear(f'alert_user_{user_id}')
-        
+
         # Programar nova tarefa baseada no timeframe
         if timeframe == '15m':
             schedule.every(15).minutes.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
@@ -1899,9 +1899,9 @@ def schedule_alerts_for_user(user_id, timeframe):
             schedule.every(12).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
         elif timeframe == '1d':
             schedule.every(1).days.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
-        
+
         logger.info(f"Alerta programado para usuário {user_id} a cada {timeframe}")
-        
+
     except Exception as e:
         logger.error(f"Erro ao programar alerta para usuário {user_id}: {str(e)}")
 
@@ -1914,9 +1914,9 @@ def send_scheduled_alert(user_id):
             return
 
         alert_config = trading_bot.active_alerts[user_id]
-        
+
         logger.info(f"Executando screening automático para usuário {user_id}")
-        
+
         # Realizar screening
         current_states, changes = trading_bot.perform_automated_screening(
             user_id,
@@ -1929,36 +1929,36 @@ def send_scheduled_alert(user_id):
 
         # Preparar mensagem
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
-        
+
         if changes:
             # Mudanças detectadas
             message = f"🚨 *ALERTAS DE MUDANÇA DETECTADOS*\n📅 {timestamp}\n\n"
             message += f"⚙️ **Configuração:**\n"
             message += f"🔗 {alert_config['source'].upper()} | 🎯 {alert_config['strategy']} | 🤖 {alert_config['model'].upper()}\n"
             message += f"⏰ Intervalo: {alert_config['timeframe']}\n\n"
-            
+
             for change in changes:
                 prev_icon = "🔵" if change['previous_state'] == "Buy" else "🔴" if change['previous_state'] == "Sell" else "⚫"
                 curr_icon = "🔵" if change['current_state'] == "Buy" else "🔴" if change['current_state'] == "Sell" else "⚫"
-                
+
                 message += f"📊 **{change['symbol']}**\n"
                 message += f"💰 Preço: {change['current_price']:.4f}\n"
                 message += f"🔄 {prev_icon} {change['previous_state']} → {curr_icon} {change['current_state']}\n\n"
-            
+
             message += f"⏰ Próximo alerta em: {alert_config['timeframe']}"
-            
+
         else:
             # Nenhuma mudança
             message = f"ℹ️ *SCREENING AUTOMÁTICO - SEM MUDANÇAS*\n📅 {timestamp}\n\n"
             message += f"⚙️ **Configuração:**\n"
             message += f"🔗 {alert_config['source'].upper()} | 🎯 {alert_config['strategy']} | 🤖 {alert_config['model'].upper()}\n"
             message += f"⏰ Intervalo: {alert_config['timeframe']}\n\n"
-            
+
             message += f"📊 **Status Atual ({len(current_states)} símbolos):**\n"
             for symbol, state_info in current_states.items():
                 state_icon = "🔵" if state_info['state'] == "Buy" else "🔴" if state_info['state'] == "Sell" else "⚫"
                 message += f"• {symbol}: {state_icon} {state_info['state']} ({state_info['price']:.4f})\n"
-            
+
             message += f"\n⏰ Próximo alerta em: {alert_config['timeframe']}"
 
         # Enviar mensagem
