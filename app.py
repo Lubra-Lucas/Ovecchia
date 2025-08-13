@@ -2039,6 +2039,45 @@ with tab4:
                                    "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD",
                                    "TRX-USD", "LINK-USD", "MATIC-USD", "LTC-USD", "BCH-USD",
                                    "FIL-USD", "APT-USD", "ARB-USD", "NEAR-USD", "VET-USD"],
+            "Binance US (CCXT)": [
+                "ZRX/USDT", "1INCH/USDT", "AAVE/USDT", "ADX/USDT", "AIXBT/USDT",
+                "ACH/USDT", "ALGO/USDT", "TLM/USDT", "ALPINE/USDT", "FORTH/USDT",
+                "ANIME/USDT", "ANKR/USDT", "APE/USDT", "API3/USDT", "APT/USDT",
+                "ARB/USDT", "ASTR/USDT", "AUDIO/USDT", "AVAX/USDT", "AXL/USDT",
+                "AXS/USDT", "BNT/USDT", "BAND/USDT", "BAT/USDT", "BICO/USDT",
+                "BTC/USDT", "BCH/USDT", "BLUR/USDT", "BNB/USDT", "BONK/USDT",
+                "BOSON/USDT", "BTRST/USDT", "BRETT/USDT", "ADA/USDT", "CTSI/USDT",
+                "CELR/USDT", "CELO/USDT", "LINK/USDT", "CHZ/USDT", "COMP/USDT",
+                "ATOM/USDT", "COTI/USDT", "CRV/USDT", "DAI/USDT", "D/USDT",
+                "DASH/USDT", "MANA/USDT", "DIA/USDT", "DGB/USDT", "DOGE/USDT",
+                "WIF/USDT", "XEC/USDT", "EIGEN/USDT", "ENJ/USDT", "EOS/USDT",
+                "ENA/USDT", "ETH/USDT", "ETC/USDT", "ENS/USDT", "FARTCOIN/USDT",
+                "PORTO/USDT", "FET/USDT", "FIL/USDT", "NEIRO/USDT", "FLOKI/USDT",
+                "FLOW/USDT", "FLUX/USDT", "FORT/USDT", "G/USDT", "GALA/USDT",
+                "JAM/USDT", "GTC/USDT", "GLM/USDT", "ONE/USDT", "HBAR/USDT",
+                "ZEN/USDT", "HYPE/USDT", "ICX/USDT", "RLC/USDT", "ILV/USDT",
+                "IMX/USDT", "ICP/USDT", "IOST/USDT", "IOTA/USDT", "IOTX/USDT",
+                "JTO/USDT", "JUP/USDT", "KDA/USDT", "KAITO/USDT", "KAVA/USDT",
+                "KSM/USDT", "KNC/USDT", "LAZIO/USDT", "LOKA/USDT", "LDO/USDT",
+                "LSK/USDT", "LTC/USDT", "LPT/USDT", "LOOM/USDT", "LRC/USDT",
+                "LTO/USDT", "MKR/USDT", "POND/USDT", "MASK/USDT", "ME/USDT",
+                "METIS/USDT", "1000MOG/USDT", "MOODENG/USDT", "EGLD/USDT", "ALICE/USDT",
+                "XNO/USDT", "NEAR/USDT", "NEO/USDT", "NMR/USDT", "ROSE/USDT",
+                "OCEAN/USDT", "ONDO/USDT", "ONG/USDT", "ONT/USDT", "OP/USDT",
+                "ORBS/USDT", "ORCA/USDT", "OXT/USDT", "OGN/USDT", "TRAC/USDT",
+                "PAXG/USDT", "PEPE/USDT", "PNUT/USDT", "DOT/USDT", "POL/USDT",
+                "POLYX/USDT", "POPCAT/USDT", "PROM/USDT", "PENGU/USDT", "QTUM/USDT",
+                "QNT/USDT", "RAD/USDT", "RVN/USDT", "REEF/USDT", "1000REKT/USDT",
+                "RENDER/USDT", "REQ/USDT", "SANTOS/USDT", "SHIB/USDT", "SKL/USDT",
+                "SLP/USDT", "SOL/USDT", "LAYER/USDT", "S/USDT", "SPX/USDT",
+                "STG/USDT", "XLM/USDT", "STMX/USDT", "STORJ/USDT", "DATA/USDT",
+                "SUI/USDT", "RARE/USDT", "SUSHI/USDT", "SNX/USDT", "SYS/USDT",
+                "XTZ/USDT", "GRT/USDT", "SAND/USDT", "TFUEL/USDT", "THETA/USDT",
+                "T/USDT", "TOSHI/USDT", "MAGIC/USDT", "TRUMP/USDT", "TURBO/USDT",
+                "UNI/USDT", "USDC/USDT", "VET/USDT", "VTHO/USDT", "VIRTUAL/USDT",
+                "VOXEL/USDT", "WAXP/USDT", "WLD/USDT", "WBTC/USDT", "XDC/USDT",
+                "XRP/USDT", "YFI/USDT", "ZEC/USDT", "ZIL/USDT"
+            ],
             "Ações Brasileiras": [
                 "ABEV3.SA", "ALPA4.SA", "AMER3.SA", "ARZZ3.SA", "ASAI3.SA",
                 "AZUL4.SA", "B3SA3.SA", "BBAS3.SA", "BBDC3.SA", "BBDC4.SA",
@@ -2114,23 +2153,64 @@ with tab4:
         start_date_screening = default_start_screening
         end_date_screening = default_end_screening
 
-        st.info("📅 **Período fixo:** 2 anos de dados históricos")
-        st.info("⏰ **Timeframe fixo:** 1 dia")
+        # Check if Binance US list is selected for flexible timeframe
+        is_binance_us_selected = selected_preset == "Binance US (CCXT)"
+        
+        if is_binance_us_selected:
+            st.info("📅 **Período:** Automaticamente definido baseado no timeframe selecionado")
+            
+            # Timeframe selection for Binance US
+            st.markdown("#### ⏱️ Intervalo de Tempo")
+            interval_options_binance = {
+                "5 minutes": "5m",
+                "15 minutes": "15m", 
+                "60 minutes": "60m",
+                "1 hour": "1h",
+                "4 hours": "4h",
+                "1 day": "1d"
+            }
+            interval_display_screening = st.selectbox(
+                "Intervalo", 
+                list(interval_options_binance.keys()), 
+                index=5,  # Default to 1d
+                key="interval_binance_screening"
+            )
+            interval_screening = interval_options_binance[interval_display_screening]
+        else:
+            st.info("📅 **Período fixo:** 2 anos de dados históricos")
+            st.info("⏰ **Timeframe fixo:** 1 dia")
+            # Fixed interval: 1 day
+            interval_screening = "1d"
 
-        # Fixed interval: 1 day
-        interval_screening = "1d"
-
-        # Source selection for data
-        data_source_screening = st.selectbox(
-            "Fonte de Dados",
-            ["Yahoo Finance", "CCXT (Binance)"],
-            index=0,
-            help="Selecione a fonte dos dados de mercado para o screening. CCXT é recomendado para criptomoedas.",
-            key="source_screening"
-        )
+        # Source selection for data (automatically set based on list)
+        if is_binance_us_selected:
+            data_source_screening = "CCXT (Binance)"
+            st.info("🔗 **Fonte automática:** CCXT (Binance) para lista Binance US")
+        else:
+            data_source_screening = st.selectbox(
+                "Fonte de Dados",
+                ["Yahoo Finance", "CCXT (Binance)"],
+                index=0,
+                help="Selecione a fonte dos dados de mercado para o screening. CCXT é recomendado para criptomoedas.",
+                key="source_screening"
+            )
 
 
         # Strategy selection
+        st.markdown("#### 🤖 Modelo de Sinais")
+        model_type_screening = st.selectbox(
+            "Escolha o Modelo:",
+            ["OVELHA (Clássico)", "OVELHA V2 (Machine Learning)"],
+            index=0,
+            help="OVELHA: Modelo clássico baseado em indicadores técnicos | OVELHA V2: Modelo avançado com Random Forest",
+            key="model_screening"
+        )
+
+        # Buffer fixo para OVELHA V2
+        buffer_value_screening = 0.0015  # 0.15% fixo
+        if model_type_screening == "OVELHA V2 (Machine Learning)":
+            st.info("🔧 **Buffer fixo:** 0.15% para médias móveis (otimizado para screening)")
+
         st.markdown("#### 📈 Estratégia de Sinais")
         st.markdown("""
         <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
@@ -2202,63 +2282,73 @@ with tab4:
                         })
                         continue
 
-                    # Calculate indicators (simplified for screening)
-                    df_temp[f'SMA_{sma_short_screening}'] = df_temp['close'].rolling(window=sma_short_screening).mean()
-                    df_temp[f'SMA_{sma_long_screening}'] = df_temp['close'].rolling(window=sma_long_screening).mean()
-                    df_temp['SMA_20'] = df_temp['close'].rolling(window=20).mean()
-
-                    # RSI calculation
-                    delta = df_temp['close'].diff()
-                    gain = np.where(delta > 0, delta, 0)
-                    loss = np.where(delta < 0, -delta, 0)
-                    avg_gain = pd.Series(gain, index=df_temp.index).rolling(window=14).mean()
-                    avg_loss = pd.Series(loss, index=df_temp.index).rolling(window=14).mean()
-                    rs = avg_gain / avg_loss
-                    df_temp['RSI_14'] = 100 - (100 / (1 + rs))
-
-                    # RSL calculation
-                    df_temp['RSL_20'] = df_temp['close'] / df_temp['SMA_20']
-
-                    # Signal generation
-                    df_temp['Signal'] = 'Stay Out'
-                    for i in range(1, len(df_temp)):
-                        rsi_up = df_temp['RSI_14'].iloc[i] > df_temp['RSI_14'].iloc[i-1]
-                        rsi_down = df_temp['RSI_14'].iloc[i] < df_temp['RSI_14'].iloc[i-1]
-                        rsl = df_temp['RSL_20'].iloc[i]
-                        rsl_prev = df_temp['RSL_20'].iloc[i-1]
-
-                        rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
-                        rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
-
-                        if (
-                            df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_short_screening}'].iloc[i]
-                            and df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_long_screening}'].iloc[i]
-                            and rsi_up and rsl_buy
-                        ):
-                            df_temp.at[i, 'Signal'] = 'Buy'
-                        elif (
-                            df_temp['close'].iloc[i] < df_temp[f'SMA_{sma_short_screening}'].iloc[i]
-                            and rsi_down and rsl_sell
-                        ):
-                            df_temp.at[i, 'Signal'] = 'Sell'
-
-                    # State persistence - aplicar sinal imediatamente
-                    df_temp['Estado'] = 'Stay Out'
-
-                    for i in range(len(df_temp)):
-                        if i == 0:
-                            # Primeiro candle sempre Stay Out
-                            continue
-
-                        # Estado anterior
-                        estado_anterior = df_temp['Estado'].iloc[i - 1]
-
-                        # Aplicar sinal imediatamente
-                        sinal_atual = df_temp['Signal'].iloc[i]
-                        if sinal_atual != 'Stay Out':
-                            df_temp.loc[df_temp.index[i], 'Estado'] = sinal_atual
+                    # Escolher modelo baseado na seleção do usuário para screening
+                    if model_type_screening == "OVELHA V2 (Machine Learning)":
+                        df_with_signals = calculate_ovelha_v2_signals(df_temp, sma_short_screening, sma_long_screening, buffer=buffer_value_screening)
+                        if df_with_signals is not None:
+                            df_temp = df_with_signals
                         else:
-                            df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
+                            # Fallback para modelo clássico se houver erro
+                            model_type_screening_current = "OVELHA (Clássico)"
+                    
+                    if model_type_screening == "OVELHA (Clássico)" or 'Estado' not in df_temp.columns:
+                        # Calculate indicators (simplified for screening)
+                        df_temp[f'SMA_{sma_short_screening}'] = df_temp['close'].rolling(window=sma_short_screening).mean()
+                        df_temp[f'SMA_{sma_long_screening}'] = df_temp['close'].rolling(window=sma_long_screening).mean()
+                        df_temp['SMA_20'] = df_temp['close'].rolling(window=20).mean()
+
+                        # RSI calculation
+                        delta = df_temp['close'].diff()
+                        gain = np.where(delta > 0, delta, 0)
+                        loss = np.where(delta < 0, -delta, 0)
+                        avg_gain = pd.Series(gain, index=df_temp.index).rolling(window=14).mean()
+                        avg_loss = pd.Series(loss, index=df_temp.index).rolling(window=14).mean()
+                        rs = avg_gain / avg_loss
+                        df_temp['RSI_14'] = 100 - (100 / (1 + rs))
+
+                        # RSL calculation
+                        df_temp['RSL_20'] = df_temp['close'] / df_temp['SMA_20']
+
+                        # Signal generation
+                        df_temp['Signal'] = 'Stay Out'
+                        for i in range(1, len(df_temp)):
+                            rsi_up = df_temp['RSI_14'].iloc[i] > df_temp['RSI_14'].iloc[i-1]
+                            rsi_down = df_temp['RSI_14'].iloc[i] < df_temp['RSI_14'].iloc[i-1]
+                            rsl = df_temp['RSL_20'].iloc[i]
+                            rsl_prev = df_temp['RSL_20'].iloc[i-1]
+
+                            rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
+                            rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
+
+                            if (
+                                df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_short_screening}'].iloc[i]
+                                and df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_long_screening}'].iloc[i]
+                                and rsi_up and rsl_buy
+                            ):
+                                df_temp.at[i, 'Signal'] = 'Buy'
+                            elif (
+                                df_temp['close'].iloc[i] < df_temp[f'SMA_{sma_short_screening}'].iloc[i]
+                                and rsi_down and rsl_sell
+                            ):
+                                df_temp.at[i, 'Signal'] = 'Sell'
+
+                        # State persistence - aplicar sinal imediatamente
+                        df_temp['Estado'] = 'Stay Out'
+
+                        for i in range(len(df_temp)):
+                            if i == 0:
+                                # Primeiro candle sempre Stay Out
+                                continue
+
+                            # Estado anterior
+                            estado_anterior = df_temp['Estado'].iloc[i - 1]
+
+                            # Aplicar sinal imediatamente
+                            sinal_atual = df_temp['Signal'].iloc[i]
+                            if sinal_atual != 'Stay Out':
+                                df_temp.loc[df_temp.index[i], 'Estado'] = sinal_atual
+                            else:
+                                df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
 
                     # Check for state change
                     current_state = df_temp['Estado'].iloc[-1]
@@ -2289,7 +2379,8 @@ with tab4:
             status_text.text("Screening Completo!")
 
             # Display screening results
-            st.success(f"✅ Screening completo para {len(symbols_list)} ativos ({data_source_screening})")
+            modelo_nome_screening = "OVELHA V2" if model_type_screening == "OVELHA V2 (Machine Learning)" else "OVELHA"
+            st.success(f"✅ Screening completo para {len(symbols_list)} ativos - Modelo: {modelo_nome_screening} ({data_source_screening}) - Timeframe: {interval_screening.upper()}")
 
             # Filter and display assets with state changes
             state_changes = [r for r in screening_results if r['state_change']]
