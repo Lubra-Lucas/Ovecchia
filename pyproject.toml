@@ -13,6 +13,7 @@ dependencies = [
     "pytelegrambotapi>=4.27.0",
     "python-telegram-bot>=22.3",
     "requests>=2.32.4",
+    "schedule>=1.2.2",
     "scikit-learn>=1.7.1",
     "streamlit>=1.47.0",
     "telebot==0.0.5",

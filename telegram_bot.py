@@ -16,6 +16,8 @@ import re
 from sklearn.ensemble import RandomForestClassifier
 import requests
 import ccxt
+import schedule
+import json
 
 warnings.filterwarnings('ignore')
 
@@ -166,6 +168,8 @@ def parse_flexible_command(message_text):
 class OvecchiaTradingBot:
     def __init__(self):
         self.users_config = {}
+        self.active_alerts = {}  # {user_id: {'symbols': [], 'source': '', 'model': '', 'strategy': '', 'timeframe': '', 'chat_id': ''}}
+        self.alert_states = {}  # {user_id: {symbol: last_state}}
 
     def get_ccxt_data(self, symbol, interval="1d", limit=1000):
         """Função para coletar dados usando CCXT"""
@@ -540,6 +544,75 @@ class OvecchiaTradingBot:
                 continue
 
         return results
+
+    def perform_automated_screening(self, user_id, symbols_list, source, model_type, strategy_type, timeframe):
+        """Realiza screening automático e detecta mudanças de estado"""
+        try:
+            current_states = {}
+            changes_detected = []
+            
+            for symbol in symbols_list:
+                try:
+                    logger.info(f"Analisando {symbol} para usuário {user_id}")
+                    
+                    if source == "ccxt":
+                        df = self.get_ccxt_data(symbol, timeframe, 1000)
+                    else:
+                        end_date = datetime.now().date()
+                        start_date = end_date - timedelta(days=365)
+                        df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
+                                                end_date.strftime("%Y-%m-%d"), timeframe, "yahoo")
+
+                    if df.empty:
+                        logger.warning(f"Sem dados para {symbol}")
+                        continue
+
+                    # Escolher modelo baseado na seleção do usuário
+                    if model_type == "ovelha2":
+                        df_with_signals = self.calculate_ovelha_v2_signals(df, strategy_type)
+                        if df_with_signals is not None:
+                            df = df_with_signals
+                        else:
+                            model_type = "ovelha"  # Fallback
+                    
+                    if model_type == "ovelha" or 'Estado' not in df.columns:
+                        df = self.calculate_indicators_and_signals(df, strategy_type)
+
+                    if df.empty or 'Estado' not in df.columns:
+                        continue
+
+                    current_state = df['Estado'].iloc[-1]
+                    current_price = df['close'].iloc[-1]
+                    current_states[symbol] = {
+                        'state': current_state,
+                        'price': current_price
+                    }
+
+                    # Verificar se houve mudança de estado
+                    if user_id in self.alert_states and symbol in self.alert_states[user_id]:
+                        previous_state = self.alert_states[user_id][symbol]['state']
+                        if current_state != previous_state:
+                            changes_detected.append({
+                                'symbol': symbol,
+                                'previous_state': previous_state,
+                                'current_state': current_state,
+                                'current_price': current_price
+                            })
+
+                except Exception as e:
+                    logger.error(f"Erro ao analisar {symbol}: {str(e)}")
+                    continue
+
+            # Atualizar estados salvos
+            if user_id not in self.alert_states:
+                self.alert_states[user_id] = {}
+            self.alert_states[user_id].update(current_states)
+
+            return current_states, changes_detected
+
+        except Exception as e:
+            logger.error(f"Erro no screening automatizado: {str(e)}")
+            return {}, []
 
     def generate_analysis_chart(self, symbol, strategy_type, timeframe, model_type="ovelha", custom_start_date=None, custom_end_date=None):
         """Gera gráfico de análise para um ativo específico usando matplotlib"""
@@ -1292,6 +1365,198 @@ def restart_command(message):
         logger.error(f"Erro no comando /restart: {str(e)}")
         bot.reply_to(message, "❌ Erro ao reiniciar o bot. Tente novamente.")
 
+@bot.message_handler(commands=['screening_auto'])
+def screening_auto_command(message):
+    try:
+        user_name = message.from_user.first_name
+        user_id = message.from_user.id
+        logger.info(f"Comando /screening_auto recebido de {user_name}")
+
+        # Parse arguments
+        args = message.text.split()[1:]
+
+        if len(args) < 4:
+            help_message = """
+🔄 *SCREENING AUTOMÁTICO*
+
+📝 *Como usar:*
+/screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
+
+🔗 *Fontes disponíveis:*
+• ccxt - Binance via CCXT (recomendado para criptos)
+• yahoo - Yahoo Finance
+
+📊 *Símbolos:* Lista separada por vírgulas entre colchetes
+Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
+
+🤖 *Modelos:*
+• ovelha - Modelo clássico
+• ovelha2 - Machine Learning (Random Forest)
+
+🎯 *Estratégias:*
+• agressiva - Mais sinais
+• balanceada - Equilibrada
+• conservadora - Mais confiáveis
+
+⏰ *Timeframes:*
+• 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d
+
+📈 *Exemplo:*
+`/screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT] ovelha2 balanceada 4h`
+
+💡 *Nota:* O bot enviará alertas no intervalo escolhido
+            """
+            bot.reply_to(message, help_message, parse_mode='Markdown')
+            return
+
+        try:
+            source = args[0].lower()
+            symbols_str = args[1]
+            model_type = args[2].lower()
+            strategy = args[3].lower()
+            timeframe = args[4].lower()
+
+            # Validar fonte
+            if source not in ['ccxt', 'yahoo']:
+                bot.reply_to(message, "❌ Fonte inválida. Use: ccxt ou yahoo")
+                return
+
+            # Extrair símbolos da lista
+            if not symbols_str.startswith('[') or not symbols_str.endswith(']'):
+                bot.reply_to(message, "❌ Formato de símbolos inválido. Use: [SYMBOL1,SYMBOL2,...]")
+                return
+
+            symbols_list = [s.strip() for s in symbols_str[1:-1].split(',')]
+            
+            if len(symbols_list) == 0 or len(symbols_list) > 10:
+                bot.reply_to(message, "❌ Lista deve conter entre 1 e 10 símbolos")
+                return
+
+            # Validar modelo
+            if model_type not in ['ovelha', 'ovelha2']:
+                bot.reply_to(message, "❌ Modelo inválido. Use: ovelha ou ovelha2")
+                return
+
+            # Validar estratégia
+            strategy_map = {
+                'agressiva': 'Agressivo',
+                'balanceada': 'Balanceado', 
+                'conservadora': 'Conservador'
+            }
+            
+            if strategy not in strategy_map:
+                bot.reply_to(message, "❌ Estratégia inválida. Use: agressiva, balanceada ou conservadora")
+                return
+
+            strategy_formatted = strategy_map[strategy]
+
+            # Validar timeframe
+            valid_timeframes = ['15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d']
+            if timeframe not in valid_timeframes:
+                bot.reply_to(message, f"❌ Timeframe inválido. Use: {', '.join(valid_timeframes)}")
+                return
+
+            # Configurar alerta automático
+            trading_bot.active_alerts[user_id] = {
+                'symbols': symbols_list,
+                'source': source,
+                'model': model_type,
+                'strategy': strategy_formatted,
+                'timeframe': timeframe,
+                'chat_id': message.chat.id
+            }
+
+            # Fazer primeira verificação
+            bot.reply_to(message, f"🔄 Configurando alerta automático...\n📊 {len(symbols_list)} símbolos\n⏰ Intervalo: {timeframe}")
+            
+            current_states, changes = trading_bot.perform_automated_screening(
+                user_id, symbols_list, source, model_type, strategy_formatted, timeframe
+            )
+
+            # Programar alertas baseado no timeframe
+            schedule_alerts_for_user(user_id, timeframe)
+
+            # Enviar confirmação
+            confirmation_message = f"""✅ *ALERTA AUTOMÁTICO CONFIGURADO*
+
+📊 **Configuração:**
+🔗 Fonte: {source.upper()}
+🎯 Estratégia: {strategy}
+🤖 Modelo: {model_type.upper()}
+⏰ Intervalo: {timeframe}
+
+📈 **Símbolos monitorados:**
+"""
+            for symbol in symbols_list:
+                if symbol in current_states:
+                    state = current_states[symbol]['state']
+                    price = current_states[symbol]['price']
+                    state_icon = "🔵" if state == "Buy" else "🔴" if state == "Sell" else "⚫"
+                    confirmation_message += f"• {symbol}: {state_icon} {state} ({price:.2f})\n"
+                else:
+                    confirmation_message += f"• {symbol}: ❌ Erro nos dados\n"
+
+            confirmation_message += f"\n🔔 Próximo alerta em: {timeframe}"
+
+            bot.reply_to(message, confirmation_message, parse_mode='Markdown')
+            logger.info(f"Alerta automático configurado para {user_name}: {len(symbols_list)} símbolos, {timeframe}")
+
+        except Exception as e:
+            logger.error(f"Erro ao processar argumentos: {str(e)}")
+            bot.reply_to(message, "❌ Erro ao processar comando. Verifique a sintaxe.")
+
+    except Exception as e:
+        logger.error(f"Erro no comando /screening_auto: {str(e)}")
+        bot.reply_to(message, "❌ Erro interno. Tente novamente.")
+
+@bot.message_handler(commands=['stop_alerts'])
+def stop_alerts_command(message):
+    try:
+        user_id = message.from_user.id
+        user_name = message.from_user.first_name
+        
+        if user_id in trading_bot.active_alerts:
+            del trading_bot.active_alerts[user_id]
+            if user_id in trading_bot.alert_states:
+                del trading_bot.alert_states[user_id]
+            bot.reply_to(message, "🛑 Alertas automáticos interrompidos com sucesso!")
+            logger.info(f"Alertas interrompidos para {user_name}")
+        else:
+            bot.reply_to(message, "ℹ️ Nenhum alerta automático ativo encontrado.")
+            
+    except Exception as e:
+        logger.error(f"Erro no comando /stop_alerts: {str(e)}")
+        bot.reply_to(message, "❌ Erro ao interromper alertas.")
+
+@bot.message_handler(commands=['list_alerts'])
+def list_alerts_command(message):
+    try:
+        user_id = message.from_user.id
+        user_name = message.from_user.first_name
+        
+        if user_id in trading_bot.active_alerts:
+            alert_config = trading_bot.active_alerts[user_id]
+            symbols_list = ', '.join(alert_config['symbols'])
+            
+            alert_info = f"""📋 *ALERTA ATIVO*
+
+🔗 Fonte: {alert_config['source'].upper()}
+🎯 Estratégia: {alert_config['strategy']}
+🤖 Modelo: {alert_config['model'].upper()}
+⏰ Intervalo: {alert_config['timeframe']}
+
+📈 **Símbolos:** {symbols_list}
+
+🔔 Use /stop_alerts para interromper"""
+            
+            bot.reply_to(message, alert_info, parse_mode='Markdown')
+        else:
+            bot.reply_to(message, "ℹ️ Nenhum alerta automático ativo.")
+            
+    except Exception as e:
+        logger.error(f"Erro no comando /list_alerts: {str(e)}")
+        bot.reply_to(message, "❌ Erro ao listar alertas.")
+
 @bot.message_handler(commands=['help'])
 def help_command(message):
     try:
@@ -1313,6 +1578,13 @@ def help_command(message):
    Com lista: /screening balanceada açõesBR
    Individual: /screening balanceada BTC-USD ETH-USD
    ⚠️ Timeframe fixo: 1d | Período fixo: 2 anos
+
+🔄 /screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
+   Exemplo: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
+   ⚠️ Alertas automáticos no intervalo escolhido
+
+🛑 /stop_alerts - Parar alertas automáticos
+📋 /list_alerts - Ver alertas ativos
 
 📈 /topos_fundos [lista/ativos]
    Com lista: /topos_fundos açõesEUA
@@ -1400,6 +1672,110 @@ def handle_message(message):
     except Exception as e:
         logger.error(f"Erro ao processar mensagem: {str(e)}")
 
+def schedule_alerts_for_user(user_id, timeframe):
+    """Programa alertas baseado no timeframe escolhido"""
+    try:
+        # Cancelar jobs existentes para este usuário
+        schedule.clear(f'alert_user_{user_id}')
+        
+        # Programar nova tarefa baseada no timeframe
+        if timeframe == '15m':
+            schedule.every(15).minutes.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
+        elif timeframe == '30m':
+            schedule.every(30).minutes.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
+        elif timeframe == '1h':
+            schedule.every(1).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
+        elif timeframe == '2h':
+            schedule.every(2).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
+        elif timeframe == '4h':
+            schedule.every(4).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
+        elif timeframe == '6h':
+            schedule.every(6).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
+        elif timeframe == '8h':
+            schedule.every(8).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
+        elif timeframe == '12h':
+            schedule.every(12).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
+        elif timeframe == '1d':
+            schedule.every(1).days.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
+        
+        logger.info(f"Alerta programado para usuário {user_id} a cada {timeframe}")
+        
+    except Exception as e:
+        logger.error(f"Erro ao programar alerta para usuário {user_id}: {str(e)}")
+
+def send_scheduled_alert(user_id):
+    """Envia alerta programado para um usuário específico"""
+    try:
+        if user_id not in trading_bot.active_alerts:
+            logger.info(f"Alerta cancelado para usuário {user_id} - configuração removida")
+            schedule.clear(f'alert_user_{user_id}')
+            return
+
+        alert_config = trading_bot.active_alerts[user_id]
+        
+        logger.info(f"Executando screening automático para usuário {user_id}")
+        
+        # Realizar screening
+        current_states, changes = trading_bot.perform_automated_screening(
+            user_id,
+            alert_config['symbols'],
+            alert_config['source'],
+            alert_config['model'],
+            alert_config['strategy'],
+            alert_config['timeframe']
+        )
+
+        # Preparar mensagem
+        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
+        
+        if changes:
+            # Mudanças detectadas
+            message = f"🚨 *ALERTAS DE MUDANÇA DETECTADOS*\n📅 {timestamp}\n\n"
+            message += f"⚙️ **Configuração:**\n"
+            message += f"🔗 {alert_config['source'].upper()} | 🎯 {alert_config['strategy']} | 🤖 {alert_config['model'].upper()}\n"
+            message += f"⏰ Intervalo: {alert_config['timeframe']}\n\n"
+            
+            for change in changes:
+                prev_icon = "🔵" if change['previous_state'] == "Buy" else "🔴" if change['previous_state'] == "Sell" else "⚫"
+                curr_icon = "🔵" if change['current_state'] == "Buy" else "🔴" if change['current_state'] == "Sell" else "⚫"
+                
+                message += f"📊 **{change['symbol']}**\n"
+                message += f"💰 Preço: {change['current_price']:.4f}\n"
+                message += f"🔄 {prev_icon} {change['previous_state']} → {curr_icon} {change['current_state']}\n\n"
+            
+            message += f"⏰ Próximo alerta em: {alert_config['timeframe']}"
+            
+        else:
+            # Nenhuma mudança
+            message = f"ℹ️ *SCREENING AUTOMÁTICO - SEM MUDANÇAS*\n📅 {timestamp}\n\n"
+            message += f"⚙️ **Configuração:**\n"
+            message += f"🔗 {alert_config['source'].upper()} | 🎯 {alert_config['strategy']} | 🤖 {alert_config['model'].upper()}\n"
+            message += f"⏰ Intervalo: {alert_config['timeframe']}\n\n"
+            
+            message += f"📊 **Status Atual ({len(current_states)} símbolos):**\n"
+            for symbol, state_info in current_states.items():
+                state_icon = "🔵" if state_info['state'] == "Buy" else "🔴" if state_info['state'] == "Sell" else "⚫"
+                message += f"• {symbol}: {state_icon} {state_info['state']} ({state_info['price']:.4f})\n"
+            
+            message += f"\n⏰ Próximo alerta em: {alert_config['timeframe']}"
+
+        # Enviar mensagem
+        bot.send_message(alert_config['chat_id'], message, parse_mode='Markdown')
+        logger.info(f"Alerta enviado para usuário {user_id}: {len(changes)} mudanças detectadas")
+
+    except Exception as e:
+        logger.error(f"Erro ao enviar alerta programado para usuário {user_id}: {str(e)}")
+
+def run_scheduler():
+    """Thread separada para executar o scheduler"""
+    while True:
+        try:
+            schedule.run_pending()
+            time.sleep(60)  # Verificar a cada minuto
+        except Exception as e:
+            logger.error(f"Erro no scheduler: {str(e)}")
+            time.sleep(60)
+
 def run_bot():
     """Função para rodar o bot"""
     max_retries = 3
@@ -1422,6 +1798,11 @@ def run_bot():
             ])
 
             logger.info("🤖 Bot iniciado com sucesso!")
+
+            # Iniciar thread do scheduler
+            scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+            scheduler_thread.start()
+            logger.info("🔄 Scheduler de alertas iniciado")
 
             # Rodar o bot
             bot.polling(none_stop=True, interval=2, timeout=30)
