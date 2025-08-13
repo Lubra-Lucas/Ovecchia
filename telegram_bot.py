@@ -15,6 +15,7 @@ import unicodedata
 import re
 from sklearn.ensemble import RandomForestClassifier
 import requests
+import ccxt
 
 warnings.filterwarnings('ignore')
 
@@ -166,6 +167,40 @@ class OvecchiaTradingBot:
     def __init__(self):
         self.users_config = {}
 
+    def get_ccxt_data(self, symbol, interval="1d", limit=1000):
+        """Função para coletar dados usando CCXT"""
+        try:
+            # Configuração da exchange
+            exchange = ccxt.binance({'enableRateLimit': True})
+            
+            # Converter símbolo para formato CCXT (BTC-USD -> BTC/USDT)
+            ccxt_symbol = symbol.replace('-USD', '/USDT').replace('-USDT', '/USDT')
+            
+            # Coletar dados OHLCV
+            ohlcv = exchange.fetch_ohlcv(ccxt_symbol, timeframe=interval, limit=limit)
+            
+            if not ohlcv:
+                return pd.DataFrame()
+                
+            # Criar DataFrame
+            df = pd.DataFrame(ohlcv, columns=['time', 'open', 'high', 'low', 'close', 'volume'])
+            
+            # Converter timestamp para datetime
+            df['time'] = pd.to_datetime(df['time'], unit='ms')
+            
+            # Garantir que os tipos numéricos estão corretos
+            df[["open", "high", "low", "close", "volume"]] = df[["open", "high", "low", "close", "volume"]].astype(float)
+            
+            # Ordenar por tempo
+            df = df.sort_values("time")
+            
+            logger.info(f"Dados CCXT coletados com sucesso para {symbol}: {len(df)} registros")
+            return df
+            
+        except Exception as e:
+            logger.error(f"Erro ao coletar dados CCXT para {symbol}: {str(e)}")
+            return pd.DataFrame()
+
     def get_binance_data(self, symbol, start_date, end_date, interval="1d", limit=1000):
         """Função para coletar dados da Binance usando API REST"""
         try:
@@ -210,10 +245,12 @@ class OvecchiaTradingBot:
         try:
             logger.info(f"Coletando dados para {symbol} via {data_source}")
             
-            # Detectar automaticamente se é cripto e usar Binance se solicitado
+            # Detectar automaticamente se é cripto
             is_crypto = any(symbol.upper().endswith(suffix) for suffix in ['USDT', '-USD', 'USD'])
             
-            if data_source == "binance" and is_crypto:
+            if data_source == "ccxt" and is_crypto:
+                return self.get_ccxt_data(symbol, interval, 1000)
+            elif data_source == "binance" and is_crypto:
                 return self.get_binance_data(symbol, start_date, end_date, interval)
             else:
                 # Yahoo Finance (código original)
