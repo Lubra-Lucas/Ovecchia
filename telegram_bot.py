@@ -176,12 +176,18 @@ class OvecchiaTradingBot:
         self.users_config = {}
         self.active_alerts = {}  # {user_id: {'symbols': [], 'source': '', 'model': '', 'strategy': '', 'timeframe': '', 'chat_id': ''}}
         self.alert_states = {}  # {user_id: {symbol: last_state}}
+        self.active_tasks = {}  # {user_id: {'task_type': '', 'start_time': datetime, 'thread': None}}
+        self.paused_users = set()  # Usuários que pausaram operações
 
     def get_ccxt_data(self, symbol, interval="1d", limit=1000):
         """Função para coletar dados usando CCXT"""
         try:
-            # Configuração da exchange
-            exchange = ccxt.binanceus({'enableRateLimit': True})
+            # Configuração da exchange com timeout
+            exchange = ccxt.binanceus({
+                'enableRateLimit': True,
+                'timeout': 30000,  # 30 segundos de timeout
+                'rateLimit': 1200  # Limite de rate mais conservador
+            })
 
             # Normalizar símbolo para formato CCXT
             ccxt_symbol = symbol.upper()
@@ -205,6 +211,16 @@ class OvecchiaTradingBot:
             if interval not in exchange.timeframes:
                 logger.error(f"Timeframe {interval} não suportado pela Binance")
                 return pd.DataFrame()
+
+            # Ajustar limite baseado no timeframe para evitar timeout
+            if interval in ['1m', '5m']:
+                limit = min(500, limit)  # Máximo 500 para timeframes de minutos
+            elif interval in ['15m', '30m']:
+                limit = min(750, limit)  # Máximo 750 para timeframes de 15-30min
+            else:
+                limit = min(1000, limit)  # Máximo 1000 para timeframes maiores
+
+            logger.info(f"Coletando {limit} registros de {ccxt_symbol} no timeframe {interval}")
 
             # Coletar dados OHLCV
             ohlcv = exchange.fetch_ohlcv(ccxt_symbol, timeframe=interval, limit=limit)
@@ -1291,8 +1307,25 @@ def status_command(message):
 @bot.message_handler(commands=['analise'])
 def analise_command(message):
     try:
+        user_id = message.from_user.id
         user_name = message.from_user.first_name
         logger.info(f"Comando /analise recebido de {user_name}")
+
+        # Verificar se usuário pausou operações
+        if user_id in trading_bot.paused_users:
+            trading_bot.paused_users.discard(user_id)
+
+        # Verificar se já há uma tarefa ativa
+        if user_id in trading_bot.active_tasks:
+            active_task = trading_bot.active_tasks[user_id]
+            duration = datetime.now() - active_task.get('start_time', datetime.now())
+            
+            if duration.seconds < 60:  # Menos de 1 minuto
+                bot.reply_to(message, "⏳ Já há uma análise em andamento. Aguarde ou use /pause para cancelar.")
+                return
+            else:
+                # Tarefa muito antiga, limpar
+                del trading_bot.active_tasks[user_id]
 
         # Parse arguments with fuzzy matching
         parsed = parse_flexible_command(message.text)
@@ -1405,13 +1438,36 @@ YYYY-MM-DD (exemplo: 2024-01-01)
 
         model_display = "OVELHA V2" if model_input == "ovelha2" else "OVELHA"
 
+        # Registrar tarefa ativa
+        trading_bot.active_tasks[user_id] = {
+            'task_type': f'Análise {symbol} ({model_display})',
+            'start_time': datetime.now(),
+            'thread': None
+        }
+
+        # Aviso sobre tempo de processamento para timeframes menores
+        warning_msg = ""
+        if timeframe in ['1m', '5m', '15m', '30m'] and source_input == "ccxt":
+            warning_msg = "\n⚠️ Timeframes menores podem demorar mais. Use /pause se precisar cancelar."
+
         if start_date and end_date:
-            bot.reply_to(message, f"🔄 Analisando {symbol} ({source_input}) de {start_date} até {end_date} com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...")
+            bot.reply_to(message, f"🔄 Analisando {symbol} ({source_input}) de {start_date} até {end_date} com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...{warning_msg}")
         else:
-            bot.reply_to(message, f"🔄 Analisando {symbol} ({source_input}) com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...")
+            bot.reply_to(message, f"🔄 Analisando {symbol} ({source_input}) com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...{warning_msg}")
+
+        # Verificar se foi pausado antes de continuar
+        if user_id in trading_bot.paused_users:
+            if user_id in trading_bot.active_tasks:
+                del trading_bot.active_tasks[user_id]
+            bot.reply_to(message, "⏸️ Análise cancelada pelo usuário.")
+            return
 
         # Gerar análise e gráfico
         chart_result = trading_bot.generate_analysis_chart(symbol, strategy, timeframe, model_input, start_date, end_date, source_input)
+
+        # Remover tarefa ativa
+        if user_id in trading_bot.active_tasks:
+            del trading_bot.active_tasks[user_id]
 
         if chart_result['success']:
             # Enviar gráfico
@@ -1432,8 +1488,12 @@ YYYY-MM-DD (exemplo: 2024-01-01)
             bot.reply_to(message, f"❌ {chart_result['error']}")
 
     except Exception as e:
+        # Limpar tarefa ativa em caso de erro
+        if user_id in trading_bot.active_tasks:
+            del trading_bot.active_tasks[user_id]
+        
         logger.error(f"Erro no comando /analise: {str(e)}")
-        bot.reply_to(message, "❌ Erro ao processar análise. Verifique os parâmetros e tente novamente.")
+        bot.reply_to(message, "❌ Erro ao processar análise. Use /pause se o bot travou ou verifique os parâmetros.")
 
 @bot.message_handler(commands=['restart'])
 def restart_command(message):
@@ -1473,6 +1533,70 @@ def restart_command(message):
     except Exception as e:
         logger.error(f"Erro no comando /restart: {str(e)}")
         bot.reply_to(message, "❌ Erro ao reiniciar o bot. Tente novamente.")
+
+@bot.message_handler(commands=['pause'])
+def pause_command(message):
+    try:
+        user_id = message.from_user.id
+        user_name = message.from_user.first_name
+        logger.info(f"Comando /pause recebido de {user_name}")
+
+        # Verificar se há tarefas ativas
+        if user_id in trading_bot.active_tasks:
+            task_info = trading_bot.active_tasks[user_id]
+            task_type = task_info.get('task_type', 'desconhecida')
+            start_time = task_info.get('start_time', datetime.now())
+            duration = datetime.now() - start_time
+            
+            # Adicionar usuário à lista de pausados
+            trading_bot.paused_users.add(user_id)
+            
+            # Remover tarefa ativa
+            if user_id in trading_bot.active_tasks:
+                del trading_bot.active_tasks[user_id]
+            
+            pause_message = f"""⏸️ **TAREFA PAUSADA COM SUCESSO**
+
+🔄 **Tarefa interrompida:** {task_type}
+⏱️ **Tempo de execução:** {duration.seconds} segundos
+✅ **Status:** Operação cancelada
+
+💡 **O que aconteceu:**
+• A tarefa em execução foi interrompida
+• O bot voltará a responder normalmente
+• Você pode enviar novos comandos agora
+
+🚀 **Próximos passos:**
+• Tente usar timeframes maiores (4h, 1d) para análises mais rápidas
+• Para criptos via CCXT, use intervalos de 1h ou superior
+• O modelo ovelha2 é mais lento que o ovelha clássico"""
+
+            bot.reply_to(message, pause_message, parse_mode='Markdown')
+            logger.info(f"Tarefa pausada para {user_name}: {task_type}")
+            
+        else:
+            # Mesmo sem tarefa ativa, limpar possíveis estados
+            trading_bot.paused_users.discard(user_id)
+            
+            info_message = """ℹ️ **NENHUMA TAREFA ATIVA**
+
+✅ O bot não está executando nenhuma tarefa no momento.
+
+🔧 **Se o bot estava travado:**
+• A operação foi limpa com sucesso
+• Você pode enviar comandos normalmente
+
+💡 **Dicas para evitar travamentos:**
+• Use timeframes maiores: 1h, 4h, 1d
+• Para análises rápidas, prefira o modelo 'ovelha' clássico
+• CCXT funciona melhor com intervalos ≥ 1h"""
+
+            bot.reply_to(message, info_message, parse_mode='Markdown')
+            logger.info(f"Comando pause executado sem tarefas ativas para {user_name}")
+
+    except Exception as e:
+        logger.error(f"Erro no comando /pause: {str(e)}")
+        bot.reply_to(message, "❌ Erro ao pausar tarefa. Tente /restart se o problema persistir.")
 
 @bot.message_handler(commands=['screening_auto'])
 def screening_auto_command(message):
@@ -1791,6 +1915,13 @@ def help_command(message):
    • Para o monitoramento automático
    • Limpa configurações de alerta
 
+⏸️ /pause
+   📝 PAUSAR TAREFA EM EXECUÇÃO
+   • Interrompe análises que estão demorando muito
+   • Libera o bot para receber novos comandos
+   • Especialmente útil para timeframes menores com CCXT
+   • Use quando o bot não responder por mais de 1 minuto
+
 📈 /topos_fundos [lista/ativos]
    📝 DETECÇÃO DE TOPOS E FUNDOS
    • Identifica possíveis pontos de reversão
@@ -1802,6 +1933,8 @@ def help_command(message):
    ⚠️ Configuração: Timeframe 1d fixo, 2 anos de dados
 
 📊 /status - Ver status do bot
+
+⏸️ /pause - Pausar tarefa em execução
 
 🔄 /restart - Reiniciar o bot (em caso de problemas)
 
@@ -2029,6 +2162,7 @@ def run_bot():
                     telebot.types.BotCommand("topos_fundos", "Detectar topos e fundos"),
                     telebot.types.BotCommand("list_alerts", "Ver alertas ativos"),
                     telebot.types.BotCommand("stop_alerts", "Parar alertas automáticos"),
+                    telebot.types.BotCommand("pause", "Pausar tarefa em execução"),
                     telebot.types.BotCommand("status", "Ver status do bot"),
                     telebot.types.BotCommand("restart", "Reiniciar o bot"),
                     telebot.types.BotCommand("help", "Ajuda com comandos")
