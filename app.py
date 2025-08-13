@@ -19,7 +19,7 @@ def get_historical_klines_ccxt(symbol, interval, limit=1000):
     """
     try:
         # Configuração da exchange
-        exchange = ccxt.binance({'enableRateLimit': True})
+        exchange = ccxt.binanceus({'enableRateLimit': True})
         
         # Converter símbolo para formato CCXT
         # Aceitar formatos: BTC-USD, BTCUSD, BTC/USDT, etc.
