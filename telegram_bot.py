@@ -847,28 +847,45 @@ def start_command(message):
 
 📊 FUNCIONALIDADES PRINCIPAIS:
 • Análise individual de ativos com gráficos
-• Screening automático de múltiplos ativos
+• Screening pontual de múltiplos ativos
+• Alertas automáticos personalizáveis
 • Detecção de topos e fundos
-• Alertas em tempo real de mudanças de estado
 • Suporte a múltiplas estratégias de trading
 
-🎯 COMANDOS DISPONÍVEIS:
-/analise [estrategia] [ativo] [timeframe] - Análise completa com gráfico
-/screening [estrategia] [ativos] - Screening de múltiplos ativos
-/topos_fundos [ativos] - Detectar oportunidades de reversão
-/status - Verificar status do bot
-/help - Ajuda detalhada
+🎯 COMANDOS PRINCIPAIS:
+/analise - 📊 Análise completa com gráfico de um ativo
+/screening - 🔍 Verificação instantânea de múltiplos ativos
+/screening_auto - 🔔 Alertas automáticos configuráveis
+/topos_fundos - 📈 Detectar oportunidades de reversão
+
+🔔 NOVIDADE: ALERTAS AUTOMÁTICOS!
+Use /screening_auto para receber alertas automáticos quando seus ativos mudarem de estado!
+
+Exemplo: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
+
+🛠️ COMANDOS DE GESTÃO:
+/list_alerts - Ver seus alertas ativos
+/stop_alerts - Parar alertas automáticos
+/status - Status do bot
+/help - Ajuda completa
 
 📈 ESTRATÉGIAS:
 • agressiva - Mais sinais, maior frequência
 • balanceada - Equilíbrio ideal (recomendada)
 • conservadora - Sinais mais confiáveis
 
-⏰ TIMEFRAMES SUPORTADOS:
-1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+🤖 MODELOS:
+• ovelha - Modelo clássico
+• ovelha2 - Machine Learning avançado
 
-🚀 EXEMPLO DE USO:
-/analise balanceada PETR4.SA 1d
+⏰ FONTES DE DADOS:
+• ccxt - Binance (ideal para criptos)
+• yahoo - Yahoo Finance (ações, forex, commodities)
+
+🚀 EXEMPLOS RÁPIDOS:
+• Análise: /analise balanceada PETR4.SA 1d
+• Screening: /screening balanceada açõesBR
+• Alertas: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
 
 Comece agora mesmo digitando um comando!"""
 
@@ -1680,27 +1697,67 @@ def help_command(message):
 🏠 /start - Iniciar o bot
 
 📊 /analise [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
-   Exemplo: /analise balanceada PETR4.SA 1d
-   Com modelo: /analise balanceada PETR4.SA 1d ovelha2
+   📝 ANÁLISE INDIVIDUAL COM GRÁFICO
+   • Gera gráfico completo do ativo escolhido
+   • Mostra sinais de compra/venda em tempo real
+   • Suporte a múltiplos timeframes e estratégias
+   
+   Exemplo básico: /analise balanceada PETR4.SA 1d
+   Com modelo ML: /analise balanceada PETR4.SA 1d ovelha2
    Com datas: /analise balanceada PETR4.SA 1d ovelha 2024-01-01 2024-06-01
-   ⚠️ Timeframes personalizáveis: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+   ⚠️ Timeframes: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
 
 🔍 /screening [estrategia] [lista/ativos]
+   📝 SCREENING PONTUAL DE MÚLTIPLOS ATIVOS
+   • Verifica mudanças de estado em vários ativos
+   • Detecta oportunidades de compra/venda
+   • Análise instantânea de listas ou ativos individuais
+   
    Com lista: /screening balanceada açõesBR
-   Individual: /screening balanceada BTC-USD ETH-USD
-   ⚠️ Timeframe fixo: 1d | Período fixo: 2 anos
+   Individual: /screening balanceada BTC-USD ETH-USD PETR4.SA
+   ⚠️ Configuração: Timeframe 1d fixo, 2 anos de dados
 
 🔄 /screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
-   Exemplo: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
-   ⚠️ Alertas automáticos no intervalo escolhido
+   📝 ALERTAS AUTOMÁTICOS DE SCREENING
+   • Monitora até 10 símbolos automaticamente
+   • Envia alertas quando detecta mudanças de estado
+   • Funciona no intervalo de tempo escolhido
+   • Suporte a CCXT (Binance) e Yahoo Finance
+   
+   Exemplo: /screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT] ovelha2 balanceada 4h
+   
+   📊 Fontes:
+   • ccxt - Binance via CCXT (melhor para criptos)
+   • yahoo - Yahoo Finance (ações, forex, commodities)
+   
+   ⏰ Timeframes: 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d
+   
+   📱 Formato dos símbolos:
+   • CCXT: BTC/USDT, ETH/USDT, ADA/USDT
+   • Yahoo: PETR4.SA, AAPL, BTC-USD
 
-🛑 /stop_alerts - Parar alertas automáticos
-📋 /list_alerts - Ver alertas ativos
+📋 /list_alerts
+   📝 VER ALERTAS ATIVOS
+   • Mostra configuração atual dos alertas
+   • Lista símbolos monitorados
+   • Exibe estratégia, modelo e timeframe configurados
+   • Próximo horário de verificação
+
+🛑 /stop_alerts
+   📝 PARAR ALERTAS AUTOMÁTICOS
+   • Interrompe todos os alertas configurados
+   • Para o monitoramento automático
+   • Limpa configurações de alerta
 
 📈 /topos_fundos [lista/ativos]
+   📝 DETECÇÃO DE TOPOS E FUNDOS
+   • Identifica possíveis pontos de reversão
+   • Usa Bollinger Bands para análise
+   • Detecta oportunidades de compra e venda
+   
    Com lista: /topos_fundos açõesEUA
    Individual: /topos_fundos PETR4.SA VALE3.SA
-   ⚠️ Timeframe fixo: 1d | Período fixo: 2 anos
+   ⚠️ Configuração: Timeframe 1d fixo, 2 anos de dados
 
 📊 /status - Ver status do bot
 
@@ -1709,31 +1766,32 @@ def help_command(message):
 ❓ /help - Esta mensagem de ajuda
 
 🎯 ESTRATÉGIAS:
-• agressiva - Mais sinais
-• balanceada - Equilibrada
-• conservadora - Mais confiável
+• agressiva - Mais sinais, maior frequência de trading
+• balanceada - Equilibrio entre sinais e confiabilidade (recomendada)
+• conservadora - Sinais mais confiáveis, menor frequência
 
 🤖 MODELOS:
-• ovelha - Modelo clássico (padrão)
-• ovelha2 - Machine Learning (Random Forest)
+• ovelha - Modelo clássico baseado em médias móveis e RSI
+• ovelha2 - Machine Learning com Random Forest (mais avançado)
 
 📊 LISTAS PRÉ-DEFINIDAS:
-• açõesBR - Ações brasileiras (126 ativos)
-• açõesEUA - Ações americanas (100+ ativos)
-• criptos - Criptomoedas principais (20 ativos)
-• forex - Pares de moedas (8 pares)
-• commodities - Commodities (10 ativos)
+• açõesBR - 126 ações brasileiras principais (B3)
+• açõesEUA - 100+ ações americanas (NYSE/NASDAQ)
+• criptos - 20 criptomoedas principais
+• forex - 8 pares de moedas principais
+• commodities - 10 commodities principais
 
-⏰ TIMEFRAMES:
+⏰ TIMEFRAMES POR COMANDO:
 • /analise: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk (personalizável)
-• /screening: 1d (fixo) - 2 anos de dados
-• /topos_fundos: 1d (fixo) - 2 anos de dados
+• /screening: 1d fixo, 2 anos de dados históricos
+• /screening_auto: 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d
+• /topos_fundos: 1d fixo, 2 anos de dados históricos
 
-💡 EXEMPLOS:
-• /screening balanceada açõesBR
-• /topos_fundos criptos
-• /analise agressiva NVDA 4h
-• /analise balanceada PETR4.SA 1d ovelha2"""
+💡 EXEMPLOS PRÁTICOS:
+• Análise rápida: /analise balanceada PETR4.SA 1d
+• Screening geral: /screening balanceada açõesBR
+• Alerta de criptos: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
+• Detectar reversões: /topos_fundos criptos"""
         bot.reply_to(message, help_message)
     except Exception as e:
         logger.error(f"Erro no comando /help: {str(e)}")
@@ -1902,7 +1960,10 @@ def run_bot():
                 telebot.types.BotCommand("start", "Iniciar o bot"),
                 telebot.types.BotCommand("analise", "Análise individual com gráfico"),
                 telebot.types.BotCommand("screening", "Screening de múltiplos ativos"),
+                telebot.types.BotCommand("screening_auto", "Alertas automáticos de screening"),
                 telebot.types.BotCommand("topos_fundos", "Detectar topos e fundos"),
+                telebot.types.BotCommand("list_alerts", "Ver alertas ativos"),
+                telebot.types.BotCommand("stop_alerts", "Parar alertas automáticos"),
                 telebot.types.BotCommand("status", "Ver status do bot"),
                 telebot.types.BotCommand("restart", "Reiniciar o bot"),
                 telebot.types.BotCommand("help", "Ajuda com comandos")
