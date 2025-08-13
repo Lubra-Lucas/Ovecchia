@@ -28,11 +28,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Bot token
-BOT_TOKEN = "8487471783:AAElQBvIhVcbtVmEoPEdnuafMUR4mwGJh1k"
+# Bot token - usar variável de ambiente para segurança
+import os
+BOT_TOKEN = os.environ.get('BOT_TOKEN', "8487471783:AAElQBvIhVcbtVmEoPEdnuafMUR4mwGJh1k")
 
-# Initialize bot
-bot = telebot.TeleBot(BOT_TOKEN)
+# Initialize bot with error handling
+try:
+    bot = telebot.TeleBot(BOT_TOKEN)
+    logger.info("🤖 Bot do Telegram inicializado com sucesso")
+except Exception as e:
+    logger.error(f"❌ Erro ao inicializar bot do Telegram: {str(e)}")
+    raise
 
 # Funções auxiliares para tolerância a erros
 def normalize_text(text):
@@ -842,9 +848,11 @@ trading_bot = OvecchiaTradingBot()
 @bot.message_handler(commands=['start'])
 def start_command(message):
     try:
-        user_name = message.from_user.first_name
+        user_name = message.from_user.first_name or "Usuário"
         user_id = message.from_user.id
-        logger.info(f"Comando /start recebido de {user_name} (ID: {user_id})")
+        chat_id = message.chat.id
+        logger.info(f"✅ Comando /start recebido de {user_name} (ID: {user_id}, Chat: {chat_id})")
+        print(f"📱 Novo usuário: {user_name} iniciou o bot")
 
         welcome_message = """🤖 Bem-vindo ao OVECCHIA TRADING BOT!
 
@@ -1835,10 +1843,13 @@ def help_command(message):
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     try:
-        user_message = message.text
-        user_name = message.from_user.first_name
+        user_message = message.text or ""
+        user_name = message.from_user.first_name or "Usuário"
+        user_id = message.from_user.id
+        chat_id = message.chat.id
 
-        logger.info(f"Mensagem recebida de {user_name}: {user_message}")
+        logger.info(f"📨 Mensagem de {user_name} (ID: {user_id}): {user_message}")
+        print(f"📨 {user_name}: {user_message}")
 
         # Tentar identificar comando com fuzzy matching
         parsed = parse_flexible_command(user_message)
@@ -1980,10 +1991,28 @@ def run_scheduler():
             logger.error(f"Erro no scheduler: {str(e)}")
             time.sleep(60)
 
+def test_bot_connection():
+    """Testa a conexão com a API do Telegram"""
+    try:
+        bot_info = bot.get_me()
+        logger.info(f"✅ Conexão com Telegram OK - Bot: @{bot_info.username}")
+        print(f"✅ Bot conectado: @{bot_info.username}")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Falha na conexão com Telegram: {str(e)}")
+        print(f"❌ Falha na conexão: {str(e)}")
+        return False
+
 def run_bot():
     """Função para rodar o bot"""
-    max_retries = 3
+    max_retries = 5
     retry_count = 0
+
+    # Teste inicial de conectividade
+    if not test_bot_connection():
+        logger.error("❌ Não foi possível conectar ao Telegram. Verificue o token.")
+        print("❌ Erro de conectividade. Bot não será iniciado.")
+        return
 
     while retry_count < max_retries:
         try:
@@ -1991,29 +2020,55 @@ def run_bot():
             print("🤖 OVECCHIA TRADING BOT ONLINE!")
 
             # Configurar comandos do bot
-            bot.set_my_commands([
-                telebot.types.BotCommand("start", "Iniciar o bot"),
-                telebot.types.BotCommand("analise", "Análise individual com gráfico"),
-                telebot.types.BotCommand("screening", "Screening de múltiplos ativos"),
-                telebot.types.BotCommand("screening_auto", "Alertas automáticos de screening"),
-                telebot.types.BotCommand("topos_fundos", "Detectar topos e fundos"),
-                telebot.types.BotCommand("list_alerts", "Ver alertas ativos"),
-                telebot.types.BotCommand("stop_alerts", "Parar alertas automáticos"),
-                telebot.types.BotCommand("status", "Ver status do bot"),
-                telebot.types.BotCommand("restart", "Reiniciar o bot"),
-                telebot.types.BotCommand("help", "Ajuda com comandos")
-            ])
-
-            logger.info("🤖 Bot iniciado com sucesso!")
+            try:
+                bot.set_my_commands([
+                    telebot.types.BotCommand("start", "Iniciar o bot"),
+                    telebot.types.BotCommand("analise", "Análise individual com gráfico"),
+                    telebot.types.BotCommand("screening", "Screening de múltiplos ativos"),
+                    telebot.types.BotCommand("screening_auto", "Alertas automáticos de screening"),
+                    telebot.types.BotCommand("topos_fundos", "Detectar topos e fundos"),
+                    telebot.types.BotCommand("list_alerts", "Ver alertas ativos"),
+                    telebot.types.BotCommand("stop_alerts", "Parar alertas automáticos"),
+                    telebot.types.BotCommand("status", "Ver status do bot"),
+                    telebot.types.BotCommand("restart", "Reiniciar o bot"),
+                    telebot.types.BotCommand("help", "Ajuda com comandos")
+                ])
+                logger.info("✅ Comandos do bot configurados")
+            except Exception as e:
+                logger.warning(f"⚠️ Erro ao configurar comandos: {str(e)}")
 
             # Iniciar thread do scheduler
             scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
             scheduler_thread.start()
             logger.info("🔄 Scheduler de alertas iniciado")
 
-            # Rodar o bot
-            bot.polling(none_stop=True, interval=2, timeout=30)
+            logger.info("🤖 Bot iniciado com sucesso! Aguardando mensagens...")
+            print("🤖 Bot funcionando! Aguardando comandos...")
 
+            # Rodar o bot com configurações otimizadas
+            bot.polling(
+                none_stop=True, 
+                interval=1,           # Verificar mensagens a cada 1 segundo
+                timeout=20,           # Timeout de 20 segundos
+                allowed_updates=None, # Aceitar todos os tipos de update
+                skip_pending=True     # Pular mensagens pendentes antigas
+            )
+
+        except telebot.apihelper.ApiException as e:
+            logger.error(f"Erro da API do Telegram: {str(e)}")
+            print(f"❌ Erro da API Telegram: {str(e)}")
+            
+            if "Unauthorized" in str(e) or "token" in str(e).lower():
+                logger.error("❌ Token inválido ou expirado!")
+                print("❌ ERRO CRÍTICO: Token do bot inválido!")
+                break
+                
+            retry_count += 1
+            if retry_count < max_retries:
+                wait_time = 10 * retry_count
+                logger.info(f"🔄 Tentando novamente em {wait_time} segundos...")
+                time.sleep(wait_time)
+            
         except Exception as e:
             retry_count += 1
             logger.error(f"Erro crítico no bot (tentativa {retry_count}/{max_retries}): {str(e)}")
@@ -2025,6 +2080,7 @@ def run_bot():
                 time.sleep(wait_time)
             else:
                 logger.error("🛑 Máximo de tentativas excedido. Bot será encerrado.")
+                print("🛑 Bot será encerrado após múltiplas falhas.")
                 break
 
 if __name__ == '__main__':
