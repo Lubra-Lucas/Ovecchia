@@ -807,7 +807,9 @@ class OvecchiaTradingBot:
 
             # Salvar gráfico
             temp_dir = tempfile.gettempdir()
-            chart_filename = f"chart_{symbol.replace('.', '_').replace('-', '_')}_{int(datetime.now().timestamp())}.png"
+            # Sanitizar nome do arquivo removendo caracteres especiais
+            safe_symbol = symbol.replace('/', '_').replace('.', '_').replace('-', '_').replace('\\', '_').replace(':', '_')
+            chart_filename = f"chart_{safe_symbol}_{int(datetime.now().timestamp())}.png"
             chart_path = os.path.join(temp_dir, chart_filename)
 
             plt.savefig(chart_path, dpi=150, bbox_inches='tight', facecolor='white')
