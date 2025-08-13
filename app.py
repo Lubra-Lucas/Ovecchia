@@ -21,8 +21,24 @@ def get_historical_klines_ccxt(symbol, interval, limit=1000):
         # Configuração da exchange
         exchange = ccxt.binance({'enableRateLimit': True})
         
-        # Converter símbolo para formato CCXT (BTC-USD -> BTC/USDT)
-        ccxt_symbol = symbol.replace('-USD', '/USDT').replace('-USDT', '/USDT')
+        # Converter símbolo para formato CCXT
+        # Aceitar formatos: BTC-USD, BTCUSD, BTC/USDT, etc.
+        symbol_upper = symbol.upper()
+        
+        # Remover caracteres especiais e normalizar
+        if '-USD' in symbol_upper:
+            base = symbol_upper.replace('-USD', '')
+            ccxt_symbol = f"{base}/USDT"
+        elif 'USD' in symbol_upper and not symbol_upper.endswith('T'):
+            # Para casos como BTCUSD
+            base = symbol_upper.replace('USD', '')
+            ccxt_symbol = f"{base}/USDT"
+        elif '/' in symbol_upper:
+            # Já está no formato correto
+            ccxt_symbol = symbol_upper
+        else:
+            # Assumir que é uma base e adicionar /USDT
+            ccxt_symbol = f"{symbol_upper}/USDT"
         
         # Coletar dados OHLCV
         ohlcv = exchange.fetch_ohlcv(ccxt_symbol, timeframe=interval, limit=limit)
@@ -54,11 +70,6 @@ def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yaho
     try:
         if source == "CCXT (Binance)":
             try:
-                # Verificar se é criptomoeda (contém -USD ou -USDT)
-                if not any(suffix in symbol.upper() for suffix in ['-USD', '-USDT']):
-                    st.error(f"CCXT só suporta criptomoedas. {symbol} não é uma criptomoeda válida.")
-                    return pd.DataFrame()
-
                 # Mapear intervalos para CCXT
                 ccxt_interval_map = {
                     "1m": "1m", "3m": "3m", "5m": "5m", "15m": "15m", "30m": "30m",
@@ -1009,14 +1020,23 @@ with tab3:
         ).strip()
 
         st.markdown("#### 📅 Intervalo de Data")
-        default_end = datetime.now().date()
-        default_start = default_end - timedelta(days=365)
+        
+        if data_source == "CCXT (Binance)":
+            st.info("📅 **CCXT**: Usa automaticamente os últimos 1000 candles (período fixo)")
+            # Definir datas padrão para compatibilidade, mas não mostrar controles
+            default_end = datetime.now().date()
+            default_start = default_end - timedelta(days=365)
+            start_date = default_start
+            end_date = default_end
+        else:
+            default_end = datetime.now().date()
+            default_start = default_end - timedelta(days=365)
 
-        col_date1, col_date2 = st.columns(2)
-        with col_date1:
-            start_date = st.date_input("Data Inicial", value=default_start, max_value=default_end)
-        with col_date2:
-            end_date = st.date_input("Data Final", value=default_end, min_value=start_date, max_value=default_end)
+            col_date1, col_date2 = st.columns(2)
+            with col_date1:
+                start_date = st.date_input("Data Inicial", value=default_start, max_value=default_end)
+            with col_date2:
+                end_date = st.date_input("Data Final", value=default_end, min_value=start_date, max_value=default_end)
 
         st.markdown("#### ⏱️ Intervalo de Tempo")
         interval_options = {
