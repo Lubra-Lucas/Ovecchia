@@ -303,7 +303,7 @@ def calculate_ovelha_v2_signals(
         df_work['buffer_pct'] = b * (df_work['ATR'] / df_work['close'])  # ou b * df_work['atr_norm']
 
         # (opcional) limitar extremos
-        df_work['buffer_pct'] = df_work['buffer_pct'].clip(lower=0.0002, upper=0.005)  # 0.02% a 0.5%
+        df_work['buffer_pct'] = df_work['buffer_pct'].clip(lower=0.0002, upper=0.015)  # 0.02% a 0.5%
 
         # =======================
         # LABEL (y) COM THRESHOLD
@@ -332,7 +332,7 @@ def calculate_ovelha_v2_signals(
         y = df_work.loc[mask_feat, 'y']
 
         # Verificar se temos dados suficientes para treinar
-        if len(X) < 50:
+        if len(X) < 200:
             st.warning("⚠️ Dados insuficientes para treinar o modelo OVELHA V2. Usando modelo clássico.")
             return None
 
