@@ -9,10 +9,14 @@ import warnings
 from sklearn.ensemble import RandomForestClassifier
 import requests
 import ccxt
+import logging # Import logging module
 
-warnings.filterwarnings('ignore')
+# Configure basic logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Função para puxar dados históricos usando CCXT
+
+# Function to pull historical data using CCXT
 def get_historical_klines_ccxt(symbol, interval, limit=1000):
     """
     Puxa dados históricos de candles usando CCXT da Binance.
@@ -20,11 +24,11 @@ def get_historical_klines_ccxt(symbol, interval, limit=1000):
     try:
         # Configuração da exchange
         exchange = ccxt.binanceus({'enableRateLimit': True})
-        
+
         # Converter símbolo para formato CCXT
         # Aceitar formatos: BTC-USD, BTCUSD, BTC/USDT, etc.
         symbol_upper = symbol.upper()
-        
+
         # Remover caracteres especiais e normalizar
         if '-USD' in symbol_upper:
             base = symbol_upper.replace('-USD', '')
@@ -39,27 +43,27 @@ def get_historical_klines_ccxt(symbol, interval, limit=1000):
         else:
             # Assumir que é uma base e adicionar /USDT
             ccxt_symbol = f"{symbol_upper}/USDT"
-        
+
         # Coletar dados OHLCV
         ohlcv = exchange.fetch_ohlcv(ccxt_symbol, timeframe=interval, limit=limit)
-        
+
         if not ohlcv:
             return pd.DataFrame()
-            
+
         # Criar DataFrame
         df = pd.DataFrame(ohlcv, columns=['time', 'open', 'high', 'low', 'close', 'volume'])
-        
+
         # Converter timestamp para datetime
         df['time'] = pd.to_datetime(df['time'], unit='ms')
-        
+
         # Garantir que os tipos numéricos estão corretos
         df[["open", "high", "low", "close", "volume"]] = df[["open", "high", "low", "close", "volume"]].astype(float)
-        
+
         # Ordenar por tempo
         df = df.sort_values("time")
-        
+
         return df
-        
+
     except Exception as e:
         raise Exception(f"Erro ao buscar dados via CCXT para {symbol}: {e}")
 
@@ -118,7 +122,7 @@ def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yaho
         if source == "TwelveData":
             # Para TwelveData, usar diretamente a função específica
             return get_twelvedata_data(symbol, interval)
-        
+
         elif source == "CCXT (Binance)":
             try:
                 # Mapear intervalos para CCXT
@@ -127,7 +131,7 @@ def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yaho
                     "1h": "1h", "2h": "2h", "4h": "4h", "6h": "6h", "8h": "8h", "12h": "12h",
                     "1d": "1d", "3d": "3d", "1w": "1w", "1M": "1M"
                 }
-                
+
                 if interval in ccxt_interval_map:
                     ccxt_interval = ccxt_interval_map[interval]
                 else:
@@ -136,13 +140,13 @@ def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yaho
 
                 # Usar sempre 1000 candles (máximo recomendado)
                 df = get_historical_klines_ccxt(symbol, ccxt_interval, 1000)
-                
+
                 # Adicionar informação sobre o período real baseado no timeframe
                 if not df.empty:
                     start_time = df['time'].iloc[0]
                     end_time = df['time'].iloc[-1]
                     st.info(f"📅 CCXT coletou {len(df)} candles de {start_time.strftime('%Y-%m-%d %H:%M')} até {end_time.strftime('%Y-%m-%d %H:%M')}")
-                
+
                 return df
 
             except Exception as e:
@@ -192,19 +196,61 @@ def calcular_bollinger_bands(df, period=20):
     banda_inferior = sma - (2 * std)
     return banda_superior, banda_inferior
 
-def calculate_ovelha_v2_signals(df, sma_short=60, sma_long=70, lookahead=3, threshold=0.002, buffer=0.0015):
-    """Função para calcular sinais usando o modelo OVELHA V2 com Random Forest"""
+def calculate_ovelha_v2_signals(
+    df,
+    strategy_type="Balanceado",
+    sma_short=60,
+    sma_long=70,
+    lookahead=3,
+    # ----- THRESHOLD -----
+    use_dynamic_threshold=True,
+    vol_factor=0.5,          # multiplicador do ATR_rel (ATR/close) para o threshold adaptativo
+    threshold_fixed=0.0003,  # fallback caso use_dynamic_threshold=False
+    # ----- RF -----
+    n_estimators=200,
+    max_depth=None,
+    class_weight='balanced',   # ajuda no desbalanceamento das classes
+    random_state=42
+):
+    """
+    Função para calcular sinais usando o modelo OVELHA V2 com Random Forest (Versão Aprimorada)
+
+    Nova versão com:
+    - Novas features: ATR_7, stddev_20, slope_SMA_long, MACD_hist
+    - Threshold dinâmico baseado na volatilidade
+    - Buffer adaptativo automático
+    - Random Forest com balanceamento de classes
+
+    Retorna um DataFrame com colunas:
+      - Features: RSI_14, RSL_20, ATR, ATR_7, stddev_20, slope_SMA_long, MACD_hist, ret_1, accel, decel, atr_norm
+      - y (triclass: -1/0/1), y_bin (±1 ou NaN quando y=0)
+      - thr_used (threshold por barra), future_ret
+      - Signal_model (previsão RF em triclass), Signal_model_bin (±1 ou NaN)
+      - Signal (após filtro/histerese), Estado (persistência)
+    """
     try:
-        # Fazer uma cópia para não alterar o DataFrame original
+        if df.empty:
+            return df
+
+        # Definir parâmetros baseado na estratégia
+        if strategy_type == "Agressivo":
+            sma_short = 10
+            sma_long = 21
+        elif strategy_type == "Conservador":
+            sma_short = 140
+            sma_long = 200
+        else:  # Balanceado
+            sma_short = 60
+            sma_long = 70
+
         df_work = df.copy()
 
         # =======================
         # CÁLCULO DAS FEATURES
         # =======================
-        # SMAs
         df_work[f'SMA_{sma_short}'] = df_work['close'].rolling(window=sma_short).mean()
-        df_work[f'SMA_{sma_long}'] = df_work['close'].rolling(window=sma_long).mean()
-        df_work['SMA_20'] = df_work['close'].rolling(window=20).mean()
+        df_work[f'SMA_{sma_long}']  = df_work['close'].rolling(window=sma_long).mean()
+        df_work['SMA_20']           = df_work['close'].rolling(window=20).mean()
 
         # RSI(14)
         delta = df_work['close'].diff()
@@ -214,94 +260,128 @@ def calculate_ovelha_v2_signals(df, sma_short=60, sma_long=70, lookahead=3, thre
         avg_loss = pd.Series(loss).rolling(window=14, min_periods=14).mean()
         rs = avg_gain / avg_loss.replace(0, np.nan)
         df_work['RSI_14'] = 100 - (100 / (1 + rs))
-        df_work['RSI_14'] = df_work['RSI_14'].fillna(method='bfill')
+        df_work['RSI_14'] = df_work['RSI_14'].bfill()
 
         # RSL(20)
         df_work['RSL_20'] = df_work['close'] / df_work['SMA_20']
 
-        # ATR(14)
+        # ATR base (14)
         df_work['prior_close'] = df_work['close'].shift(1)
         df_work['tr1'] = df_work['high'] - df_work['low']
         df_work['tr2'] = (df_work['high'] - df_work['prior_close']).abs()
         df_work['tr3'] = (df_work['low'] - df_work['prior_close']).abs()
-        df_work['TR'] = df_work[['tr1', 'tr2', 'tr3']].max(axis=1)
+        df_work['TR']  = df_work[['tr1', 'tr2', 'tr3']].max(axis=1)
         df_work['ATR'] = df_work['TR'].rolling(window=14).mean()
 
-        # Retorno, aceleração e volatilidade intrínseca
-        df_work['ret_1'] = df_work['close'].pct_change()
-        df_work['accel'] = df_work['ret_1'].diff()
-        df_work['decel'] = -df_work['accel']
+        # 🔹 NOVAS FEATURES
+        # ATR_7 (volatilidade recente, mais sensível)
+        df_work['ATR_7'] = df_work['TR'].rolling(window=7).mean()
+
+        # Desvio padrão 20 dos retornos (ruído/aleatoriedade relativa)
+        df_work['ret_1']     = df_work['close'].pct_change()
+        df_work['stddev_20'] = df_work['ret_1'].rolling(window=20).std()
+
+        # Slope da SMA longa (tendência/regime) - aprox. simples em janela 20
+        _slope_w = 20
+        sma_l = df_work[f'SMA_{sma_long}']
+        df_work['slope_SMA_long'] = ((sma_l / sma_l.shift(_slope_w)) - 1) / _slope_w
+
+        # MACD hist (12,26,9)
+        ema12   = df_work['close'].ewm(span=12, adjust=False).mean()
+        ema26   = df_work['close'].ewm(span=26, adjust=False).mean()
+        macd    = ema12 - ema26
+        signal  = macd.ewm(span=9, adjust=False).mean()
+        df_work['MACD_hist'] = macd - signal
+
+        # Derivadas e normalizações já existentes
+        df_work['accel']    = df_work['ret_1'].diff()
+        df_work['decel']    = -df_work['accel']
         df_work['atr_norm'] = df_work['ATR'] / df_work['close']
 
-        # =======================
-        # CRIAÇÃO DO TARGET Y
-        # =======================
-        df_work['future_ret'] = df_work['close'].shift(-lookahead) / df_work['close'] - 1
-        df_work['y'] = 0
-        df_work.loc[df_work['future_ret'] > threshold, 'y'] = 1
-        df_work.loc[df_work['future_ret'] < -threshold, 'y'] = -1
+        # ===== BUFFER ADAPTATIVO =====
+        b = 0.8  # multiplicador inicial (tune na otimização)
+        df_work['buffer_pct'] = b * (df_work['ATR'] / df_work['close'])  # ou b * df_work['atr_norm']
+
+        # (opcional) limitar extremos
+        df_work['buffer_pct'] = df_work['buffer_pct'].clip(lower=0.0002, upper=0.005)  # 0.02% a 0.5%
 
         # =======================
-        # TREINAMENTO DO MODELO
+        # LABEL (y) COM THRESHOLD
         # =======================
-        features = ['RSI_14', 'RSL_20', 'ATR', 'ret_1', 'accel', 'decel', 'atr_norm']
-        X = df_work[features].dropna()
-        y = df_work.loc[X.index, 'y']
+        df_work['future_ret'] = df_work['close'].shift(-lookahead) / df_work['close'] - 1
+
+        if use_dynamic_threshold:
+            # threshold adaptativo: vol_factor * (ATR / close)
+            df_work['thr_used'] = vol_factor * (df_work['ATR'] / df_work['close'])
+        else:
+            df_work['thr_used'] = float(threshold_fixed)
+
+        df_work['y'] = 0
+        df_work.loc[df_work['future_ret'] >  df_work['thr_used'], 'y'] =  1
+        df_work.loc[df_work['future_ret'] < -df_work['thr_used'], 'y'] = -1
+
+        # Versão binária (apenas onde há trade)
+        df_work['y_bin'] = df_work['y'].replace({0: np.nan})
+
+        # =======================
+        # TREINO RF (triclass)
+        # =======================
+        features = ['RSI_14', 'RSL_20', 'ATR', 'ATR_7', 'stddev_20', 'slope_SMA_long', 'MACD_hist', 'ret_1', 'accel', 'decel', 'atr_norm']
+        mask_feat = df_work[features].notna().all(axis=1) & df_work['y'].notna()
+        X = df_work.loc[mask_feat, features]
+        y = df_work.loc[mask_feat, 'y']
 
         # Verificar se temos dados suficientes para treinar
         if len(X) < 50:
             st.warning("⚠️ Dados insuficientes para treinar o modelo OVELHA V2. Usando modelo clássico.")
             return None
 
-        model = RandomForestClassifier(n_estimators=200, random_state=42)
-        model.fit(X, y)
+        rf = RandomForestClassifier(
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            class_weight=class_weight,
+            random_state=random_state,
+            n_jobs=-1
+        )
+        rf.fit(X, y)
 
-        # =======================
-        # PREVISÕES
-        # =======================
+        # Previsão (triclass)
         df_work['Signal_model'] = np.nan
-        df_work.loc[X.index, 'Signal_model'] = model.predict(X)
+        df_work.loc[mask_feat, 'Signal_model'] = rf.predict(X)
+
+        # Versão binária da previsão (apenas ±1; onde previu 0 vira NaN)
+        df_work['Signal_model_bin'] = df_work['Signal_model'].replace({0: np.nan})
 
         # =======================
-        # FILTRO DE TENDÊNCIA + HISTERESE
+        # FILTRO DE TENDÊNCIA + HISTERESE (com buffer adaptativo)
         # =======================
         df_work['Signal'] = 'Stay Out'
         for i in range(1, len(df_work)):
             prev_estado = df_work['Signal'].iloc[i-1]
-
             price = df_work['close'].iloc[i]
             sma_s = df_work[f'SMA_{sma_short}'].iloc[i]
             sma_l = df_work[f'SMA_{sma_long}'].iloc[i]
+            sm    = df_work['Signal_model'].iloc[i]
+            buf   = df_work['buffer_pct'].iloc[i]  # <-- buffer dinâmico
 
-            # BUY - com buffer para evitar falsos cruzamentos
-            if df_work['Signal_model'].iloc[i] == 1:
-                if price > sma_s * (1 + buffer) and price > sma_l * (1 + buffer):
-                    df_work.loc[df_work.index[i], 'Signal'] = 'Buy'
+            if sm == 1:
+                if price > sma_s * (1 + buf) and price > sma_l * (1 + buf):
+                    df_work.iat[i, df_work.columns.get_loc('Signal')] = 'Buy'
                 else:
-                    df_work.loc[df_work.index[i], 'Signal'] = prev_estado
-
-            # SELL - com buffer para evitar falsos cruzamentos
-            elif df_work['Signal_model'].iloc[i] == -1:
-                if price < sma_s * (1 - buffer):
-                    df_work.loc[df_work.index[i], 'Signal'] = 'Sell'
+                    df_work.iat[i, df_work.columns.get_loc('Signal')] = prev_estado
+            elif sm == -1:
+                if price < sma_s * (1 - buf):
+                    df_work.iat[i, df_work.columns.get_loc('Signal')] = 'Sell'
                 else:
-                    df_work.loc[df_work.index[i], 'Signal'] = prev_estado
+                    df_work.iat[i, df_work.columns.get_loc('Signal')] = prev_estado
             else:
-                df_work.loc[df_work.index[i], 'Signal'] = prev_estado
+                df_work.iat[i, df_work.columns.get_loc('Signal')] = prev_estado
 
-        # State persistence - aplicar sinal imediatamente
+        # Persistência de estado
         df_work['Estado'] = 'Stay Out'
-        for i in range(len(df_work)):
-            if i == 0:
-                continue
-
-            estado_anterior = df_work['Estado'].iloc[i - 1]
-            sinal_atual = df_work['Signal'].iloc[i]
-
-            if sinal_atual != 'Stay Out':
-                df_work.loc[df_work.index[i], 'Estado'] = sinal_atual
-            else:
-                df_work.loc[df_work.index[i], 'Estado'] = estado_anterior
+        for i in range(1, len(df_work)):
+            sig = df_work['Signal'].iloc[i]
+            df_work.iat[i, df_work.columns.get_loc('Estado')] = sig if sig != 'Stay Out' else df_work['Estado'].iloc[i-1]
 
         return df_work
 
@@ -622,7 +702,7 @@ with tab1:
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 🤖 Bot Telegram - Atualizações Recentes")
+    st.markdown("### 🤖 Bot Telegram -Atualizações Recentes")
     st.markdown("""
     <div class="metric-card" style="border-left: 4px solid #25D366;">
         <p><strong>🚀 Novas Funcionalidades do Bot @Ovecchia_bot</strong></p>
@@ -721,7 +801,7 @@ with tab2:
         st.write("• **Stop Loss 🛑**: Você define um preço limite de perda. Se o preço do ativo atingir este limite em relação ao preço de entrada, a operação é encerrada automaticamente. É um critério importante para gestão de risco eficiente.")
         st.write("• **Alvo Fixo 🎯**: Estabelece uma meta percentual de lucro e um limite percentual de perda. Ao alcançar qualquer um deles, a operação é encerrada.")
         st.write("• **Tempo ⏳**: A saída ocorre após um número fixo de candles desde a entrada. Este método garante operações mais curtas e disciplinadas, reduzindo riscos de exposição prolongada. Contudo, pode limitar ganhos em tendências mais duradouras.")
-        st.write("• **Média Móvel 📉**: Neste critério, a operação é encerrada sempre que o preço cruza uma média móvel previamente configurada. A ideia é que enquanto o ativo estiver em tendência favorável, o preço estará sempre de um lado da média móvel. Caso o preço volte a cruzá-la, isso pode indicar enfraquecimento da tendência, sendo prudente sair da operação.")
+        st.write("• **Média Móvel 📉**: Neste critério, a saída ocorre sempre que o preço cruza uma média móvel previamente configurada. A ideia é que enquanto o ativo estiver em tendência favorável, o preço estará sempre de um lado da média móvel. Caso o preço volte a cruzá-la, isso pode indicar enfraquecimento da tendência, sendo prudente sair da operação.")
 
         st.markdown("### 📌 Checkbox 'Sair por Mudança de Estado'")
         st.write("**🔄 Funcionalidade do Checkbox 'Sair por mudança de estado?'**")
@@ -889,7 +969,7 @@ with tab2:
         st.write("• **/analise** - Análise individual com gráfico personalizado")
         st.write("• **/screening** - Screening de múltiplos ativos")
         st.write("• **/topos_fundos** - Detectar topos e fundos")
-        st.write("• **/status** - Ver status atual do bot")
+        st.write("• **/status** - Ver status do bot")
         st.write("• **/restart** - Reiniciar o bot (em caso de problemas)")
         st.write("• **/help** - Ajuda detalhada com todos os comandos")
 
@@ -918,7 +998,7 @@ with tab2:
         st.write("**💡 Exemplos**")
         st.code("/screening balanceada BTC-USD ETH-USD")
         st.code("/screening agressiva PETR4.SA VALE3.SA ITUB4.SA")
-        st.code("/screening conservadora AAPL GOOGL MSFT")
+        st.code("/screening conservadora AAPL GOOGL")
 
         st.success("**📊 Resultado**: Lista mudanças de estado recentes nos ativos especificados")
 
@@ -1055,7 +1135,7 @@ with tab3:
     with col1:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
         st.markdown("#### 💹 Configuração de Ativo")
-        
+
         # Source selection for data
         data_source = st.selectbox(
             "Fonte de Dados",
@@ -1078,7 +1158,7 @@ with tab3:
             ).strip()
 
         st.markdown("#### 📅 Intervalo de Data")
-        
+
         if data_source == "CCXT (Binance)":
             st.info("📅 **CCXT**: Usa automaticamente os últimos 1000 candles (período fixo)")
             # Definir datas padrão para compatibilidade, mas não mostrar controles
@@ -1104,7 +1184,7 @@ with tab3:
                 end_date = st.date_input("Data Final", value=default_end, min_value=start_date, max_value=default_end)
 
         st.markdown("#### ⏱️ Intervalo de Tempo")
-        
+
         if data_source == "TwelveData":
             # Intervalos específicos para TwelveData
             interval_options = {
@@ -1293,16 +1373,17 @@ with tab3:
 
             # Escolher modelo baseado na seleção do usuário
             if model_type == "OVELHA V2 (Machine Learning)":
-                df_with_signals = calculate_ovelha_v2_signals(df, sma_short, sma_long, buffer=buffer_value)
+                # Pass the strategy_type and remove the now redundant buffer parameter
+                df_with_signals = calculate_ovelha_v2_signals(df, strategy_type=strategy_type, sma_short=sma_short, sma_long=sma_long, use_dynamic_threshold=True, vol_factor=0.5)
                 if df_with_signals is not None:
                     df = df_with_signals
-                    st.info(f"✅ Modelo OVELHA V2 (Random Forest) aplicado com sucesso! Buffer: {buffer_value*100:.2f}%")
+                    st.info(f"✅ Modelo OVELHA V2 (Random Forest) aplicado com sucesso!")
                 else:
                     # Fallback para modelo clássico se houver erro
                     model_type = "OVELHA (Clássico)"
                     st.warning("⚠️ Usando modelo clássico OVELHA como fallback.")
 
-            if model_type == "OVELHA (Clássico)":
+            if model_type == "OVELHA (Clássico)" or 'Estado' not in df.columns: # Ensure Estado column exists for OVELHA
                 # Signal generation - Modelo Original
                 df['Signal'] = 'Stay Out'
                 for i in range(1, len(df)):
@@ -1830,7 +1911,7 @@ with tab3:
                 with col3:
                     st.metric("Diferença", f"{comparison_df['Retorno Total (%)'].max() - comparison_df['Retorno Total (%)'].min():.2f}%")
             else:
-                st.success(f"✅ Análise completa para  {symbol_label} ({data_source})")
+                st.success(f"✅ Análise completa para {symbol_label} ({data_source})")
 
             # Current status display with improved layout
             modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
@@ -2105,7 +2186,7 @@ with tab4:
     st.info("ℹ️ **Screening Mode:** O screening focará apenas na detecção de mudanças de estado dos sinais.")
 
     # Parameters section
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([1, 1])
 
     with col1:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
@@ -2233,10 +2314,10 @@ with tab4:
 
         # Check if Binance US list is selected for flexible timeframe
         is_binance_us_selected = selected_preset == "Binance US (CCXT)"
-        
+
         if is_binance_us_selected:
             st.info("📅 **Período:** Automaticamente definido baseado no timeframe selecionado")
-            
+
             # Timeframe selection for Binance US
             st.markdown("#### ⏱️ Intervalo de Tempo")
             interval_options_binance = {
@@ -2260,18 +2341,14 @@ with tab4:
             # Fixed interval: 1 day
             interval_screening = "1d"
 
-        # Source selection for data (automatically set based on list)
-        if is_binance_us_selected:
-            data_source_screening = "CCXT (Binance)"
-            st.info("🔗 **Fonte automática:** CCXT (Binance) para lista Binance US")
-        else:
-            data_source_screening = st.selectbox(
-                "Fonte de Dados",
-                ["Yahoo Finance", "CCXT (Binance)"],
-                index=0,
-                help="Selecione a fonte dos dados de mercado para o screening. CCXT é recomendado para criptomoedas.",
-                key="source_screening"
-            )
+        # Source selection for data
+        data_source_screening = st.selectbox(
+            "Fonte de Dados",
+            ["Yahoo Finance", "CCXT (Binance)"],
+            index=0,
+            help="Selecione a fonte dos dados de mercado para o screening. CCXT é recomendado para criptomoedas.",
+            key="source_screening"
+        )
 
 
         # Strategy selection
@@ -2362,14 +2439,14 @@ with tab4:
 
                     # Escolher modelo baseado na seleção do usuário para screening
                     if model_type_screening == "OVELHA V2 (Machine Learning)":
-                        df_with_signals = calculate_ovelha_v2_signals(df_temp, sma_short_screening, sma_long_screening, buffer=buffer_value_screening)
+                        df_with_signals = calculate_ovelha_v2_signals(df_temp, strategy_type=strategy_type_screening, sma_short=sma_short_screening, sma_long=sma_long_screening, use_dynamic_threshold=True, vol_factor=0.5)
                         if df_with_signals is not None:
                             df_temp = df_with_signals
                         else:
                             # Fallback para modelo clássico se houver erro
                             model_type_screening_current = "OVELHA (Clássico)"
-                    
-                    if model_type_screening == "OVELHA (Clássico)" or 'Estado' not in df_temp.columns:
+
+                    if model_type_screening == "OVELHA (Clássico)" or 'Estado' not in df_temp.columns: # Ensure Estado column exists for OVELHA
                         # Calculate indicators (simplified for screening)
                         df_temp[f'SMA_{sma_short_screening}'] = df_temp['close'].rolling(window=sma_short_screening).mean()
                         df_temp[f'SMA_{sma_long_screening}'] = df_temp['close'].rolling(window=sma_long_screening).mean()
@@ -2625,7 +2702,7 @@ with tab5:
 
         # Fixed interval: 1 day
         interval_bb = "1d"
-        
+
         # Source selection for data
         data_source_bb = st.selectbox(
             "Fonte de Dados",
@@ -2861,10 +2938,10 @@ with tab6:
     with col1:
         st.markdown("#### 🚀 Primeiros Passos")
         st.markdown("""
-        **1. Adicione o bot:**
-        No Telegram, procure por **@Ovecchia_bot** e clique em "Iniciar"
+        <strong>1. Adicione o bot:</strong>
+        No Telegram, procure por <strong>@Ovecchia_bot</strong> e clique em "Iniciar"
 
-        **2. Comandos disponíveis:**
+        <strong>2. Comandos disponíveis:</strong>
         - `/start` - Iniciar o bot e ver boas-vindas
         - `/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]` - Análise individual com gráfico
         - `/screening [estrategia] [ativos]` - Screening de múltiplos ativos
@@ -2876,14 +2953,14 @@ with tab6:
     with col2:
         st.markdown("#### ⚙️ Configurações")
         st.markdown("""
-        **Estratégias disponíveis:**
-        - **🔥 agressiva:** Mais sinais, maior frequência
-        - **⚖️ balanceada:** Equilíbrio entre sinais e confiabilidade
-        - **🛡️ conservadora:** Sinais mais confiáveis, menor frequência
+        <strong>Estratégias disponíveis:</strong>
+        - <strong>🔥 agressiva:</strong> Mais sinais, maior frequência
+        - <strong>⚖️ balanceada:</strong> Equilíbrio entre sinais e confiabilidade
+        - <strong>🛡️ conservadora:</strong> Sinais mais confiáveis, menor frequência
 
-        **Timeframes suportados:** 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
-        **Período de dados:** Baseado no comando específico
-        **Datas personalizadas:** Formato YYYY-MM-DD (opcional)
+        <strong>Timeframes suportados:</strong> 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+        <strong>Período de dados:</strong> Baseado no comando específico
+        <strong>Datas personalizadas:</strong> Formato YYYY-MM-DD (opcional)
         """)
 
     # Bot status section

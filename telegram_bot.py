@@ -359,8 +359,32 @@ class OvecchiaTradingBot:
             logger.error(f"Erro geral ao coletar dados para {symbol}: {str(e)}")
             return pd.DataFrame()
 
-    def calculate_ovelha_v2_signals(self, df, strategy_type="Balanceado", sma_short=60, sma_long=70, lookahead=3, threshold=0.002, buffer=0.0015):
-        """Função para calcular sinais usando o modelo OVELHA V2 com Random Forest"""
+    def calculate_ovelha_v2_signals(
+        self,
+        df,
+        strategy_type="Balanceado",
+        sma_short=60,
+        sma_long=70,
+        lookahead=3,
+        # ----- THRESHOLD -----
+        use_dynamic_threshold=True,
+        vol_factor=0.5,          # multiplicador do ATR_rel (ATR/close) para o threshold adaptativo
+        threshold_fixed=0.0003,  # fallback caso use_dynamic_threshold=False
+        # ----- RF -----
+        n_estimators=200,
+        max_depth=None,
+        class_weight='balanced',   # ajuda no desbalanceamento das classes
+        random_state=42
+    ):
+        """
+        Função para calcular sinais usando o modelo OVELHA V2 com Random Forest (Versão Aprimorada)
+        
+        Nova versão com:
+        - Novas features: ATR_7, stddev_20, slope_SMA_long, MACD_hist
+        - Threshold dinâmico baseado na volatilidade
+        - Buffer adaptativo automático
+        - Random Forest com balanceamento de classes
+        """
         try:
             if df.empty:
                 return df
@@ -376,112 +400,147 @@ class OvecchiaTradingBot:
                 sma_short = 60
                 sma_long = 70
 
+            df_work = df.copy()
+
             # =======================
             # CÁLCULO DAS FEATURES
             # =======================
-            # SMAs
-            df[f'SMA_{sma_short}'] = df['close'].rolling(window=sma_short).mean()
-            df[f'SMA_{sma_long}'] = df['close'].rolling(window=sma_long).mean()
-            df['SMA_20'] = df['close'].rolling(window=20).mean()
+            df_work[f'SMA_{sma_short}'] = df_work['close'].rolling(window=sma_short).mean()
+            df_work[f'SMA_{sma_long}']  = df_work['close'].rolling(window=sma_long).mean()
+            df_work['SMA_20']           = df_work['close'].rolling(window=20).mean()
 
             # RSI(14)
-            delta = df['close'].diff()
+            delta = df_work['close'].diff()
             gain = np.where(delta > 0, delta, 0.0)
             loss = np.where(delta < 0, -delta, 0.0)
             avg_gain = pd.Series(gain).rolling(window=14, min_periods=14).mean()
             avg_loss = pd.Series(loss).rolling(window=14, min_periods=14).mean()
             rs = avg_gain / avg_loss.replace(0, np.nan)
-            df['RSI_14'] = 100 - (100 / (1 + rs))
-            df['RSI_14'] = df['RSI_14'].fillna(method='bfill')
+            df_work['RSI_14'] = 100 - (100 / (1 + rs))
+            df_work['RSI_14'] = df_work['RSI_14'].bfill()
 
             # RSL(20)
-            df['RSL_20'] = df['close'] / df['SMA_20']
+            df_work['RSL_20'] = df_work['close'] / df_work['SMA_20']
 
-            # ATR(14)
-            df['prior_close'] = df['close'].shift(1)
-            df['tr1'] = df['high'] - df['low']
-            df['tr2'] = (df['high'] - df['prior_close']).abs()
-            df['tr3'] = (df['low'] - df['prior_close']).abs()
-            df['TR'] = df[['tr1', 'tr2', 'tr3']].max(axis=1)
-            df['ATR'] = df['TR'].rolling(window=14).mean()
+            # ATR base (14)
+            df_work['prior_close'] = df_work['close'].shift(1)
+            df_work['tr1'] = df_work['high'] - df_work['low']
+            df_work['tr2'] = (df_work['high'] - df_work['prior_close']).abs()
+            df_work['tr3'] = (df_work['low'] - df_work['prior_close']).abs()
+            df_work['TR']  = df_work[['tr1', 'tr2', 'tr3']].max(axis=1)
+            df_work['ATR'] = df_work['TR'].rolling(window=14).mean()
 
-            # Retorno, aceleração e volatilidade intrínseca
-            df['ret_1'] = df['close'].pct_change()
-            df['accel'] = df['ret_1'].diff()
-            df['decel'] = -df['accel']
-            df['atr_norm'] = df['ATR'] / df['close']
+            # 🔹 NOVAS FEATURES
+            # ATR_7 (volatilidade recente, mais sensível)
+            df_work['ATR_7'] = df_work['TR'].rolling(window=7).mean()
+
+            # Desvio padrão 20 dos retornos (ruído/aleatoriedade relativa)
+            df_work['ret_1']     = df_work['close'].pct_change()
+            df_work['stddev_20'] = df_work['ret_1'].rolling(window=20).std()
+
+            # Slope da SMA longa (tendência/regime) - aprox. simples em janela 20
+            _slope_w = 20
+            sma_l = df_work[f'SMA_{sma_long}']
+            df_work['slope_SMA_long'] = ((sma_l / sma_l.shift(_slope_w)) - 1) / _slope_w
+
+            # MACD hist (12,26,9)
+            ema12   = df_work['close'].ewm(span=12, adjust=False).mean()
+            ema26   = df_work['close'].ewm(span=26, adjust=False).mean()
+            macd    = ema12 - ema26
+            signal  = macd.ewm(span=9, adjust=False).mean()
+            df_work['MACD_hist'] = macd - signal
+
+            # Derivadas e normalizações já existentes
+            df_work['accel']    = df_work['ret_1'].diff()
+            df_work['decel']    = -df_work['accel']
+            df_work['atr_norm'] = df_work['ATR'] / df_work['close']
+
+            # ===== BUFFER ADAPTATIVO =====
+            b = 0.8  # multiplicador inicial (tune na otimização)
+            df_work['buffer_pct'] = b * (df_work['ATR'] / df_work['close'])  # ou b * df_work['atr_norm']
+
+            # (opcional) limitar extremos
+            df_work['buffer_pct'] = df_work['buffer_pct'].clip(lower=0.0002, upper=0.005)  # 0.02% a 0.5%
 
             # =======================
-            # CRIAÇÃO DO TARGET Y
+            # LABEL (y) COM THRESHOLD
             # =======================
-            df['future_ret'] = df['close'].shift(-lookahead) / df['close'] - 1
-            df['y'] = 0
-            df.loc[df['future_ret'] > threshold, 'y'] = 1
-            df.loc[df['future_ret'] < -threshold, 'y'] = -1
+            df_work['future_ret'] = df_work['close'].shift(-lookahead) / df_work['close'] - 1
+
+            if use_dynamic_threshold:
+                # threshold adaptativo: vol_factor * (ATR / close)
+                df_work['thr_used'] = vol_factor * (df_work['ATR'] / df_work['close'])
+            else:
+                df_work['thr_used'] = float(threshold_fixed)
+
+            df_work['y'] = 0
+            df_work.loc[df_work['future_ret'] >  df_work['thr_used'], 'y'] =  1
+            df_work.loc[df_work['future_ret'] < -df_work['thr_used'], 'y'] = -1
+
+            # Versão binária (apenas onde há trade)
+            df_work['y_bin'] = df_work['y'].replace({0: np.nan})
 
             # =======================
-            # TREINAMENTO DO MODELO
+            # TREINO RF (triclass)
             # =======================
-            features = ['RSI_14', 'RSL_20', 'ATR', 'ret_1', 'accel', 'decel', 'atr_norm']
-            X = df[features].dropna()
-            y = df.loc[X.index, 'y']
+            features = ['RSI_14', 'RSL_20', 'ATR', 'ATR_7', 'stddev_20', 'slope_SMA_long', 'MACD_hist', 'ret_1', 'accel', 'decel', 'atr_norm']
+            mask_feat = df_work[features].notna().all(axis=1) & df_work['y'].notna()
+            X = df_work.loc[mask_feat, features]
+            y = df_work.loc[mask_feat, 'y']
 
             # Verificar se temos dados suficientes para treinar
             if len(X) < 50:
                 logger.warning("Dados insuficientes para OVELHA V2, usando modelo clássico")
                 return None
 
-            model = RandomForestClassifier(n_estimators=200, random_state=42)
-            model.fit(X, y)
+            rf = RandomForestClassifier(
+                n_estimators=n_estimators,
+                max_depth=max_depth,
+                class_weight=class_weight,
+                random_state=random_state,
+                n_jobs=-1
+            )
+            rf.fit(X, y)
+
+            # Previsão (triclass)
+            df_work['Signal_model'] = np.nan
+            df_work.loc[mask_feat, 'Signal_model'] = rf.predict(X)
+
+            # Versão binária da previsão (apenas ±1; onde previu 0 vira NaN)
+            df_work['Signal_model_bin'] = df_work['Signal_model'].replace({0: np.nan})
 
             # =======================
-            # PREVISÕES
+            # FILTRO DE TENDÊNCIA + HISTERESE (com buffer adaptativo)
             # =======================
-            df['Signal_model'] = np.nan
-            df.loc[X.index, 'Signal_model'] = model.predict(X)
+            df_work['Signal'] = 'Stay Out'
+            for i in range(1, len(df_work)):
+                prev_estado = df_work['Signal'].iloc[i-1]
+                price = df_work['close'].iloc[i]
+                sma_s = df_work[f'SMA_{sma_short}'].iloc[i]
+                sma_l = df_work[f'SMA_{sma_long}'].iloc[i]
+                sm    = df_work['Signal_model'].iloc[i]
+                buf   = df_work['buffer_pct'].iloc[i]  # <-- buffer dinâmico
 
-            # =======================
-            # FILTRO DE TENDÊNCIA + HISTERESE
-            # =======================
-            df['Signal'] = 'Stay Out'
-            for i in range(1, len(df)):
-                prev_estado = df['Signal'].iloc[i-1]
-
-                price = df['close'].iloc[i]
-                sma_s = df[f'SMA_{sma_short}'].iloc[i]
-                sma_l = df[f'SMA_{sma_long}'].iloc[i]
-
-                # BUY - com buffer para evitar falsos cruzamentos
-                if df['Signal_model'].iloc[i] == 1:
-                    if price > sma_s * (1 + buffer) and price > sma_l * (1 + buffer):
-                        df.loc[df.index[i], 'Signal'] = 'Buy'
+                if sm == 1:
+                    if price > sma_s * (1 + buf) and price > sma_l * (1 + buf):
+                        df_work.iat[i, df_work.columns.get_loc('Signal')] = 'Buy'
                     else:
-                        df.loc[df.index[i], 'Signal'] = prev_estado
-
-                # SELL - com buffer para evitar falsos cruzamentos
-                elif df['Signal_model'].iloc[i] == -1:
-                    if price < sma_s * (1 - buffer):
-                        df.loc[df.index[i], 'Signal'] = 'Sell'
+                        df_work.iat[i, df_work.columns.get_loc('Signal')] = prev_estado
+                elif sm == -1:
+                    if price < sma_s * (1 - buf):
+                        df_work.iat[i, df_work.columns.get_loc('Signal')] = 'Sell'
                     else:
-                        df.loc[df.index[i], 'Signal'] = prev_estado
+                        df_work.iat[i, df_work.columns.get_loc('Signal')] = prev_estado
                 else:
-                    df.loc[df.index[i], 'Signal'] = prev_estado
+                    df_work.iat[i, df_work.columns.get_loc('Signal')] = prev_estado
 
-            # State persistence
-            df['Estado'] = 'Stay Out'
-            for i in range(len(df)):
-                if i == 0:
-                    continue
+            # Persistência de estado
+            df_work['Estado'] = 'Stay Out'
+            for i in range(1, len(df_work)):
+                sig = df_work['Signal'].iloc[i]
+                df_work.iat[i, df_work.columns.get_loc('Estado')] = sig if sig != 'Stay Out' else df_work['Estado'].iloc[i-1]
 
-                estado_anterior = df['Estado'].iloc[i - 1]
-                sinal_atual = df['Signal'].iloc[i]
-
-                if sinal_atual != 'Stay Out':
-                    df.loc[df.index[i], 'Estado'] = sinal_atual
-                else:
-                    df.loc[df.index[i], 'Estado'] = estado_anterior
-
-            return df
+            return df_work
 
         except Exception as e:
             logger.error(f"Erro no modelo OVELHA V2: {str(e)}")
