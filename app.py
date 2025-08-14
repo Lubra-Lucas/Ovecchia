@@ -65,10 +65,61 @@ def get_historical_klines_ccxt(symbol, interval, limit=1000):
 
 
 
-def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yahoo Finance"):
-    """Função principal para coletar dados do mercado usando Yahoo Finance ou CCXT"""
+def get_twelvedata_data(symbol, interval):
+    """Função para coletar dados usando TwelveData API"""
     try:
-        if source == "CCXT (Binance)":
+        # Sua chave da Twelve Data
+        API_KEY = "8745d2a910c841e4913afc40a6368dcb"
+
+        # Endpoint para pegar todos os dados possíveis (limite do plano gratuito é 5000)
+        url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&apikey={API_KEY}&outputsize=5000"
+
+        # Faz a requisição
+        response = requests.get(url).json()
+
+        # Verifica se houve erro
+        if "values" not in response:
+            error_msg = response.get('message', 'Erro desconhecido')
+            st.error(f"Erro na API TwelveData: {error_msg}")
+            return pd.DataFrame()
+
+        # Cria o DataFrame
+        df = pd.DataFrame(response['values'])
+
+        if df.empty:
+            st.warning(f"Nenhum dado retornado pela TwelveData para {symbol}")
+            return pd.DataFrame()
+
+        # Converte colunas
+        df['datetime'] = pd.to_datetime(df['datetime'])
+        df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
+
+        # Ordena do mais antigo para o mais recente
+        df = df.sort_values(by='datetime').reset_index(drop=True)
+
+        # Padronizar nomes das colunas
+        df.rename(columns={'datetime': 'time'}, inplace=True)
+
+        # Adicionar informação sobre o período coletado
+        if not df.empty:
+            start_time = df['time'].iloc[0]
+            end_time = df['time'].iloc[-1]
+            st.info(f"📅 TwelveData coletou {len(df)} registros de {start_time.strftime('%Y-%m-%d %H:%M')} até {end_time.strftime('%Y-%m-%d %H:%M')}")
+
+        return df
+
+    except Exception as e:
+        st.error(f"Erro ao buscar dados via TwelveData para {symbol}: {str(e)}")
+        return pd.DataFrame()
+
+def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yahoo Finance"):
+    """Função principal para coletar dados do mercado usando Yahoo Finance, CCXT ou TwelveData"""
+    try:
+        if source == "TwelveData":
+            # Para TwelveData, usar diretamente a função específica
+            return get_twelvedata_data(symbol, interval)
+        
+        elif source == "CCXT (Binance)":
             try:
                 # Mapear intervalos para CCXT
                 ccxt_interval_map = {
@@ -1008,21 +1059,35 @@ with tab3:
         # Source selection for data
         data_source = st.selectbox(
             "Fonte de Dados",
-            ["Yahoo Finance", "CCXT (Binance)"],
+            ["Yahoo Finance", "CCXT (Binance)", "TwelveData"],
             index=0,
-            help="Selecione a fonte dos dados de mercado. CCXT é recomendado para criptomoedas com dados mais confiáveis."
+            help="Selecione a fonte dos dados de mercado. CCXT é recomendado para criptomoedas, TwelveData oferece dados de alta qualidade para forex e ações."
         )
 
-        symbol = st.text_input(
-            "Ticker",
-            value="BTC-USD",
-            help="Examples: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
-        ).strip()
+        if data_source == "TwelveData":
+            symbol = st.text_input(
+                "Ticker",
+                value="EUR/USD",
+                help="Exemplos TwelveData: EUR/USD, GBP/USD, AAPL, MSFT, BTC/USD, ETH/USD"
+            ).strip()
+        else:
+            symbol = st.text_input(
+                "Ticker",
+                value="BTC-USD",
+                help="Examples: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
+            ).strip()
 
         st.markdown("#### 📅 Intervalo de Data")
         
         if data_source == "CCXT (Binance)":
             st.info("📅 **CCXT**: Usa automaticamente os últimos 1000 candles (período fixo)")
+            # Definir datas padrão para compatibilidade, mas não mostrar controles
+            default_end = datetime.now().date()
+            default_start = default_end - timedelta(days=365)
+            start_date = default_start
+            end_date = default_end
+        elif data_source == "TwelveData":
+            st.info("📅 **TwelveData**: Coleta automaticamente os últimos 5000 registros disponíveis (período fixo)")
             # Definir datas padrão para compatibilidade, mas não mostrar controles
             default_end = datetime.now().date()
             default_start = default_end - timedelta(days=365)
@@ -1039,13 +1104,26 @@ with tab3:
                 end_date = st.date_input("Data Final", value=default_end, min_value=start_date, max_value=default_end)
 
         st.markdown("#### ⏱️ Intervalo de Tempo")
-        interval_options = {
-            "1 minute": "1m", "2 minutes": "2m", "5 minutes": "5m", "15 minutes": "15m",
-            "30 minutes": "30m", "60 minutes": "60m", "90 minutes": "90m", "4 hours": "4h",
-            "1 day": "1d", "5 days": "5d", "1 week": "1wk", "1 month": "1mo", "3 months": "3mo"
-        }
-        interval_display = st.selectbox("Intervalo", list(interval_options.keys()), index=8)
-        interval = interval_options[interval_display]
+        
+        if data_source == "TwelveData":
+            # Intervalos específicos para TwelveData
+            interval_options = {
+                "1 minute": "1min", "5 minutes": "5min", "15 minutes": "15min", "30 minutes": "30min",
+                "45 minutes": "45min", "1 hour": "1h", "2 hours": "2h", "4 hours": "4h",
+                "1 day": "1day", "1 week": "1week", "1 month": "1month"
+            }
+            interval_display = st.selectbox("Intervalo", list(interval_options.keys()), index=8)
+            interval = interval_options[interval_display]
+            st.info("ℹ️ **TwelveData**: Intervalos otimizados para forex, ações e índices")
+        else:
+            # Intervalos padrão para Yahoo Finance e CCXT
+            interval_options = {
+                "1 minute": "1m", "2 minutes": "2m", "5 minutes": "5m", "15 minutes": "15m",
+                "30 minutes": "30m", "60 minutes": "60m", "90 minutes": "90m", "4 hours": "4h",
+                "1 day": "1d", "5 days": "5d", "1 week": "1wk", "1 month": "1mo", "3 months": "3mo"
+            }
+            interval_display = st.selectbox("Intervalo", list(interval_options.keys()), index=8)
+            interval = interval_options[interval_display]
 
         st.markdown('</div>', unsafe_allow_html=True)
 
