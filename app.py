@@ -1957,12 +1957,18 @@ with tab3:
             modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
             
             # Preparar informações de threshold e buffer para o rodapé
-            if model_type == "OVELHA V2 (Machine Learning)" and 'thr_used' in df.columns and 'buffer_pct' in df.columns:
-                thr_atual = df['thr_used'].iloc[-1] * 100  # converter para percentual
-                buf_atual = df['buffer_pct'].iloc[-1] * 100  # converter para percentual
-                rodape_info = f" | Thr: {thr_atual:.3f}% | Buf: {buf_atual:.3f}%"
-            else:
-                rodape_info = ""
+            rodape_info = ""
+            if model_type == "OVELHA V2 (Machine Learning)":
+                if 'thr_used' in df.columns and 'buffer_pct' in df.columns:
+                    # Verificar se as colunas têm valores válidos
+                    if pd.notna(df['thr_used'].iloc[-1]) and pd.notna(df['buffer_pct'].iloc[-1]):
+                        thr_atual = df['thr_used'].iloc[-1] * 100  # converter para percentual
+                        buf_atual = df['buffer_pct'].iloc[-1] * 100  # converter para percentual
+                        rodape_info = f" | Thr: {thr_atual:.3f}% | Buf: {buf_atual:.3f}%"
+                    else:
+                        rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
+                else:
+                    rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
             
             titulo_grafico = f"OVECCHIA TRADING - {symbol_label} ({data_source}) - {modelo_nome} - Timeframe: {interval.upper()}{rodape_info}"
 
@@ -2150,7 +2156,11 @@ with tab3:
             # Technical analysis summary with improved layout
             st.markdown("## 📋 Informações Técnicas")
 
-            col1, col2 = st.columns(2)
+            # Adjust columns based on model type
+            if model_type == "OVELHA V2 (Machine Learning)" and 'thr_used' in df.columns and 'buffer_pct' in df.columns:
+                col1, col2, col3 = st.columns(3)
+            else:
+                col1, col2 = st.columns(2)
 
             with col1:
                 st.markdown("### 🛡️ Níveis de Stop Loss")
@@ -2175,6 +2185,30 @@ with tab3:
                     <p><strong>⚫ Fora do Mercado:</strong> {stay_out}</p>
                 </div>
                 """, unsafe_allow_html=True)
+
+            # Add threshold and buffer information for OVELHA V2
+            if model_type == "OVELHA V2 (Machine Learning)" and 'thr_used' in df.columns and 'buffer_pct' in df.columns:
+                with col3:
+                    if pd.notna(df['thr_used'].iloc[-1]) and pd.notna(df['buffer_pct'].iloc[-1]):
+                        thr_atual = df['thr_used'].iloc[-1] * 100
+                        buf_atual = df['buffer_pct'].iloc[-1] * 100
+                        st.markdown("### ⚙️ Parâmetros Dinâmicos")
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <p><strong>🎯 Threshold Atual:</strong> {thr_atual:.3f}%</p>
+                            <p><strong>🔄 Buffer Atual:</strong> {buf_atual:.3f}%</p>
+                            <p style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Valores calculados dinamicamente baseados na volatilidade (ATR)</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown("### ⚙️ Parâmetros Dinâmicos")
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <p><strong>🎯 Threshold:</strong> Dinâmico</p>
+                            <p><strong>🔄 Buffer:</strong> Dinâmico</p>
+                            <p style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Baseados na volatilidade (ATR)</p>
+                        </div>
+                        """, unsafe_allow_html=True)
         except Exception as e:
             st.error(f"An error occurred during analysis: {str(e)}")
             st.write("Please check your inputs and try again.")
