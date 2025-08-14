@@ -1219,18 +1219,8 @@ with tab3:
             help="OVELHA: Modelo clássico baseado em indicadores técnicos | OVELHA V2: Modelo avançado com Random Forest"
         )
 
-        # Buffer para OVELHA V2
-        buffer_value = 0.0015  # valor padrão
-        if model_type == "OVELHA V2 (Machine Learning)":
-            st.markdown("#### 🔧 Configuração de Buffer (Histerese)")
-            buffer_value = st.number_input(
-                "Buffer para Médias Móveis (%)",
-                min_value=0.0,
-                max_value=10.0,
-                value=0.15,
-                step=0.05,
-                help="Buffer (histerese) para evitar falsos cruzamentos nas médias. Valor em percentual (ex: 0.15 = 0.15%)"
-            ) / 100  # converter para decimal
+        # Buffer fixo para OVELHA V2
+        buffer_value = 0.0015  # valor padrão fixo (0.15%)
 
         st.markdown("#### 📈 Estratégia de Sinais")
         st.markdown("""
@@ -1965,7 +1955,16 @@ with tab3:
 
             # Create the interactive chart
             modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
-            titulo_grafico = f"OVECCHIA TRADING - {symbol_label} ({data_source}) - {modelo_nome} - Timeframe: {interval.upper()}"
+            
+            # Preparar informações de threshold e buffer para o rodapé
+            if model_type == "OVELHA V2 (Machine Learning)" and 'thr_used' in df.columns and 'buffer_pct' in df.columns:
+                thr_atual = df['thr_used'].iloc[-1] * 100  # converter para percentual
+                buf_atual = df['buffer_pct'].iloc[-1] * 100  # converter para percentual
+                rodape_info = f" | Thr: {thr_atual:.3f}% | Buf: {buf_atual:.3f}%"
+            else:
+                rodape_info = ""
+            
+            titulo_grafico = f"OVECCHIA TRADING - {symbol_label} ({data_source}) - {modelo_nome} - Timeframe: {interval.upper()}{rodape_info}"
 
             fig = make_subplots(
                 rows=2, cols=1,
@@ -2361,8 +2360,7 @@ with tab4:
             key="model_screening"
         )
 
-        # Buffer fixo para OVELHA V2
-        buffer_value_screening = 0.0015  # 0.15% fixo
+        # Buffer fixo para OVELHA V2 no screening
         if model_type_screening == "OVELHA V2 (Machine Learning)":
             st.info("🔧 **Buffer fixo:** 0.15% para médias móveis (otimizado para screening)")
 
