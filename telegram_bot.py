@@ -34,11 +34,16 @@ BOT_TOKEN = os.environ.get('BOT_TOKEN', "8487471783:AAElQBvIhVcbtVmEoPEdnuafMUR4
 
 # Initialize bot with error handling
 try:
-    bot = telebot.TeleBot(BOT_TOKEN)
+    bot = telebot.TeleBot(BOT_TOKEN, threaded=False, skip_pending=True)
     logger.info("🤖 Bot do Telegram inicializado com sucesso")
 except Exception as e:
     logger.error(f"❌ Erro ao inicializar bot do Telegram: {str(e)}")
     raise
+
+# Thread lock para evitar processamento simultâneo
+import threading
+request_lock = threading.Lock()
+user_locks = {}  # Lock por usuário
 
 # Helper function to safely reply to messages
 def safe_bot_reply(message, text, parse_mode=None):
@@ -213,6 +218,14 @@ class OvecchiaTradingBot:
         self.alert_states = {}  # {user_id: {symbol: last_state}}
         self.active_tasks = {}  # {user_id: {'task_type': '', 'start_time': datetime, 'thread': None}}
         self.paused_users = set()  # Usuários que pausaram operações
+        self.processing_users = set()  # Usuários sendo processados atualmente
+        self.user_locks = {}  # Locks individuais por usuário
+    
+    def get_user_lock(self, user_id):
+        """Obtém ou cria um lock para o usuário específico"""
+        if user_id not in self.user_locks:
+            self.user_locks[user_id] = threading.Lock()
+        return self.user_locks[user_id]
 
     def get_ccxt_data(self, symbol, interval="1d", limit=1000):
         """Função para coletar dados usando CCXT com timeout otimizado"""
@@ -1090,13 +1103,26 @@ trading_bot = OvecchiaTradingBot()
 
 @bot.message_handler(commands=['screening'])
 def screening_command(message):
+    user_id = message.from_user.id
+    user_name = message.from_user.first_name or "Usuário"
+    
+    # Obter lock do usuário
+    user_lock = trading_bot.get_user_lock(user_id)
+    
+    if not user_lock.acquire(blocking=False):
+        safe_bot_reply(message, "⏳ Você já tem uma operação em andamento. Aguarde terminar.")
+        return
+    
     try:
-        user_name = message.from_user.first_name or "Usuário"
-        user_id = message.from_user.id
         logger.info(f"Comando /screening recebido de {user_name} (ID: {user_id})")
-
-        # Adicionar delay para evitar conflitos com múltiplas requisições
-        time.sleep(0.5)
+        
+        # Verificar se usuário já está processando
+        if user_id in trading_bot.processing_users:
+            safe_bot_reply(message, "⏳ Processando comando anterior. Aguarde.")
+            return
+            
+        # Marcar usuário como processando
+        trading_bot.processing_users.add(user_id)
 
         # Parse arguments with fuzzy matching
         parsed = parse_flexible_command(message.text)
@@ -1282,6 +1308,10 @@ def screening_command(message):
     except Exception as e:
         logger.error(f"Erro no comando /screening: {str(e)}")
         safe_bot_reply(message, "❌ Erro ao processar screening. Tente novamente.")
+    finally:
+        # Sempre limpar estados do usuário
+        trading_bot.processing_users.discard(user_id)
+        user_lock.release()
 
 
 
@@ -1289,13 +1319,26 @@ def screening_command(message):
 
 @bot.message_handler(commands=['analise'])
 def analise_command(message):
+    user_id = message.from_user.id
+    user_name = message.from_user.first_name or "Usuário"
+    
+    # Obter lock do usuário para evitar processamento simultâneo
+    user_lock = trading_bot.get_user_lock(user_id)
+    
+    if not user_lock.acquire(blocking=False):
+        safe_bot_reply(message, "⏳ Você já tem uma operação em andamento. Aguarde terminar ou use /restart para limpar.")
+        return
+    
     try:
-        user_id = message.from_user.id
-        user_name = message.from_user.first_name or "Usuário"
         logger.info(f"Comando /analise recebido de {user_name} (ID: {user_id})")
-
-        # Adicionar delay para evitar conflitos
-        time.sleep(0.5)
+        
+        # Verificar se usuário já está processando
+        if user_id in trading_bot.processing_users:
+            safe_bot_reply(message, "⏳ Processando comando anterior. Aguarde ou use /restart.")
+            return
+            
+        # Marcar usuário como processando
+        trading_bot.processing_users.add(user_id)
 
         # Verificar se usuário pausou operações
         if user_id in trading_bot.paused_users:
@@ -1452,6 +1495,7 @@ def analise_command(message):
         if user_id in trading_bot.paused_users:
             if user_id in trading_bot.active_tasks:
                 del trading_bot.active_tasks[user_id]
+            trading_bot.processing_users.discard(user_id)
             safe_bot_reply(message, "⏸️ Análise cancelada pelo usuário.")
             return
 
@@ -1485,6 +1529,7 @@ def analise_command(message):
             if user_id in trading_bot.active_tasks:
                 del trading_bot.active_tasks[user_id]
             trading_bot.paused_users.add(user_id)
+            trading_bot.processing_users.discard(user_id)
 
             safe_bot_reply(message, f"""⏰ **TIMEOUT - ANÁLISE CANCELADA**
 
@@ -1494,8 +1539,8 @@ def analise_command(message):
 🔧 **Solução:** Use /restart para limpar o bot completamente
 
 🚀 **Alternativas que funcionam:**
-• /analise ccxt agressiva BTC/USDT 4h ovelha (mais rápido)
 • /analise yahoo balanceada BTC-USD 1d ovelha2 (via Yahoo)
+• /analise twelvedata agressiva BTC/USD 4h ovelha
 • Timeframes ≥ 4h são mais estáveis""", 'Markdown')
 
             logger.warning(f"Timeout na análise para {user_name}: {symbol} {timeframe}")
@@ -1531,16 +1576,20 @@ def analise_command(message):
 
     except telebot.apihelper.ApiException as e:
         # Limpar tarefa ativa em caso de erro
-        if 'user_id' in locals() and user_id in trading_bot.active_tasks:
+        if user_id in trading_bot.active_tasks:
             del trading_bot.active_tasks[user_id]
         logger.error(f"Erro da API Telegram no /analise: {str(e)}")
         safe_bot_reply(message, "❌ Erro temporário da API. Aguarde e tente novamente.")
     except Exception as e:
         # Limpar tarefa ativa em caso de erro
-        if 'user_id' in locals() and user_id in trading_bot.active_tasks:
+        if user_id in trading_bot.active_tasks:
             del trading_bot.active_tasks[user_id]
         logger.error(f"Erro no comando /analise: {str(e)}")
         safe_bot_reply(message, "❌ Erro ao processar análise. Tente novamente em alguns segundos.")
+    finally:
+        # Sempre limpar estados do usuário
+        trading_bot.processing_users.discard(user_id)
+        user_lock.release()
 
 @bot.message_handler(commands=['screening_auto'])
 def screening_auto_command(message):
@@ -1824,6 +1873,29 @@ def list_alerts_command(message):
         logger.error(f"Erro geral no comando /list_alerts para usuário {user_id}: {str(e)}")
         safe_bot_reply(message, "❌ Erro ao listar alertas. Tente novamente ou use /stop_alerts se houver problemas.")
 
+@bot.message_handler(commands=['pause'])
+def pause_command(message):
+    """Comando para pausar operações em andamento"""
+    try:
+        user_name = message.from_user.first_name or "Usuário"
+        user_id = message.from_user.id
+        logger.info(f"Comando /pause recebido de {user_name} (ID: {user_id})")
+
+        # Pausar usuário
+        trading_bot.paused_users.add(user_id)
+        trading_bot.processing_users.discard(user_id)
+        
+        # Limpar tarefas ativas
+        if user_id in trading_bot.active_tasks:
+            del trading_bot.active_tasks[user_id]
+
+        safe_bot_reply(message, f"⏸️ Operações pausadas para você, {user_name}!\n\n✅ Use qualquer comando para continuar.")
+        logger.info(f"Operações pausadas para usuário {user_name}")
+
+    except Exception as e:
+        logger.error(f"Erro no comando /pause: {str(e)}")
+        safe_bot_reply(message, "❌ Erro ao pausar. Tente novamente.")
+
 @bot.message_handler(commands=['restart'])
 def restart_command(message):
     """Comando para reinicializar o bot sem parar o workflow"""
@@ -1840,11 +1912,12 @@ def restart_command(message):
         if user_id in trading_bot.active_tasks:
             del trading_bot.active_tasks[user_id]
         trading_bot.paused_users.discard(user_id)
+        trading_bot.processing_users.discard(user_id)
 
         # Limpar jobs do scheduler para este usuário
         schedule.clear(f'alert_user_{user_id}')
 
-        safe_bot_reply(message, f"🔄 Bot reinicializado para você, {user_name}!\n\n✅ Estados limpos:\n• Alertas automáticos\n• Tarefas ativas\n• Cache de análises\n\n🚀 Pronto para novos comandos!")
+        safe_bot_reply(message, f"🔄 Bot reinicializado para você, {user_name}!\n\n✅ Estados limpos:\n• Alertas automáticos\n• Tarefas ativas\n• Cache de análises\n• Operações em andamento\n\n🚀 Pronto para novos comandos!")
         logger.info(f"Bot reinicializado para usuário {user_name}")
 
     except Exception as e:
@@ -1910,6 +1983,12 @@ def help_command(message):
                           📝 PARAR ALERTAS AUTOMÁTICOS
                           • Interrompe todos os alertas configurados
                           • Para o monitoramento automático
+
+                        ⏸️ /pause
+                          📝 PAUSAR OPERAÇÕES EM ANDAMENTO
+                          • Cancela análises em processo
+                          • Para tarefas que estão travando
+                          • Use qualquer comando para continuar
 
                         🔄 /restart
                           📝 REINICIALIZAR BOT (sem parar o workflow)
@@ -2152,14 +2231,14 @@ def run_bot():
             logger.info("🤖 Bot iniciado com sucesso! Aguardando mensagens...")
             print("🤖 Bot funcionando! Aguardando comandos...")
 
-            # Rodar o bot com configurações otimizadas e mais robustas
+            # Rodar o bot com configurações otimizadas para maior estabilidade
             bot.polling(
                 none_stop=True,
-                interval=0.5,         # Reduzido para 0.5s para maior responsividade
-                timeout=30,           # Aumentado para 30 segundos
-                long_polling_timeout=30,  # Timeout do long polling
-                allowed_updates=["message", "callback_query"],  # Apenas updates necessários
-                skip_pending=False    # Não pular mensagens pendentes
+                interval=1,           # 1 segundo para evitar sobrecarga
+                timeout=20,           # Timeout menor para evitar travamentos
+                long_polling_timeout=20,  # Timeout do long polling menor
+                allowed_updates=["message"],  # Apenas mensagens
+                skip_pending=True     # Pular mensagens pendentes antigas
             )
 
         except telebot.apihelper.ApiException as e:
