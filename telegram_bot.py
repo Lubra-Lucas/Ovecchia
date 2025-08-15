@@ -286,15 +286,13 @@ class OvecchiaTradingBot:
             return pd.DataFrame()
 
     def get_twelve_data_data(self, symbol, start_date, end_date, interval="1d", limit=1000):
-        """
-        Função para coletar dados do 12Data usando o endpoint correto de time_series
-        """
+        """Função para coletar dados usando TwelveData API"""
         try:
             logger.info(f"Coletando dados para {symbol} via 12Data com intervalo {interval}")
 
-            # Configurar API Key do 12Data - Use uma chave demo ou configure sua própria
-            TWELVEDATA_API_KEY = os.environ.get('TWELVEDATA_API_KEY', "demo")
-            
+            # Sua chave da Twelve Data
+            API_KEY = "8745d2a910c841e4913afc40a6368dcb"
+
             # Processar símbolo para formato correto do 12Data
             # Converter BTC/USD para btc-usd format que 12Data espera
             processed_symbol = symbol
@@ -324,84 +322,53 @@ class OvecchiaTradingBot:
                 logger.error(f"Timeframe inválido para 12Data: {interval}")
                 return pd.DataFrame()
 
-            # Usar endpoint time_series correto da 12Data
-            url = "https://api.twelvedata.com/time_series"
-            params = {
-                "symbol": processed_symbol,
-                "interval": twelve_interval,
-                "apikey": TWELVEDATA_API_KEY,
-                "outputsize": min(limit, 5000),  # 12Data limita a 5000 com chave demo
-                "format": "JSON"
-            }
+            # Endpoint para pegar dados com quantidade configurável
+            url = f"https://api.twelvedata.com/time_series?symbol={processed_symbol}&interval={twelve_interval}&apikey={API_KEY}&outputsize={min(limit, 5000)}"
 
-            logger.info(f"Fazendo requisição para 12Data: {url} com params: {params}")
-            
-            response = requests.get(url, params=params, timeout=30)
-            response.raise_for_status()
+            logger.info(f"Fazendo requisição para 12Data: {url}")
 
-            data = response.json()
+            # Faz a requisição
+            response = requests.get(url, timeout=30).json()
 
-            # Verificar erros na resposta
-            if "status" in data and data["status"] == "error":
-                logger.error(f"Erro 12Data API: {data.get('message', 'Erro desconhecido')}")
+            # Verifica se houve erro
+            if "values" not in response:
+                error_msg = response.get('message', 'Erro desconhecido')
+                logger.error(f"Erro na API TwelveData: {error_msg}")
                 return pd.DataFrame()
 
-            if "code" in data and data["code"] != 200:
-                logger.error(f"Erro 12Data API: {data.get('message', 'Erro desconhecido')}")
+            # Cria o DataFrame
+            df = pd.DataFrame(response['values'])
+
+            if df.empty:
+                logger.warning(f"Nenhum dado retornado pela TwelveData para {symbol}")
                 return pd.DataFrame()
 
-            # Verificar se temos dados válidos
-            if not data or "values" not in data or not data["values"]:
-                logger.warning(f"12Data: Sem dados encontrados para {symbol} no intervalo {interval}")
-                return pd.DataFrame()
+            # Converte colunas
+            df['datetime'] = pd.to_datetime(df['datetime'])
+            df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
 
-            # Processar dados do formato 12Data
-            ohlcv_data = []
-            values = data["values"]
-            
-            # 12Data retorna dados em ordem decrescente, então vamos reverter
-            for item in reversed(values):
-                try:
-                    # Formato esperado: {"datetime": "2024-01-01 09:30:00", "open": "100.0", "high": "105.0", ...}
-                    dt = datetime.strptime(item["datetime"], "%Y-%m-%d %H:%M:%S")
-                    
-                    ohlcv_data.append({
-                        "time": dt,
-                        "open": float(item["open"]),
-                        "high": float(item["high"]),
-                        "low": float(item["low"]),
-                        "close": float(item["close"]),
-                        "volume": float(item.get("volume", 0))
-                    })
-                except (KeyError, ValueError) as e:
-                    logger.warning(f"Erro ao processar linha de dados: {item}. Erro: {e}")
-                    continue
+            # Adicionar coluna volume se não existir
+            if 'volume' not in df.columns:
+                df['volume'] = 0.0
+            else:
+                df['volume'] = pd.to_numeric(df['volume'], errors='coerce').fillna(0.0)
 
-            if not ohlcv_data:
-                logger.error(f"Nenhum dado válido processado para {symbol}")
-                return pd.DataFrame()
+            # Ordena do mais antigo para o mais recente
+            df = df.sort_values(by='datetime').reset_index(drop=True)
 
-            df = pd.DataFrame(ohlcv_data)
-
-            # Ordenar por tempo para garantir ordem cronológica
-            df = df.sort_values("time").reset_index(drop=True)
+            # Padronizar nomes das colunas
+            df.rename(columns={'datetime': 'time'}, inplace=True)
 
             # Verificar se há dados válidos
             if df['close'].isna().all():
                 logger.error(f"Todos os preços de fechamento são NaN para {symbol}")
                 return pd.DataFrame()
 
-            logger.info(f"Dados 12Data coletados com sucesso para {symbol}: {len(df)} registros")
+            logger.info(f"Dados 12Data coletados com sucesso para {symbol}: {len(df)} registros de {df['time'].iloc[0].strftime('%Y-%m-%d %H:%M')} até {df['time'].iloc[-1].strftime('%Y-%m-%d %H:%M')}")
             return df
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Erro de requisição ao 12Data API para {symbol}: {str(e)}")
-            return pd.DataFrame()
-        except ValueError as e:
-            logger.error(f"Erro ao processar dados do 12Data para {symbol}: {str(e)}")
-            return pd.DataFrame()
         except Exception as e:
-            logger.error(f"Erro geral ao coletar dados 12Data para {symbol}: {str(e)}")
+            logger.error(f"Erro ao buscar dados via TwelveData para {symbol}: {str(e)}")
             return pd.DataFrame()
 
     def get_market_data(self, symbol, start_date, end_date, interval="1d", data_source="yahoo"):
