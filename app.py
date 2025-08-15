@@ -1316,30 +1316,7 @@ with tab2:
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("### 📌 Estados de Mercado - Modelo OVELHA V2")
-        st.write("Nosso algoritmo de Machine Learning identifica três estados fundamentais:")
-        st.write("• **🔵 Buy (Compra)**: Modelo detecta condições favoráveis para posições de compra")
-        st.write("• **🔴 Sell (Venda)**: Algoritmo identifica oportunidades para posições de venda")
-        st.write("• **⚫ Stay Out**: Sistema recomenda aguardar melhores condições de entrada")
-
-        st.markdown("### 📌 Estratégias e Timeframes")
-        st.write("O sistema oferece três perfis de análise adaptados para diferentes estilos de trading:")
-        st.write("• **Agressiva 🔥**: Mais sinais, ideal para trading de alta frequência")
-        st.write("• **Balanceada ⚖️**: Equilíbrio entre oportunidades e confiabilidade (recomendada)")
-        st.write("• **Conservadora 🛡️**: Sinais mais seletivos, foco em alta probabilidade")
-
-        st.markdown("### 📌 Cobertura de Dados")
-        st.write("**🪙 Criptomoedas**: Dados em tempo real com suporte completo a todos os timeframes (1m até 1d)")
-        st.write("**📈 Ações Brasileiras (B3)**: Dados consolidados de fontes profissionais, ideais para análises de médio e longo prazo")
-        st.write("**📊 Histórico**: Até 5.000 candles por ativo, garantindo análises robustas e precisas")
-
-        st.write("Por exemplo, imagine que você deseja investir em PETR4.SA (Petrobras). É fundamental saber exatamente o momento certo para entrar ou sair desse ativo, protegendo seu patrimônio e maximizando lucros. Os melhores momentos são claramente exibidos no gráfico de preços com sinais coloridos:")
-        st.write("• **Linha Azul 🔵**: indica ao usuário para se manter em posição comprada (apostando na alta).")
-        st.write("• **Linha Vermelha 🔴**: sugere ao usuário manter posição vendida (apostando na baixa).")
-        st.write("• **Linha Preta ⚫**: indica que é melhor ficar fora do mercado naquele momento.")
-
-        st.write("A grande vantagem do sistema está em identificar mudanças de estado: quando o gráfico passa de vermelho para azul, é um sinal claro para entrar comprado. Da mesma forma, de azul para vermelho, é a hora de assumir uma posição vendida ou sair de uma posição comprada, aumentindo a probabilidade de capturar grandes movimentos de mercado.")
-        st.write("Você também pode entrar em uma operação já em andamento e usar os pontos de Stop Loss para limitar perdas caso o mercado vá contra sua posição ou para surfar uma tendência já estabelecida, garantindo segurança e tranquilidade operacional.")
+        
 
         st.markdown("### 📌 Parâmetros Essenciais")
         st.write("Para realizar a análise individual, você deverá configurar os seguintes parâmetros:")
@@ -1350,37 +1327,17 @@ with tab2:
         st.write("• **Direção da Operação 🎯**: Escolha entre operar em ambas direções (comprado e vendido), somente comprado ou somente vendido.")
 
         st.markdown("### 📌 Critérios de Saída")
-        st.write("**🎯 Critérios de Saída Personalizados**")
-        st.write("O sistema permite que você teste estratégias variadas para saída das posições, podendo escolher entre:")
-        st.write("• **Mudança de Estado 🔄**: A operação é encerrada automaticamente sempre que o estado dos sinais mudar (de compra para venda ou vice-versa).")
-        st.write("• **Stop Loss 🛑**: Você define um preço limite de perda. Se o preço do ativo atingir este limite em relação ao preço de entrada, a operação é encerrada automaticamente. É um critério importante para gestão de risco eficiente.")
-        st.write("• **Alvo Fixo 🎯**: Estabelece uma meta percentual de lucro e um limite percentual de perda. Ao alcançar qualquer um deles, a operação é encerrada.")
-        st.write("• **Tempo ⏳**: A saída ocorre após um número fixo de candles desde a entrada. Este método garante operações mais curtas e disciplinadas, reduzindo riscos de exposição prolongada. Contudo, pode limitar ganhos em tendências mais duradouras.")
-        st.write("• **Média Móvel 📉**: Neste critério, a saída ocorre sempre que o preço cruza uma média móvel previamente configurada. A ideia é que enquanto o ativo estiver em tendência favorável, o preço estará sempre de um lado da média móvel. Caso o preço volte a cruzá-la, isso pode indicar enfraquecimento da tendência, sendo prudente sair da operação.")
+        st.write("O sistema oferece diferentes critérios para encerrar as operações:")
+        st.write("• **Mudança de Estado**: Sai quando o sinal muda (Buy→Sell ou vice-versa)")
+        st.write("• **Stop Loss**: Sai ao atingir limite de perda baseado na volatilidade do ativo")
+        st.write("• **Alvo Fixo**: Define meta de lucro e limite de perda em percentual")
+        st.write("• **Tempo**: Encerra após número fixo de candles")
+        st.write("• **Média Móvel**: Sai quando preço cruza média móvel configurada")
 
-        st.markdown("### 📌 Checkbox 'Sair por Mudança de Estado'")
-        st.write("**🔄 Funcionalidade do Checkbox 'Sair por mudança de estado?'**")
-        st.write("Este checkbox controla se as operações devem ser encerradas automaticamente quando o sistema detecta uma mudança no estado dos sinais, independentemente do critério de saída principal escolhido.")
-
-        st.write("**✅ Quando ATIVADO (Marcado):**")
-        st.write("• **Saída Automática**: A operação é encerrada imediatamente quando o estado muda (ex: de Buy para Sell, de Sell para Stay Out, etc.)")
-        st.write("• **Prioridade Máxima**: A mudança de estado tem precedência sobre outros critérios de saída")
-        st.write("• **Maior Segurança**: Evita manter posições quando o sistema já indica mudança de tendência")
-        st.write("• **Operações mais Curtas**: Tende a gerar operações de menor duração")
-        st.write("• **Exemplo**: Se você está comprado em PETR4 e o sistema muda de 'Buy' para 'Sell', a posição é encerrada automaticamente")
-
-        st.write("**❌ Quando DESATIVADO (Desmarcado):**")
-        st.write("• **Ignora Mudanças**: Operações continuam ativas mesmo com mudança de estado")
-        st.write("• **Critério Principal**: Apenas o critério de saída selecionado (Stop Loss, Alvo Fixo, etc.) encerra a operação")
-        st.write("• **Operações mais Longas**: Permite que operações durem mais tempo")
-        st.write("• **Maior Exposição**: Mantém posições mesmo quando sistema indica reversão")
-        st.write("• **Exemplo**: Se você está comprado e o sistema muda para 'Sell', você permanece comprado até atingir seu stop loss ou alvo")
-
-        st.write("**💡 Recomendações de Uso:**")
-        st.write("• **Ative** para estratégias mais conservadoras e seguir sinais do sistema")
-        st.write("• **Desative** para testar estratégias específicas de saída sem interferência dos sinais")
-        st.write("• **Para iniciantes**: Recomenda-se manter ativado para maior segurança")
-        st.write("• **Para testes**: Desative para avaliar puramente a eficácia do critério de saída escolhido")
+        st.markdown("### 📌 Sair por Mudança de Estado")
+        st.write("**✅ Ativado**: As operações são encerradas automaticamente quando o sinal muda (ex: Buy→Sell)")
+        st.write("**❌ Desativado**: Usa apenas o critério de saída escolhido, ignorando mudanças de sinal")
+        st.write("**💡 Recomendação**: Mantenha ativado para maior segurança, especialmente se for iniciante")
 
         st.markdown("### 📌 Funcionalidade de Otimização")
         st.write("**🎯 Otimização Automática de Parâmetros**")
@@ -1391,8 +1348,7 @@ with tab2:
         st.write("• **Múltiplas Métricas**: Avalia retorno total, retorno médio, taxa de acerto e número de operações")
         st.info("💡 **Dica**: Use a otimização para descobrir qual critério de saída funciona melhor para cada ativo específico!")
 
-        st.markdown("### 📌 Resumo")
-        st.success("Utilizar a análise individual corretamente maximiza suas chances de sucesso no mercado financeiro. Explore diferentes estratégias, teste os critérios de saída disponíveis e utilize os gráficos com sinais para tomar decisões seguras e bem fundamentadas. A combinação correta de todos esses elementos é essencial para alcançar resultados consistentes e sustentáveis em suas operações.")
+        
 
     with guide_tab2:
         st.markdown("## 🔍 Guia de Utilização - Screening Multi-Ativos")
