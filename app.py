@@ -274,7 +274,7 @@ def calculate_ovelha_v2_signals(
         df_work['TR']  = df_work[['tr1', 'tr2', 'tr3']].max(axis=1)
         df_work['ATR'] = df_work['TR'].rolling(window=14).mean()
 
-        # 🔹NOVAS FEATURES
+        # 🔹 NOVAS FEATURES
         # ATR_7 (volatilidade recente, mais sensível)
         df_work['ATR_7'] = df_work['TR'].rolling(window=7).mean()
 
@@ -426,30 +426,30 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
     profitable_trades = len(returns_data[returns_data['return_pct'] > 0])
     losing_trades = total_trades - profitable_trades
     win_rate = (profitable_trades / total_trades * 100) if total_trades > 0 else 0
-
+    
     # Return metrics
     avg_return = returns_data['return_pct'].mean()
     total_return = returns_data['return_pct'].sum()
     avg_winning_trade = returns_data[returns_data['return_pct'] > 0]['return_pct'].mean() if profitable_trades > 0 else 0
     avg_losing_trade = returns_data[returns_data['return_pct'] < 0]['return_pct'].mean() if losing_trades > 0 else 0
-
+    
     # Risk metrics
     std_returns = returns_data['return_pct'].std()
     sharpe_ratio = (avg_return / std_returns) if std_returns != 0 else 0
     max_win = returns_data['return_pct'].max()
     max_loss = returns_data['return_pct'].min()
-
+    
     # Profit Factor
     gross_profit = returns_data[returns_data['return_pct'] > 0]['return_pct'].sum()
     gross_loss = abs(returns_data[returns_data['return_pct'] < 0]['return_pct'].sum())
     profit_factor = (gross_profit / gross_loss) if gross_loss != 0 else float('inf')
-
+    
     # Consecutive wins/losses
     consecutive_wins = 0
     consecutive_losses = 0
     max_consecutive_wins = 0
     max_consecutive_losses = 0
-
+    
     for return_pct in returns_array:
         if return_pct > 0:
             consecutive_wins += 1
@@ -465,7 +465,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
 
     # === SEÇÃO 1: MÉTRICAS PRINCIPAIS ===
     st.markdown("### 📊 Métricas Principais")
-
+    
     # Métricas em formato mais compacto
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
@@ -506,11 +506,11 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
             <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{profit_factor_display}</div>
         </div>
         """, unsafe_allow_html=True)
-
+    
 
     # === SEÇÃO 2: MÉTRICAS AVANÇADAS ===
     st.markdown("### 🎯 Métricas Avançadas")
-
+    
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1:
         st.markdown(f"""
@@ -557,9 +557,9 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
 
     # === SEÇÃO 3: TOP 10 MELHORES E PIORES TRADES ===
     st.markdown("### 🏆 Top 10 Melhores e Piores Trades")
-
+    
     col1, col2 = st.columns(2)
-
+    
     with col1:
         st.markdown("#### 🟢 Top 10 Melhores Trades")
         best_trades = returns_data.nlargest(10, 'return_pct')[['entry_time', 'exit_time', 'signal', 'entry_price', 'exit_price', 'return_pct']].copy()
@@ -567,13 +567,13 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         best_trades['Saída'] = best_trades['exit_time'].dt.strftime('%d/%m/%Y')
         best_trades['Sinal'] = best_trades['signal']
         best_trades['Retorno (%)'] = best_trades['return_pct'].round(2)
-
+        
         st.dataframe(
             best_trades[['Entrada', 'Saída', 'Sinal', 'Retorno (%)']],
             use_container_width=True,
             hide_index=True
         )
-
+    
     with col2:
         st.markdown("#### 🔴 Top 10 Piores Trades")
         worst_trades = returns_data.nsmallest(10, 'return_pct')[['entry_time', 'exit_time', 'signal', 'entry_price', 'exit_price', 'return_pct']].copy()
@@ -581,7 +581,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         worst_trades['Saída'] = worst_trades['exit_time'].dt.strftime('%d/%m/%Y')
         worst_trades['Sinal'] = worst_trades['signal']
         worst_trades['Retorno (%)'] = worst_trades['return_pct'].round(2)
-
+        
         st.dataframe(
             worst_trades[['Entrada', 'Saída', 'Sinal', 'Retorno (%)']],
             use_container_width=True,
@@ -590,17 +590,17 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
 
     # === SEÇÃO 4: GRÁFICO DE PATRIMÔNIO ===
     st.markdown("### 💰 Curva de Patrimônio com Drawdowns")
-
+    
     # Calculate equity curve
-    equity_curve = calculate_equity_curve(returns_data, initial_capital=10000) # Assuming initial_capital is 10000
-
+    equity_curve = calculate_equity_curve(returns_data)
+    
     # Create plotly chart for equity curve with drawdowns
     fig_equity = create_equity_chart(equity_curve, symbol_label, criteria_name)
     st.plotly_chart(fig_equity, use_container_width=True)
-
+    
     # Calculate and display drawdown metrics
     max_drawdown, max_drawdown_duration = calculate_drawdown_metrics(equity_curve)
-
+    
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown(f"""
@@ -627,11 +627,11 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
 
     # === SEÇÃO 5: ÚLTIMOS TRADES ===
     st.markdown("### 📋 Histórico de Trades")
-
+    
     # Show number of trades to display
     num_trades_to_show = min(len(returns_data), 30)
     st.markdown(f"**Exibindo os últimos {num_trades_to_show} trades (mais recentes primeiro)**")
-
+    
     # Get last trades
     last_returns = returns_data.tail(num_trades_to_show).copy()
     last_returns = last_returns.sort_values('exit_time', ascending=False)
@@ -644,10 +644,10 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
     display_df['Entrada'] = display_df['entry_price'].round(2)
     display_df['Saída'] = display_df['exit_price'].round(2)
     display_df['Retorno (%)'] = display_df['return_pct'].round(2)
-
+    
     # Create final display dataframe
     final_df = display_df[['Data Entrada', 'Data Saída', 'Tipo', 'Entrada', 'Saída', 'Retorno (%)']].copy()
-
+    
     # Color coding function for styling
     def color_returns(val):
         if isinstance(val, (int, float)):
@@ -658,23 +658,23 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
             else:
                 return 'color: gray'
         return ''
-
+    
     # Apply styling
     styled_df = final_df.style.map(color_returns, subset=['Retorno (%)'])
-
+    
     # Display with fixed height for scrolling
     st.dataframe(
-        styled_df,
-        use_container_width=True,
+        styled_df, 
+        use_container_width=True, 
         hide_index=True,
         height=400  # Fixed height enables scrolling
     )
-
+    
     # Summary of visible trades
     positive_trades = len(last_returns[last_returns['return_pct'] > 0])
     negative_trades = len(last_returns[last_returns['return_pct'] < 0])
     avg_return_visible = last_returns['return_pct'].mean()
-
+    
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown(f"""
@@ -704,7 +704,7 @@ def calculate_equity_curve(returns_data, initial_capital=10000):
     equity_data = []
     current_equity = initial_capital
     peak_equity = initial_capital
-
+    
     # Add initial point
     start_date = returns_data['entry_time'].min() if not returns_data.empty else pd.Timestamp.now()
     equity_data.append({
@@ -714,18 +714,18 @@ def calculate_equity_curve(returns_data, initial_capital=10000):
         'drawdown': 0,
         'return_pct': 0
     })
-
+    
     for _, trade in returns_data.iterrows():
         # Update equity based on trade return
         trade_return = trade['return_pct'] / 100
         current_equity = current_equity * (1 + trade_return)
-
+        
         # Update peak equity
         peak_equity = max(peak_equity, current_equity)
-
+        
         # Calculate drawdown
         drawdown = ((current_equity - peak_equity) / peak_equity) * 100
-
+        
         equity_data.append({
             'date': trade['exit_time'],
             'equity': current_equity,
@@ -733,7 +733,7 @@ def calculate_equity_curve(returns_data, initial_capital=10000):
             'drawdown': drawdown,
             'return_pct': trade['return_pct']
         })
-
+    
     return pd.DataFrame(equity_data)
 
 def create_equity_chart(equity_data, symbol_label, criteria_name):
@@ -748,7 +748,7 @@ def create_equity_chart(equity_data, symbol_label, criteria_name):
             "Drawdown (%)"
         )
     )
-
+    
     # Equity curve
     fig.add_trace(
         go.Scatter(
@@ -761,7 +761,7 @@ def create_equity_chart(equity_data, symbol_label, criteria_name):
         ),
         row=1, col=1
     )
-
+    
     # Peak equity (underwater chart reference)
     fig.add_trace(
         go.Scatter(
@@ -774,7 +774,7 @@ def create_equity_chart(equity_data, symbol_label, criteria_name):
         ),
         row=1, col=1
     )
-
+    
     # Drawdown chart
     fig.add_trace(
         go.Scatter(
@@ -789,10 +789,10 @@ def create_equity_chart(equity_data, symbol_label, criteria_name):
         ),
         row=2, col=1
     )
-
+    
     # Add zero line for drawdown
     fig.add_hline(y=0, line_dash="dash", line_color="gray", row=2, col=1)
-
+    
     # Update layout
     fig.update_layout(
         title=dict(
@@ -812,23 +812,23 @@ def create_equity_chart(equity_data, symbol_label, criteria_name):
             x=1
         )
     )
-
+    
     # Update y-axes
     fig.update_yaxes(title_text="Patrimônio (R$)", row=1, col=1)
     fig.update_yaxes(title_text="Drawdown (%)", row=2, col=1)
     fig.update_xaxes(title_text="Data", row=2, col=1)
-
+    
     return fig
 
 def calculate_drawdown_metrics(equity_data):
     """Calculate drawdown metrics"""
     max_drawdown = equity_data['drawdown'].min()
-
+    
     # Calculate duration of maximum drawdown
     max_dd_start = None
     max_dd_duration = 0
     current_dd_duration = 0
-
+    
     for i, row in equity_data.iterrows():
         if row['drawdown'] < -0.01:  # In drawdown (more than 0.01%)
             if max_dd_start is None:
@@ -839,47 +839,45 @@ def calculate_drawdown_metrics(equity_data):
                 max_dd_duration = max(max_dd_duration, current_dd_duration)
                 max_dd_start = None
                 current_dd_duration = 0
-
+    
     # Handle case where drawdown continues to the end
     if max_dd_start is not None:
         max_dd_duration = max(max_dd_duration, current_dd_duration)
-
+    
     return max_drawdown, max_dd_duration
 
 def display_investment_simulation(returns_data, price_data, symbol_label, strategy_name):
     """Display investment simulation section"""
     st.markdown("### 💰 Simulação de Investimento")
     st.markdown(f"**Estratégia:** {strategy_name}")
-
+    
     if returns_data.empty:
         st.warning("Não há dados suficientes para simulação.")
         return
-
+    
     # Get date range
     start_date = price_data['time'].min()
     end_date = price_data['time'].max()
-
+    
     # User input for initial investment with stable key
     col1, col2 = st.columns(2)
     with col1:
         # Use session state to maintain the value and prevent restart
-        # Create a unique key for the session state based on the strategy name and symbol
-        analysis_key_for_session = f"investment_initial_value_{strategy_name}_{symbol_label}"
-        if analysis_key_for_session not in st.session_state:
-            st.session_state[analysis_key_for_session] = 10000.0
-
+        if 'investment_initial_value' not in st.session_state:
+            st.session_state.investment_initial_value = 10000.0
+        
         initial_investment = st.number_input(
             "💰 Investimento Inicial (R$):",
             min_value=100.0,
             max_value=10000000.0,
-            value=st.session_state[analysis_key_for_session],
+            value=st.session_state.investment_initial_value,
             step=500.0,
             format="%.2f",
-            key=f"investment_simulation_input_{strategy_name}_{symbol_label}",
+            key="investment_simulation_input",
             help="Digite o valor do investimento inicial para calcular automaticamente os resultados",
-            on_change=lambda: setattr(st.session_state, analysis_key_for_session, st.session_state[f"investment_simulation_input_{strategy_name}_{symbol_label}"])
+            on_change=lambda: setattr(st.session_state, 'investment_initial_value', st.session_state.investment_simulation_input)
         )
-
+    
     with col2:
         # Show period info
         period_days = (end_date - start_date).days
@@ -889,33 +887,33 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{period_days} dias</div>
         </div>
         """, unsafe_allow_html=True)
-
+    
     # Calculate simulation results
     final_capital = initial_investment
     total_return_pct = returns_data['return_pct'].sum()
     final_capital = initial_investment * (1 + total_return_pct / 100)
-
+    
     # Alternative calculation: compound returns
     compound_multiplier = 1
     for return_pct in returns_data['return_pct']:
         compound_multiplier *= (1 + return_pct / 100)
     final_capital_compound = initial_investment * compound_multiplier
-
+    
     # Buy and hold comparison
     initial_price = price_data['close'].iloc[0]
     final_price = price_data['close'].iloc[-1]
     buy_hold_return = ((final_price - initial_price) / initial_price) * 100
     buy_hold_final = initial_investment * (1 + buy_hold_return / 100)
-
+    
     # Performance metrics
     strategy_return = ((final_capital_compound - initial_investment) / initial_investment) * 100
     outperformance = strategy_return - buy_hold_return
-
+    
     # Display results
     st.markdown("#### 📊 Resultados da Simulação")
-
+    
     col1, col2, col3, col4 = st.columns(4)
-
+    
     with col1:
         return_color = "#4CAF50" if strategy_return >= 0 else "#f44336"
         return_icon = "🟢" if strategy_return >= 0 else "🔴"
@@ -926,7 +924,7 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             <div style="font-size: 0.9rem; font-weight: bold; color: {return_color};">{return_icon} {strategy_return:+.2f}%</div>
         </div>
         """, unsafe_allow_html=True)
-
+    
     with col2:
         bh_color = "#4CAF50" if buy_hold_return >= 0 else "#f44336"
         bh_icon = "🟢" if buy_hold_return >= 0 else "🔴"
@@ -937,7 +935,7 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             <div style="font-size: 0.9rem; font-weight: bold; color: {bh_color};">{bh_icon} {buy_hold_return:+.2f}%</div>
         </div>
         """, unsafe_allow_html=True)
-
+    
     with col3:
         outperf_color = "#4CAF50" if outperformance > 0 else "#f44336"
         outperf_icon = "🟢" if outperformance > 0 else "🔴"
@@ -947,7 +945,7 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             <div style="font-size: 1.1rem; font-weight: bold; color: {outperf_color};">{outperf_icon} {outperformance:+.2f}%</div>
         </div>
         """, unsafe_allow_html=True)
-
+    
     with col4:
         profit_loss = final_capital_compound - initial_investment
         profit_color = "#4CAF50" if profit_loss > 0 else "#f44336"
@@ -958,24 +956,24 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             <div style="font-size: 1.1rem; font-weight: bold; color: {profit_color};">{profit_icon} R$ {profit_loss:+,.2f}</div>
         </div>
         """, unsafe_allow_html=True)
-
+    
     # Additional metrics
     st.markdown("#### 📈 Métricas de Performance")
-
+    
     col1, col2, col3, col4 = st.columns(4)
-
+    
     total_trades = len(returns_data)
     winning_trades = len(returns_data[returns_data['return_pct'] > 0])
-
+    
     # Calculate annualized return
     years = period_days / 365.25
     annualized_return = ((final_capital_compound / initial_investment) ** (1/years) - 1) * 100 if years > 0 else 0
-
+    
     # Calculate maximum consecutive losses value
     equity_curve = calculate_equity_curve(returns_data, initial_investment)
     max_dd_value = equity_curve['drawdown'].min()
     max_dd_monetary = initial_investment * (abs(max_dd_value) / 100)
-
+    
     with col1:
         st.markdown(f"""
         <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
@@ -983,7 +981,7 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{annualized_return:.2f}%</div>
         </div>
         """, unsafe_allow_html=True)
-
+    
     with col2:
         st.markdown(f"""
         <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
@@ -991,7 +989,7 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{total_trades}</div>
         </div>
         """, unsafe_allow_html=True)
-
+    
     with col3:
         win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
         st.markdown(f"""
@@ -1000,7 +998,7 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{win_rate:.1f}%</div>
         </div>
         """, unsafe_allow_html=True)
-
+    
     with col4:
         st.markdown(f"""
         <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
@@ -1008,22 +1006,22 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             <div style="font-size: 1.1rem; font-weight: bold; color: #f44336;">R$ {max_dd_monetary:,.2f}</div>
         </div>
         """, unsafe_allow_html=True)
-
+    
     # Summary box
     if outperformance > 0:
         st.success(f"""
-        🎉 **Excelente Performance!**
-
-        A estratégia {strategy_name} superou o Buy & Hold em **{outperformance:.2f}%**,
-        transformando R$ {initial_investment:,.2f} em R$ {final_capital_compound:,.2f}
+        🎉 **Excelente Performance!** 
+        
+        A estratégia {strategy_name} superou o Buy & Hold em **{outperformance:.2f}%**, 
+        transformando R$ {initial_investment:,.2f} em R$ {final_capital_compound:,.2f} 
         no período de {period_days} dias.
         """)
     else:
         st.warning(f"""
         ⚠️ **Performance Inferior ao Buy & Hold**
-
-        A estratégia {strategy_name} teve performance {abs(outperformance):.2f}% inferior
-        ao Buy & Hold no período analisado. Considere ajustar os parâmetros ou
+        
+        A estratégia {strategy_name} teve performance {abs(outperformance):.2f}% inferior 
+        ao Buy & Hold no período analisado. Considere ajustar os parâmetros ou 
         avaliar outros critérios de saída.
         """)
 
@@ -1161,9 +1159,9 @@ st.markdown("""
         border-left-color: #1f77b4;
     }
 
-    [data-theme="dark"] .metric-card p,
-    [data-theme="dark"] .metric-card h4,
-    [data-theme="dark"] .metric-card h2,
+    [data-theme="dark"] .metric-card p, 
+    [data-theme="dark"] .metric-card h4, 
+    [data-theme="dark"] .metric-card h2, 
     [data-theme="dark"] .metric-card li {
         color: #fff !important;
     }
@@ -1242,7 +1240,7 @@ with tab1:
             <li><strong>🎯 Estratégias Aprimoradas:</strong> Análise agressiva, balanceada e conservadora</li>
             <li><strong>📈 Gráficos Automáticos:</strong> Visualização profissional enviada como imagem</li>
         </ul>
-        <p style="margin-top: 1rem; font-size: 0.9rem; color: #25D366;"><strong>💡 Exemplo:</strong>
+        <p style="margin-top: 1rem; font-size: 0.9rem; color: #25D366;"><strong>💡 Exemplo:</strong> 
         <code>/analise balanceada PETR4.SA 1d 2024-01-01 2024-06-01</code></p>
     </div>
     """, unsafe_allow_html=True)
@@ -1288,9 +1286,9 @@ with tab2:
 
     # Create sub-tabs for different sections
     guide_tab1, guide_tab2, guide_tab3, guide_tab4, guide_tab5 = st.tabs([
-        "📊 Análise Individual",
-        "🔍 Screening Multi-Ativos",
-        "📊 Topos e Fundos",
+        "📊 Análise Individual", 
+        "🔍 Screening Multi-Ativos", 
+        "📊 Topos e Fundos", 
         "🤖 Bot Telegram",
         "⚙️ Parâmetros Gerais"
     ])
@@ -1658,10 +1656,6 @@ with tab3:
     st.markdown("## 📊 Análise Individual de Ativo")
     st.markdown("Configure os parâmetros para análise detalhada de um ativo específico")
 
-    # Initialize session state for analysis parameters if they don't exist
-    if 'analysis_params_key' not in st.session_state:
-        st.session_state.analysis_params_key = 0
-
     # Create parameter sections
     col1, col2 = st.columns([1, 1])
 
@@ -1819,7 +1813,7 @@ with tab3:
     with col_exit2:
         include_state_change = st.checkbox("Sair por mudança de estado?", value=True)
 
-    with col3:
+    with col_exit3:
         optimize_params = st.checkbox("🎯 Otimizar Parâmetros", value=False)
 
     # Additional parameters based on exit criteria
@@ -1849,29 +1843,599 @@ with tab3:
             st.error("Por favor entre com um ticker válido.")
             st.stop()
 
-        # Create a unique key for session state based on all relevant parameters
-        analysis_params_key = f"{data_source}_{symbol}_{start_date}_{end_date}_{interval}_{model_type}_{strategy_type}_{trading_direction}_{exit_criteria}_{include_state_change}_{optimize_params}_{str(exit_params)}"
-        analysis_params_key = hash(analysis_params_key) # Use hash to ensure a consistent key
+        # Progress indicator
+        progress_bar = st.progress(0)
+        status_text = st.empty()
 
-        # Check if analysis with these parameters is already cached
-        if 'cached_analysis' in st.session_state and 'analysis_params_key' in st.session_state and st.session_state.analysis_params_key == analysis_params_key:
-            st.info("Carregando análise anterior do cache...")
-            df = st.session_state.cached_analysis['df']
-            symbol_label = st.session_state.cached_analysis['symbol_label']
-            returns_df = st.session_state.cached_analysis['returns_df']
-            custom_returns_df = st.session_state.cached_analysis['custom_returns_df']
-            optimization_results = st.session_state.cached_analysis['optimization_results']
-            modelo_nome = st.session_state.cached_analysis['modelo_nome']
-            model_type = st.session_state.cached_analysis['model_type']
-            data_source = st.session_state.cached_analysis['data_source']
-            interval = st.session_state.cached_analysis['interval']
-            exit_criteria = st.session_state.cached_analysis['exit_criteria']
-            optimize_params = st.session_state.cached_analysis['optimize_params']
+        try:
+            # Fetch data
+            status_text.text("Coletando dados de mercado...")
+            progress_bar.progress(20)
 
-            # Re-display the cached results
-            modelo_nome_current = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
+            # Download data using appropriate API
+            kwargs = {}
+            if data_source == "TwelveData":
+                kwargs['outputsize'] = outputsize
+            df = get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
+                                        end_date.strftime("%Y-%m-%d"), interval, data_source, **kwargs)
 
-            st.markdown(f"### 📊 Status Atual do Mercado - Modelo: {modelo_nome_current}")
+
+            if df is None or df.empty:
+                st.error(f"Sem data encontrada para '{symbol}' ({data_source}) nesse período de tempo.")
+                st.stop()
+
+            progress_bar.progress(40)
+            status_text.text("Processando indicadores...")
+
+            # Data preprocessing
+            symbol_label = symbol.replace("=X", "").replace("-USD", "").replace(".SA", "")
+
+            # Ensure we have the required columns
+            required_columns = ['time', 'open', 'high', 'low', 'close']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                st.error(f"Missing required data columns: {missing_columns}")
+                st.stop()
+
+            progress_bar.progress(60)
+
+            # Calculate technical indicators
+            # Moving averages (customizable)
+            df[f'SMA_{sma_short}'] = df['close'].rolling(window=sma_short).mean()
+            df[f'SMA_{sma_long}'] = df['close'].rolling(window=sma_long).mean()
+            df['SMA_20'] = df['close'].rolling(window=20).mean()
+
+            # RSI calculation
+            delta = df['close'].diff()
+            gain = np.where(delta > 0, delta, 0)
+            loss = np.where(delta < 0, -delta, 0)
+            avg_gain = pd.Series(gain, index=df.index).rolling(window=14).mean()
+            avg_loss = pd.Series(loss, index=df.index).rolling(window=14).mean()
+            rs = avg_gain / avg_loss
+            df['RSI_14'] = 100 - (100 / (1 + rs))
+
+            # RSL calculation
+            df['RSL_20'] = df['close'] / df['SMA_20']
+
+            progress_bar.progress(80)
+            status_text.text("Gerando sinais de trading...")
+
+            # Escolher modelo baseado na seleção do usuário
+            if model_type == "OVELHA V2 (Machine Learning)":
+                # Pass the strategy_type and remove the now redundant buffer parameter
+                df_with_signals = calculate_ovelha_v2_signals(df, strategy_type=strategy_type, sma_short=sma_short, sma_long=sma_long, use_dynamic_threshold=True, vol_factor=0.5)
+                if df_with_signals is not None:
+                    df = df_with_signals
+                    st.info(f"✅ Modelo OVELHA V2 (Random Forest) aplicado com sucesso!")
+                else:
+                    # Fallback para modelo clássico se houver erro
+                    model_type = "OVELHA (Clássico)"
+                    st.warning("⚠️ Usando modelo clássico OVELHA como fallback.")
+
+            if model_type == "OVELHA (Clássico)" or 'Estado' not in df.columns: # Ensure Estado column exists for OVELHA
+                # Signal generation - Modelo Original
+                df['Signal'] = 'Stay Out'
+                for i in range(1, len(df)):
+                    rsi_up = df['RSI_14'].iloc[i] > df['RSI_14'].iloc[i-1]
+                    rsi_down = df['RSI_14'].iloc[i] < df['RSI_14'].iloc[i-1]
+                    rsl = df['RSL_20'].iloc[i]
+                    rsl_prev = df['RSL_20'].iloc[i-1]
+
+                    rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
+                    rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
+
+                    if (
+                        df['close'].iloc[i] > df[f'SMA_{sma_short}'].iloc[i]
+                        and df['close'].iloc[i] > df[f'SMA_{sma_long}'].iloc[i]
+                        and rsi_up and rsl_buy
+                    ):
+                        df.at[i, 'Signal'] = 'Buy'
+                    elif (
+                        df['close'].iloc[i] < df[f'SMA_{sma_short}'].iloc[i]
+                        and rsi_down and rsl_sell
+                    ):
+                        df.at[i, 'Signal'] = 'Sell'
+
+                # State persistence - aplicar sinal imediatamente
+                df['Estado'] = 'Stay Out'
+
+                for i in range(len(df)):
+                    if i == 0:
+                        # Primeiro candle sempre Stay Out
+                        continue
+
+                    # Estado anterior
+                    estado_anterior = df['Estado'].iloc[i - 1]
+
+                    # Aplicar sinal imediatamente
+                    sinal_atual = df['Signal'].iloc[i]
+                    if sinal_atual != 'Stay Out':
+                        df.loc[df.index[i], 'Estado'] = sinal_atual
+                    else:
+                        df.loc[df.index[i], 'Estado'] = estado_anterior
+
+            # ATR and Stop Loss calculations
+            df['prior_close'] = df['close'].shift(1)
+            df['tr1'] = df['high'] - df['low']
+            df['tr2'] = abs(df['high'] - df['prior_close'])
+            df['tr3'] = abs(df['low'] - df['prior_close'])
+            df['TR'] = df[['tr1', 'tr2', 'tr3']].max(axis=1)
+            df['ATR'] = df['TR'].rolling(window=14).mean()
+
+            # Initialize stop loss levels
+            df['Stop_Justo'] = np.nan
+            df['Stop_Balanceado'] = np.nan
+            df['Stop_Largo'] = np.nan
+
+            # ATR factors for each stop type
+            fatores = {'Stop_Justo': 2.0 , 'Stop_Balanceado': 2.5 , 'Stop_Largo': 3.5}
+
+            for i in range(1, len(df)):
+                estado = df['Estado'].iloc[i]
+                close = df['close'].iloc[i]
+                atr = df['ATR'].iloc[i]
+
+                for stop_tipo, fator in fatores.items():
+                    stop_anterior = df[stop_tipo].iloc[i - 1]
+                    if estado == 'Buy':
+                        stop_atual = close - fator * atr
+                        df.loc[df.index[i], stop_tipo] = max(stop_anterior, stop_atual) if pd.notna(stop_anterior) else stop_atual
+                    elif estado == 'Sell':
+                        stop_atual = close + fator * atr
+                        df.loc[df.index[i], stop_tipo] = min(stop_anterior, stop_atual) if pd.notna(stop_anterior) else stop_atual
+
+            # Color coding and indicators
+            df['Color'] = 'black'
+            df.loc[df['Estado'] == 'Buy', 'Color'] = 'blue'
+            df.loc[df['Estado'] == 'Sell', 'Color'] = 'red'
+            # Create indicator mapping
+            estado_mapping = {'Buy': 1, 'Sell': 0, 'Stay Out': 0.5}
+            df['Indicator'] = df['Estado'].apply(lambda x: estado_mapping.get(x, 0.5))
+
+            # Calculate returns based on signal changes
+            def calculate_signal_returns(df, direction="Ambos (Compra e Venda)"):
+                returns_data = []
+                current_signal = None
+                entry_price = None
+                entry_time = None
+                previous_estado = None
+
+                for i in range(len(df)):
+                    estado = df['Estado'].iloc[i]
+                    price = df['close'].iloc[i]
+                    time = df['time'].iloc[i]
+
+                    # Skip if same as previous to avoid infinite loops
+                    if estado == previous_estado and i > 0:
+                        continue
+
+                    # Filter signals based on trading direction
+                    should_enter = False
+                    if direction == "Ambos (Compra e Venda)":
+                        should_enter = estado in ['Buy', 'Sell']
+                    elif direction == "Apenas Comprado":
+                        should_enter = estado == 'Buy'
+                    elif direction == "Apenas Vendido":
+                        should_enter = estado == 'Sell'
+
+                    # State change logic
+                    if estado != current_signal:
+                        # Close current position if exists
+                        if current_signal is not None and entry_price is not None:
+                            if current_signal == 'Buy':
+                                return_pct = ((price - entry_price) / entry_price) * 100
+                            else:  # current_signal == 'Sell'
+                                return_pct = ((entry_price - price) / entry_price) * 100
+
+                            returns_data.append({
+                                'signal': current_signal,
+                                'entry_time': entry_time,
+                                'exit_time': time,
+                                'entry_price': entry_price,
+                                'exit_price': price,
+                                'return_pct': return_pct
+                            })
+
+                        # Start new position if should enter
+                        if should_enter:
+                            current_signal = estado
+                            entry_price = price
+                            entry_time = time
+                        else:
+                            current_signal = None
+                            entry_price = None
+                            entry_time = None
+
+                    previous_estado = estado
+
+                return pd.DataFrame(returns_data)
+
+            returns_df = calculate_signal_returns(df, trading_direction)
+
+            # Calculate custom exit criteria returns
+            def calculate_custom_exit_returns(df, exit_criteria, exit_params, direction="Ambos (Compra e Venda)", include_state_change=True):
+                if exit_criteria == "Mudança de Estado":
+                    return calculate_signal_returns(df, direction)
+
+                custom_returns = []
+                current_signal = None
+                entry_price = None
+                entry_time = None
+                entry_index = None
+                previous_state = None  # Track previous state to detect changes
+
+                for i in range(len(df)):
+                    estado = df['Estado'].iloc[i]
+                    price = df['close'].iloc[i]
+                    time = df['time'].iloc[i]
+
+                    # Filter signals based on trading direction
+                    should_enter = False
+                    should_exit_on_opposite = False
+
+                    if direction == "Ambos (Compra e Venda)":
+                        should_enter = estado in ['Buy', 'Sell']
+                    elif direction == "Apenas Comprado":
+                        should_enter = estado == 'Buy'
+                        should_exit_on_opposite = estado == 'Sell'
+                    elif direction == "Apenas Vendido":
+                        should_enter = estado == 'Sell'
+                        should_exit_on_opposite = estado == 'Buy'
+
+                    # Check if we have an active position
+                    if current_signal is not None and entry_price is not None and entry_index is not None:
+
+                        # 1. Check for exit conditions based on include_state_change setting
+                        should_exit_by_state = False
+                        exit_reason_state = None
+
+                        if include_state_change:
+                            if direction == "Ambos (Compra e Venda)":
+                                # For "Ambos", exit on state change to Stay Out OR opposite signal
+                                if estado == 'Stay Out':
+                                    should_exit_by_state = True
+                                    exit_reason_state = 'Mudança de Estado'
+                                elif estado != current_signal and estado in ['Buy', 'Sell']:
+                                    should_exit_by_state = True
+                                    exit_reason_state = 'Mudança de Estado'
+                            else:
+                                # For single direction, exit on Stay Out or opposite signal
+                                if estado == 'Stay Out' or should_exit_on_opposite:
+                                    should_exit_by_state = True
+                                    exit_reason_state = 'Mudança de Estado' if estado == 'Stay Out' else 'Mudança de Estado'
+
+                        if should_exit_by_state:
+                            # State changed - close current position immediately
+                            if current_signal == 'Buy':
+                                return_pct = ((price - entry_price) / entry_price) * 100
+                            else:  # Sell
+                                return_pct = ((entry_price - price) / entry_price) * 100
+
+                            custom_returns.append({
+                                'signal': current_signal,
+                                'entry_time': entry_time,
+                                'exit_time': time,
+                                'entry_price': entry_price,
+                                'exit_price': price,
+                                'return_pct': return_pct,
+                                'exit_reason': exit_reason_state
+                            })
+
+                            # Start new position if criteria met and direction allows
+                            if should_enter and previous_state != estado:
+                                current_signal = estado
+                                entry_price = price
+                                entry_time = time
+                                entry_index = i
+                            else:
+                                current_signal = None
+                                entry_price = None
+                                entry_time = None
+                                entry_index = None
+
+                            previous_state = estado
+                            continue
+
+                        # 2. Check custom exit criteria (only if no state change exit occurred)
+                        exit_price, exit_time_custom, exit_reason = calculate_exit(
+                            df, entry_index, i, current_signal, entry_price, exit_criteria, exit_params
+                        )
+
+                        if exit_price is not None:
+                            if current_signal == 'Buy':
+                                return_pct = ((exit_price - entry_price) / entry_price) * 100
+                            else:  # Sell
+                                return_pct = ((entry_price - exit_price) / entry_price) * 100
+
+                            custom_returns.append({
+                                'signal': current_signal,
+                                'entry_time': entry_time,
+                                'exit_time': exit_time_custom,
+                                'entry_price': entry_price,
+                                'exit_price': exit_price,
+                                'return_pct': return_pct,
+                                'exit_reason': exit_reason
+                            })
+
+                            # Position closed by custom criteria - wait for next state change
+                            current_signal = None
+                            entry_price = None
+                            entry_time = None
+                            entry_index = None
+                            continue
+
+                    # Entry logic - ONLY open new position on STATE CHANGE to allowed signals
+                    elif previous_state != estado and should_enter:
+                        # This is a state change to allowed signal - open new position
+                        current_signal = estado
+                        entry_price = price
+                        entry_time = time
+                        entry_index = i
+
+                    # Update previous state for next iteration
+                    previous_state = estado
+
+                return pd.DataFrame(custom_returns)
+
+            def calculate_exit(df, entry_idx, current_idx, signal, entry_price, criteria, params):
+                """Calculate exit price based on selected criteria - doesn't check state change as main loop handles it"""
+
+                if criteria == "Stop Loss":
+                    stop_col = params['stop_type'].replace(' ', '_')
+                    for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
+                        stop_price = df[stop_col].iloc[i]
+                        current_price = df['close'].iloc[i]
+
+                        if signal == 'Buy' and current_price <= stop_price:
+                            return stop_price, df['time'].iloc[i], f"Stop {params['stop_type']}"
+                        elif signal == 'Sell' and current_price >= stop_price:
+                            return stop_price, df['time'].iloc[i], f"Stop {params['stop_type']}"
+
+                elif criteria == "Alvo Fixo":
+                    target_pct = params['target_pct'] / 100
+                    stop_loss_pct = params['stop_loss_pct'] / 100
+
+                    if signal == 'Buy':
+                        target_price = entry_price * (1 + target_pct)
+                        stop_loss_price = entry_price * (1 - stop_loss_pct)
+                    else:
+                        target_price = entry_price * (1 - target_pct)
+                        stop_loss_price = entry_price * (1 + stop_loss_pct)
+
+                    for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
+                        current_price = df['close'].iloc[i]
+
+                        if signal == 'Buy':
+                            if current_price >= target_price:
+                                return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
+                            elif current_price <= stop_loss_price:
+                                return stop_loss_price, df['time'].iloc[i], f"Stop Loss {params['stop_loss_pct']}%"
+                        else:  # Sell
+                            if current_price <= target_price:
+                                return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
+                            elif current_price >= stop_loss_price:
+                                return stop_loss_price, df['time'].iloc[i], f"Stop Loss {params['stop_loss_pct']}%"
+
+                elif criteria == "Tempo":
+                    target_candles = params['time_candles']
+                    target_idx = entry_idx + target_candles
+
+                    if target_idx < len(df) and target_idx <= current_idx:
+                        return df['close'].iloc[target_idx], df['time'].iloc[target_idx], f"Tempo {target_candles} candles"
+                elif criteria == "Média Móvel":
+                    ma_period = params['ma_period']
+                    ma = df['close'].rolling(window=ma_period).mean()
+                    for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
+                        current_price = df['close'].iloc[i]
+                        ma_value = ma.iloc[i]
+
+                        if signal == 'Buy' and current_price < ma_value:
+                            return current_price, df['time'].iloc[i], f"MM{ma_period} Cruzada para Baixo"
+                        elif signal == 'Sell' and current_price > ma_value:
+                            return current_price, df['time'].iloc[i], f"MM{ma_period} Cruzada para Cima"
+
+                return None, None, None
+
+            def optimize_exit_parameters(df, criteria, params, direction="Ambos (Compra e Venda)"):
+                """Optimize parameters for the selected exit criteria"""
+                all_results = []
+                best_return = float('-inf')
+                best_params = None
+                best_returns_df = pd.DataFrame()
+
+                include_state_change_options = [True, False] if trading_direction == "Ambos (Compra e Venda)" else [include_state_change]
+
+                if criteria == "Tempo":
+                    # Test different number of candles
+                    max_candles = params.get('max_candles', 20)
+                    for candles in range(1, max_candles + 1):
+                        test_params = {'time_candles': candles}
+                        returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, include_state_change)
+
+                        if not returns_df.empty:
+                            total_return = returns_df['return_pct'].sum()
+                            avg_return = returns_df['return_pct'].mean()
+                            win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
+
+                            all_results.append({
+                                'parametro': f"{candles} candles",
+                                'total_return': total_return,
+                                'avg_return': avg_return,
+                                'win_rate': win_rate,
+                                'total_trades': len(returns_df)
+                            })
+
+                            if total_return > best_return:
+                                best_return = total_return
+                                best_params = candles
+                                best_returns_df = returns_df.copy()
+
+                elif criteria == "Média Móvel":
+                    # Test different MA periods
+                    ma_range = params.get('ma_range', [10, 20, 50])
+                    for ma_period in ma_range:
+                        test_params = {'ma_period': ma_period}
+                        returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, include_state_change)
+
+                        if not returns_df.empty:
+                            total_return = returns_df['return_pct'].sum()
+                            avg_return = returns_df['return_pct'].mean()
+                            win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
+
+                            all_results.append({
+                                'parametro': f"MM{ma_period}",
+                                'total_return': total_return,
+                                'avg_return': avg_return,
+                                'win_rate': win_rate,
+                                'total_trades': len(returns_df)
+                            })
+
+                            if total_return > best_return:
+                                best_return = total_return
+                                best_params = ma_period
+                                best_returns_df = returns_df.copy()
+
+                elif criteria == "Stop Loss":
+                    # Test different stop types
+                    stop_types = ["Stop Justo", "Stop Balanceado", "Stop Largo"]
+                    for stop_type in stop_types:
+                        test_params = {'stop_type': stop_type}
+                        returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, include_state_change)
+
+                        if not returns_df.empty:
+                            total_return = returns_df['return_pct'].sum()
+                            avg_return = returns_df['return_pct'].mean()
+                            win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
+
+                            all_results.append({
+                                'parametro': stop_type,
+                                'total_return': total_return,
+                                'avg_return': avg_return,
+                                'win_rate': win_rate,
+                                'total_trades': len(returns_df)
+                            })
+
+                            if total_return > best_return:
+                                best_return = total_return
+                                best_params = stop_type
+                                best_returns_df = returns_df.copy()
+
+                elif criteria == "Alvo Fixo":
+                    # Test different combinations of target and stop
+                    target_range = params.get('target_range', [2.0, 3.0, 4.0, 5.0])
+                    stop_range = params.get('stop_range', [1.0, 2.0, 3.0])
+
+                    for target in target_range:
+                        for stop in stop_range:
+                            if target > stop:  # Only test valid combinations
+                                test_params = {'target_pct': target, 'stop_loss_pct': stop}
+                                returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, include_state_change)
+
+                                if not returns_df.empty:
+                                    total_return = returns_df['return_pct'].sum()
+                                    avg_return = returns_df['return_pct'].mean()
+                                    win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
+
+                                    all_results.append({
+                                        'parametro': f"Stop {stop}% / Alvo {target}%",
+                                        'total_return': total_return,
+                                        'avg_return': avg_return,
+                                        'win_rate': win_rate,
+                                        'total_trades': len(returns_df)
+                                    })
+
+                                    if total_return > best_return:
+                                        best_return = total_return
+                                        best_params = {'stop': stop, 'target': target}
+                                        best_returns_df = returns_df.copy()
+
+                return {
+                    'best_returns': best_returns_df,
+                    'best_params': best_params,
+                    'best_total_return': best_return,
+                    'all_results': all_results
+                }
+
+            # Calculate returns with optimization if enabled
+            if optimize_params:
+                status_text.text("Otimizando parâmetros...")
+                progress_bar.progress(85)
+
+                optimization_results = optimize_exit_parameters(df, exit_criteria, exit_params, trading_direction)
+                custom_returns_df = optimization_results['best_returns']
+                best_params = optimization_results['best_params']
+                all_results = optimization_results['all_results']
+            else:
+                custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params, trading_direction, include_state_change)
+                optimization_results = None
+
+            progress_bar.progress(100)
+            status_text.text("Análise Completa!")
+
+            # Clear progress indicators
+            progress_bar.empty()
+            status_text.empty()
+
+            # Display results
+            if optimize_params and optimization_results:
+                st.success(f"✅ Análise e otimização completa para {symbol_label} ({data_source})")
+
+                # Show optimization results
+                st.subheader("🎯 Resultados da Otimização")
+
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Melhor Retorno Total", f"{optimization_results['best_total_return']:.2f}%")
+                with col2:
+                    if exit_criteria == "Tempo":
+                        st.metric("Melhor Parâmetro", f"{best_params} candles")
+                    elif exit_criteria == "Stop Loss":
+                        st.metric("Melhor Stop", best_params)
+                    elif exit_criteria == "Alvo Fixo":
+                        st.metric("Melhor Combinação", f"Stop {best_params['stop']}% / Alvo {best_params['target']}%")
+                    elif exit_criteria == "Média Móvel":
+                        st.metric("Melhor Período MM", f"MM{best_params}")
+                with col3:
+                    st.metric("Operações", len(custom_returns_df))
+
+                # Show comparison table
+                st.subheader("📊 Comparação de Parâmetros")
+                comparison_df = pd.DataFrame(all_results)
+                comparison_df = comparison_df.sort_values('total_return', ascending=False)
+
+                # Format columns
+                comparison_df['total_return'] = comparison_df['total_return'].round(2)
+                comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
+                comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
+
+                # Rename columns for better display
+                comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
+
+                # Color code the best result
+                def highlight_best(s):
+                    if s.name == 'Retorno Total (%)':
+                        is_max = s == s.max()
+                        return ['background-color: lightgreen' if v else '' for v in is_max]
+                    return ['' for _ in s]
+
+                styled_df = comparison_df.style.apply(highlight_best, axis=0)
+                st.dataframe(styled_df, use_container_width=True)
+
+                # Show summary statistics
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Melhor Retorno Total", f"{comparison_df['Retorno Total (%)'].max():.2f}%")
+                with col2:
+                    st.metric("Pior Retorno Total", f"{comparison_df['Retorno Total (%)'].min():.2f}%")
+                with col3:
+                    st.metric("Diferença", f"{comparison_df['Retorno Total (%)'].max() - comparison_df['Retorno Total (%)'].min():.2f}%")
+            else:
+                st.success(f"✅ Análise completa para {symbol_label} ({data_source})")
+
+            # Current status display with improved layout
+            modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
+
+            st.markdown(f"### 📊 Status Atual do Mercado - Modelo: {modelo_nome}")
 
             col1, col2, col3, col4 = st.columns(4)
 
@@ -1920,7 +2484,7 @@ with tab3:
 
             # Create the interactive chart
             modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
-
+            
             # Preparar informações de threshold e buffer para o rodapé
             rodape_info = ""
             if model_type == "OVELHA V2 (Machine Learning)":
@@ -1934,7 +2498,7 @@ with tab3:
                         rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
                 else:
                     rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
-
+            
             titulo_grafico = f"OVECCHIA TRADING - {symbol_label} ({data_source}) - {modelo_nome} - Timeframe: {interval.upper()}{rodape_info}"
 
             fig = make_subplots(
@@ -2024,7 +2588,7 @@ with tab3:
             )
 
             # Update layout
-            fig.update_yaxes(range=[-0.1, 1.1], tickvals=[0, 0.5, 1],
+            fig.update_yaxes(range=[-0.1, 1.1], tickvals=[0, 0.5, 1], 
                             ticktext=['Venda', 'Ficar de Fora', 'Compra'], row=2, col=1)
             fig.update_xaxes(showgrid=False, row=2, col=1)
 
@@ -2040,44 +2604,44 @@ with tab3:
             st.plotly_chart(fig, use_container_width=True)
 
             st.markdown("---")
-
+            
             # Section 1: Advanced metrics
             with st.expander("📊 **Métricas Avançadas e Top Trades**", expanded=True):
                 if not returns_df.empty or not custom_returns_df.empty:
                     # Choose best performing dataset for advanced analysis
                     best_df = returns_df
                     best_label = "Mudança de Estado"
-
+                    
                     if not custom_returns_df.empty:
                         if returns_df.empty or custom_returns_df['return_pct'].sum() > returns_df['return_pct'].sum():
                             best_df = custom_returns_df
                             best_label = exit_criteria
-
+                    
                     if not best_df.empty:
                         display_advanced_returns_section(best_df, best_label, df, symbol_label)
                 else:
                     st.info("Nenhum dado disponível para análise avançada.")
-
+            
             # Section 2: Investment simulation
             with st.expander("💰 **Simulação de Investimento**", expanded=False):
                 # Use the best performing strategy for simulation
-                sim_df = returns_data
+                sim_df = returns_df
                 sim_label = "Mudança de Estado"
-
-                if custom_returns_df is not None and not custom_returns_df.empty:
+                
+                if not custom_returns_df.empty:
                     if returns_df.empty or custom_returns_df['return_pct'].sum() > returns_df['return_pct'].sum():
                         sim_df = custom_returns_df
                         sim_label = f"{exit_criteria}" + (" (Otimizado)" if optimize_params else "")
-
+                
                 if not sim_df.empty:
                     display_investment_simulation(sim_df, df, symbol_label, sim_label)
                 else:
                     st.info("Não há dados suficientes para simulação de investimento.")
-
+            
             # Section 3: Optimization comparison (if available)
-            if optimize_params and optimization_results and 'all_results' in optimization_results:
+            if optimize_params and optimization_results and all_results:
                 with st.expander("🔍 **Comparação de Otimização**", expanded=False):
-                    comparison_df = pd.DataFrame(optimization_results['all_results'])
+                    comparison_df = pd.DataFrame(all_results)
                     comparison_df = comparison_df.sort_values('total_return', ascending=False)
 
                     # Format columns
@@ -2164,916 +2728,14 @@ with tab3:
                             <p style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Baseados na volatilidade (ATR)</p>
                         </div>
                         """, unsafe_allow_html=True)
-        else:
-            # Progress indicator
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-
-            try:
-                # Fetch data
-                status_text.text("Coletando dados de mercado...")
-                progress_bar.progress(20)
-
-                # Download data using appropriate API
-                kwargs = {}
-                if data_source == "TwelveData":
-                    kwargs['outputsize'] = outputsize
-                df = get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
-                                            end_date.strftime("%Y-%m-%d"), interval, data_source, **kwargs)
-
-
-                if df is None or df.empty:
-                    st.error(f"Sem data encontrada para '{symbol}' ({data_source}) nesse período de tempo.")
-                    st.stop()
-
-                progress_bar.progress(40)
-                status_text.text("Processando indicadores...")
-
-                # Data preprocessing
-                symbol_label = symbol.replace("=X", "").replace("-USD", "").replace(".SA", "")
-
-                # Ensure we have the required columns
-                required_columns = ['time', 'open', 'high', 'low', 'close']
-                missing_columns = [col for col in required_columns if col not in df.columns]
-                if missing_columns:
-                    st.error(f"Missing required data columns: {missing_columns}")
-                    st.stop()
-
-                progress_bar.progress(60)
-
-                # Calculate technical indicators
-                # Moving averages (customizable)
-                df[f'SMA_{sma_short}'] = df['close'].rolling(window=sma_short).mean()
-                df[f'SMA_{sma_long}'] = df['close'].rolling(window=sma_long).mean()
-                df['SMA_20'] = df['close'].rolling(window=20).mean()
-
-                # RSI calculation
-                delta = df['close'].diff()
-                gain = np.where(delta > 0, delta, 0)
-                loss = np.where(delta < 0, -delta, 0)
-                avg_gain = pd.Series(gain, index=df.index).rolling(window=14).mean()
-                avg_loss = pd.Series(loss, index=df.index).rolling(window=14).mean()
-                rs = avg_gain / avg_loss
-                df['RSI_14'] = 100 - (100 / (1 + rs))
-
-                # RSL calculation
-                df['RSL_20'] = df['close'] / df['SMA_20']
-
-                progress_bar.progress(80)
-                status_text.text("Gerando sinais de trading...")
-
-                # Escolher modelo baseado na seleção do usuário
-                if model_type == "OVELHA V2 (Machine Learning)":
-                    # Pass the strategy_type and remove the now redundant buffer parameter
-                    df_with_signals = calculate_ovelha_v2_signals(df, strategy_type=strategy_type, sma_short=sma_short, sma_long=sma_long, use_dynamic_threshold=True, vol_factor=0.5)
-                    if df_with_signals is not None:
-                        df = df_with_signals
-                        st.info(f"✅ Modelo OVELHA V2 (Random Forest) aplicado com sucesso!")
-                    else:
-                        # Fallback para modelo clássico se houver erro
-                        model_type = "OVELHA (Clássico)"
-                        st.warning("⚠️ Usando modelo clássico OVELHA como fallback.")
-
-                if model_type == "OVELHA (Clássico)" or 'Estado' not in df.columns: # Ensure Estado column exists for OVELHA
-                    # Signal generation - Modelo Original
-                    df['Signal'] = 'Stay Out'
-                    for i in range(1, len(df)):
-                        rsi_up = df['RSI_14'].iloc[i] > df['RSI_14'].iloc[i-1]
-                        rsi_down = df['RSI_14'].iloc[i] < df['RSI_14'].iloc[i-1]
-                        rsl = df['RSL_20'].iloc[i]
-                        rsl_prev = df['RSL_20'].iloc[i-1]
-
-                        rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
-                        rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
-
-                        if (
-                            df['close'].iloc[i] > df[f'SMA_{sma_short}'].iloc[i]
-                            and df['close'].iloc[i] > df[f'SMA_{sma_long}'].iloc[i]
-                            and rsi_up and rsl_buy
-                        ):
-                            df.at[i, 'Signal'] = 'Buy'
-                        elif (
-                            df['close'].iloc[i] < df[f'SMA_{sma_short}'].iloc[i]
-                            and rsi_down and rsl_sell
-                        ):
-                            df.at[i, 'Signal'] = 'Sell'
-
-                    # State persistence - aplicar sinal imediatamente
-                    df['Estado'] = 'Stay Out'
-
-                    for i in range(len(df)):
-                        if i == 0:
-                            # Primeiro candle sempre Stay Out
-                            continue
-
-                        # Estado anterior
-                        estado_anterior = df['Estado'].iloc[i - 1]
-
-                        # Aplicar sinal imediatamente
-                        sinal_atual = df['Signal'].iloc[i]
-                        if sinal_atual != 'Stay Out':
-                            df.loc[df.index[i], 'Estado'] = sinal_atual
-                        else:
-                            df.loc[df.index[i], 'Estado'] = estado_anterior
-
-                # ATR and Stop Loss calculations
-                df['prior_close'] = df['close'].shift(1)
-                df['tr1'] = df['high'] - df['low']
-                df['tr2'] = abs(df['high'] - df['prior_close'])
-                df['tr3'] = abs(df['low'] - df['prior_close'])
-                df['TR'] = df[['tr1', 'tr2', 'tr3']].max(axis=1)
-                df['ATR'] = df['TR'].rolling(window=14).mean()
-
-                # Initialize stop loss levels
-                df['Stop_Justo'] = np.nan
-                df['Stop_Balanceado'] = np.nan
-                df['Stop_Largo'] = np.nan
-
-                # ATR factors for each stop type
-                fatores = {'Stop_Justo': 2.0 , 'Stop_Balanceado': 2.5 , 'Stop_Largo': 3.5}
-
-                for i in range(1, len(df)):
-                    estado = df['Estado'].iloc[i]
-                    close = df['close'].iloc[i]
-                    atr = df['ATR'].iloc[i]
-
-                    for stop_tipo, fator in fatores.items():
-                        stop_anterior = df[stop_tipo].iloc[i - 1]
-                        if estado == 'Buy':
-                            stop_atual = close - fator * atr
-                            df.loc[df.index[i], stop_tipo] = max(stop_anterior, stop_atual) if pd.notna(stop_anterior) else stop_atual
-                        elif estado == 'Sell':
-                            stop_atual = close + fator * atr
-                            df.loc[df.index[i], stop_tipo] = min(stop_anterior, stop_atual) if pd.notna(stop_anterior) else stop_atual
-
-                # Color coding and indicators
-                df['Color'] = 'black'
-                df.loc[df['Estado'] == 'Buy', 'Color'] = 'blue'
-                df.loc[df['Estado'] == 'Sell', 'Color'] = 'red'
-                # Create indicator mapping
-                estado_mapping = {'Buy': 1, 'Sell': 0, 'Stay Out': 0.5}
-                df['Indicator'] = df['Estado'].apply(lambda x: estado_mapping.get(x, 0.5))
-
-                # Calculate returns based on signal changes
-                def calculate_signal_returns(df, direction="Ambos (Compra e Venda)"):
-                    returns_data = []
-                    current_signal = None
-                    entry_price = None
-                    entry_time = None
-                    previous_estado = None
-
-                    for i in range(len(df)):
-                        estado = df['Estado'].iloc[i]
-                        price = df['close'].iloc[i]
-                        time = df['time'].iloc[i]
-
-                        # Skip if same as previous to avoid infinite loops
-                        if estado == previous_estado and i > 0:
-                            continue
-
-                        # Filter signals based on trading direction
-                        should_enter = False
-                        if direction == "Ambos (Compra e Venda)":
-                            should_enter = estado in ['Buy', 'Sell']
-                        elif direction == "Apenas Comprado":
-                            should_enter = estado == 'Buy'
-                        elif direction == "Apenas Vendido":
-                            should_enter = estado == 'Sell'
-
-                        # State change logic
-                        if estado != current_signal:
-                            # Close current position if exists
-                            if current_signal is not None and entry_price is not None:
-                                if current_signal == 'Buy':
-                                    return_pct = ((price - entry_price) / entry_price) * 100
-                                else:  # current_signal == 'Sell'
-                                    return_pct = ((entry_price - price) / entry_price) * 100
-
-                                returns_data.append({
-                                    'signal': current_signal,
-                                    'entry_time': entry_time,
-                                    'exit_time': time,
-                                    'entry_price': entry_price,
-                                    'exit_price': price,
-                                    'return_pct': return_pct
-                                })
-
-                            # Start new position if should enter
-                            if should_enter:
-                                current_signal = estado
-                                entry_price = price
-                                entry_time = time
-                            else:
-                                current_signal = None
-                                entry_price = None
-                                entry_time = None
-
-                        previous_estado = estado
-
-                    return pd.DataFrame(returns_data)
-
-                returns_df = calculate_signal_returns(df, trading_direction)
-
-                # Calculate custom exit criteria returns
-                def calculate_custom_exit_returns(df, exit_criteria, exit_params, direction="Ambos (Compra e Venda)", include_state_change=True):
-                    if exit_criteria == "Mudança de Estado":
-                        return calculate_signal_returns(df, direction)
-
-                    custom_returns = []
-                    current_signal = None
-                    entry_price = None
-                    entry_time = None
-                    entry_index = None
-                    previous_state = None  # Track previous state to detect changes
-
-                    for i in range(len(df)):
-                        estado = df['Estado'].iloc[i]
-                        price = df['close'].iloc[i]
-                        time = df['time'].iloc[i]
-
-                        # Filter signals based on trading direction
-                        should_enter = False
-                        should_exit_on_opposite = False
-
-                        if direction == "Ambos (Compra e Venda)":
-                            should_enter = estado in ['Buy', 'Sell']
-                        elif direction == "Apenas Comprado":
-                            should_enter = estado == 'Buy'
-                            should_exit_on_opposite = estado == 'Sell'
-                        elif direction == "Apenas Vendido":
-                            should_enter = estado == 'Sell'
-                            should_exit_on_opposite = estado == 'Buy'
-
-                        # Check if we have an active position
-                        if current_signal is not None and entry_price is not None and entry_index is not None:
-
-                            # 1. Check for exit conditions based on include_state_change setting
-                            should_exit_by_state = False
-                            exit_reason_state = None
-
-                            if include_state_change:
-                                if direction == "Ambos (Compra e Venda)":
-                                    # For "Ambos", exit on state change to Stay Out OR opposite signal
-                                    if estado == 'Stay Out':
-                                        should_exit_by_state = True
-                                        exit_reason_state = 'Mudança de Estado'
-                                    elif estado != current_signal and estado in ['Buy', 'Sell']:
-                                        should_exit_by_state = True
-                                        exit_reason_state = 'Mudança de Estado'
-                                else:
-                                    # For single direction, exit on Stay Out or opposite signal
-                                    if estado == 'Stay Out' or should_exit_on_opposite:
-                                        should_exit_by_state = True
-                                        exit_reason_state = 'Mudança de Estado' if estado == 'Stay Out' else 'Mudança de Estado'
-
-                            if should_exit_by_state:
-                                # State changed - close current position immediately
-                                if current_signal == 'Buy':
-                                    return_pct = ((price - entry_price) / entry_price) * 100
-                                else:  # Sell
-                                    return_pct = ((entry_price - price) / entry_price) * 100
-
-                                custom_returns.append({
-                                    'signal': current_signal,
-                                    'entry_time': entry_time,
-                                    'exit_time': time,
-                                    'entry_price': entry_price,
-                                    'exit_price': price,
-                                    'return_pct': return_pct,
-                                    'exit_reason': exit_reason_state
-                                })
-
-                                # Start new position if criteria met and direction allows
-                                if should_enter and previous_state != estado:
-                                    current_signal = estado
-                                    entry_price = price
-                                    entry_time = time
-                                    entry_index = i
-                                else:
-                                    current_signal = None
-                                    entry_price = None
-                                    entry_time = None
-                                    entry_index = None
-
-                                previous_state = estado
-                                continue
-
-                            # 2. Check custom exit criteria (only if no state change exit occurred)
-                            exit_price, exit_time_custom, exit_reason = calculate_exit(
-                                df, entry_index, i, current_signal, entry_price, exit_criteria, exit_params
-                            )
-
-                            if exit_price is not None:
-                                if current_signal == 'Buy':
-                                    return_pct = ((exit_price - entry_price) / entry_price) * 100
-                                else:  # Sell
-                                    return_pct = ((entry_price - exit_price) / entry_price) * 100
-
-                                custom_returns.append({
-                                    'signal': current_signal,
-                                    'entry_time': entry_time,
-                                    'exit_time': exit_time_custom,
-                                    'entry_price': entry_price,
-                                    'exit_price': exit_price,
-                                    'return_pct': return_pct,
-                                    'exit_reason': exit_reason
-                                })
-
-                                # Position closed by custom criteria - wait for next state change
-                                current_signal = None
-                                entry_price = None
-                                entry_time = None
-                                entry_index = None
-                                continue
-
-                        # Entry logic - ONLY open new position on STATE CHANGE to allowed signals
-                        elif previous_state != estado and should_enter:
-                            # This is a state change to allowed signal - open new position
-                            current_signal = estado
-                            entry_price = price
-                            entry_time = time
-                            entry_index = i
-
-                        # Update previous state for next iteration
-                        previous_state = estado
-
-                    return pd.DataFrame(custom_returns)
-
-                def calculate_exit(df, entry_idx, current_idx, signal, entry_price, criteria, params):
-                    """Calculate exit price based on selected criteria - doesn't check state change as main loop handles it"""
-
-                    if criteria == "Stop Loss":
-                        stop_col = params['stop_type'].replace(' ', '_')
-                        for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
-                            stop_price = df[stop_col].iloc[i]
-                            current_price = df['close'].iloc[i]
-
-                            if signal == 'Buy' and current_price <= stop_price:
-                                return stop_price, df['time'].iloc[i], f"Stop {params['stop_type']}"
-                            elif signal == 'Sell' and current_price >= stop_price:
-                                return stop_price, df['time'].iloc[i], f"Stop {params['stop_type']}"
-
-                    elif criteria == "Alvo Fixo":
-                        target_pct = params['target_pct'] / 100
-                        stop_loss_pct = params['stop_loss_pct'] / 100
-
-                        if signal == 'Buy':
-                            target_price = entry_price * (1 + target_pct)
-                            stop_loss_price = entry_price * (1 - stop_loss_pct)
-                        else:
-                            target_price = entry_price * (1 - target_pct)
-                            stop_loss_price = entry_price * (1 + stop_loss_pct)
-
-                        for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
-                            current_price = df['close'].iloc[i]
-
-                            if signal == 'Buy':
-                                if current_price >= target_price:
-                                    return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
-                                elif current_price <= stop_loss_price:
-                                    return stop_loss_price, df['time'].iloc[i], f"Stop Loss {params['stop_loss_pct']}%"
-                            else:  # Sell
-                                if current_price <= target_price:
-                                    return target_price, df['time'].iloc[i], f"Alvo {params['target_pct']}%"
-                                elif current_price >= stop_loss_price:
-                                    return stop_loss_price, df['time'].iloc[i], f"Stop Loss {params['stop_loss_pct']}%"
-
-                    elif criteria == "Tempo":
-                        target_candles = params['time_candles']
-                        target_idx = entry_idx + target_candles
-
-                        if target_idx < len(df) and target_idx <= current_idx:
-                            return df['close'].iloc[target_idx], df['time'].iloc[target_idx], f"Tempo {target_candles} candles"
-                    elif criteria == "Média Móvel":
-                        ma_period = params['ma_period']
-                        ma = df['close'].rolling(window=ma_period).mean()
-                        for i in range(entry_idx + 1, min(current_idx + 1, len(df))):
-                            current_price = df['close'].iloc[i]
-                            ma_value = ma.iloc[i]
-
-                            if signal == 'Buy' and current_price < ma_value:
-                                return current_price, df['time'].iloc[i], f"MM{ma_period} Cruzada para Baixo"
-                            elif signal == 'Sell' and current_price > ma_value:
-                                return current_price, df['time'].iloc[i], f"MM{ma_period} Cruzada para Cima"
-
-                    return None, None, None
-
-                def optimize_exit_parameters(df, criteria, params, direction="Ambos (Compra e Venda)"):
-                    """Optimize parameters for the selected exit criteria"""
-                    all_results = []
-                    best_return = float('-inf')
-                    best_params = None
-                    best_returns_df = pd.DataFrame()
-
-                    include_state_change_options = [True, False] if trading_direction == "Ambos (Compra e Venda)" else [include_state_change]
-
-                    if criteria == "Tempo":
-                        # Test different number of candles
-                        max_candles = params.get('max_candles', 20)
-                        for candles in range(1, max_candles + 1):
-                            test_params = {'time_candles': candles}
-                            returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, include_state_change)
-
-                            if not returns_df.empty:
-                                total_return = returns_data['return_pct'].sum()
-                                avg_return = returns_data['return_pct'].mean()
-                                win_rate = (returns_data['return_pct'] > 0).sum() / len(returns_data) * 100
-
-                                all_results.append({
-                                    'parametro': f"{candles} candles",
-                                    'total_return': total_return,
-                                    'avg_return': avg_return,
-                                    'win_rate': win_rate,
-                                    'total_trades': len(returns_df)
-                                })
-
-                                if total_return > best_return:
-                                    best_return = total_return
-                                    best_params = candles
-                                    best_returns_df = returns_df.copy()
-
-                    elif criteria == "Média Móvel":
-                        # Test different MA periods
-                        ma_range = params.get('ma_range', [10, 20, 50])
-                        for ma_period in ma_range:
-                            test_params = {'ma_period': ma_period}
-                            returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, include_state_change)
-
-                            if not returns_df.empty:
-                                total_return = returns_data['return_pct'].sum()
-                                avg_return = returns_data['return_pct'].mean()
-                                win_rate = (returns_data['return_pct'] > 0).sum() / len(returns_data) * 100
-
-                                all_results.append({
-                                    'parametro': f"MM{ma_period}",
-                                    'total_return': total_return,
-                                    'avg_return': avg_return,
-                                    'win_rate': win_rate,
-                                    'total_trades': len(returns_df)
-                                })
-
-                                if total_return > best_return:
-                                    best_return = total_return
-                                    best_params = ma_period
-                                    best_returns_df = returns_df.copy()
-
-                    elif criteria == "Stop Loss":
-                        # Test different stop types
-                        stop_types = ["Stop Justo", "Stop Balanceado", "Stop Largo"]
-                        for stop_type in stop_types:
-                            test_params = {'stop_type': stop_type}
-                            returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, include_state_change)
-
-                            if not returns_df.empty:
-                                total_return = returns_data['return_pct'].sum()
-                                avg_return = returns_data['return_pct'].mean()
-                                win_rate = (returns_data['return_pct'] > 0).sum() / len(returns_data) * 100
-
-                                all_results.append({
-                                    'parametro': stop_type,
-                                    'total_return': total_return,
-                                    'avg_return': avg_return,
-                                    'win_rate': win_rate,
-                                    'total_trades': len(returns_df)
-                                })
-
-                                if total_return > best_return:
-                                    best_return = total_return
-                                    best_params = stop_type
-                                    best_returns_df = returns_df.copy()
-
-                    elif criteria == "Alvo Fixo":
-                        # Test different combinations of target and stop
-                        target_range = params.get('target_range', [2.0, 3.0, 4.0, 5.0])
-                        stop_range = params.get('stop_range', [1.0, 2.0, 3.0])
-
-                        for target in target_range:
-                            for stop in stop_range:
-                                if target > stop:  # Only test valid combinations
-                                    test_params = {'target_pct': target, 'stop_loss_pct': stop}
-                                    returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, include_state_change)
-
-                                    if not returns_df.empty:
-                                        total_return = returns_data['return_pct'].sum()
-                                        avg_return = returns_data['return_pct'].mean()
-                                        win_rate = (returns_data['return_pct'] > 0).sum() / len(returns_data) * 100
-
-                                        all_results.append({
-                                            'parametro': f"Stop {stop}% / Alvo {target}%",
-                                            'total_return': total_return,
-                                            'avg_return': avg_return,
-                                            'win_rate': win_rate,
-                                            'total_trades': len(returns_df)
-                                        })
-
-                                        if total_return > best_return:
-                                            best_return = total_return
-                                            best_params = {'stop': stop, 'target': target}
-                                            best_returns_df = returns_df.copy()
-
-                    return {
-                        'best_returns': best_returns_df,
-                        'best_params': best_params,
-                        'best_total_return': best_return,
-                        'all_results': all_results
-                    }
-
-                # Calculate returns with optimization if enabled
-                if optimize_params:
-                    status_text.text("Otimizando parâmetros...")
-                    progress_bar.progress(85)
-
-                    optimization_results = optimize_exit_parameters(df, exit_criteria, exit_params, trading_direction)
-                    custom_returns_df = optimization_results['best_returns']
-                    best_params = optimization_results['best_params']
-                    all_results = optimization_results['all_results']
-                else:
-                    custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params, trading_direction, include_state_change)
-                    optimization_results = None
-
-                progress_bar.progress(100)
-                status_text.text("Análise Completa!")
-
-                # Save analysis results to cache
-                st.session_state.cached_analysis = {
-                    'df': df,
-                    'symbol_label': symbol_label,
-                    'returns_df': returns_df,
-                    'custom_returns_df': custom_returns_df,
-                    'optimization_results': optimization_results if optimize_params else None,
-                    'modelo_nome': modelo_nome,
-                    'model_type': model_type,
-                    'data_source': data_source,
-                    'interval': interval,
-                    'exit_criteria': exit_criteria,
-                    'optimize_params': optimize_params
-                }
-                st.session_state.analysis_params_key = analysis_params_key
-
-                # Clear progress indicators
-                progress_bar.empty()
-                status_text.empty()
-
-                # Display results
-                if optimize_params and optimization_results:
-                    st.success(f"✅ Análise e otimização completa para {symbol_label} ({data_source})")
-
-                    # Show optimization results
-                    st.subheader("🎯 Resultados da Otimização")
-
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Melhor Retorno Total", f"{optimization_results['best_total_return']:.2f}%")
-                    with col2:
-                        if exit_criteria == "Tempo":
-                            st.metric("Melhor Parâmetro", f"{best_params} candles")
-                        elif exit_criteria == "Stop Loss":
-                            st.metric("Melhor Stop", best_params)
-                        elif exit_criteria == "Alvo Fixo":
-                            st.metric("Melhor Combinação", f"Stop {best_params['stop']}% / Alvo {best_params['target']}%")
-                        elif exit_criteria == "Média Móvel":
-                            st.metric("Melhor Período MM", f"MM{best_params}")
-                    with col3:
-                        st.metric("Operações", len(custom_returns_df))
-
-                    # Show comparison table
-                    st.subheader("📊 Comparação de Parâmetros")
-                    comparison_df = pd.DataFrame(all_results)
-                    comparison_df = comparison_df.sort_values('total_return', ascending=False)
-
-                    # Format columns
-                    comparison_df['total_return'] = comparison_df['total_return'].round(2)
-                    comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
-                    comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
-
-                    # Rename columns for better display
-                    comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
-
-                    # Color code the best result
-                    def highlight_best(s):
-                        if s.name == 'Retorno Total (%)':
-                            is_max = s == s.max()
-                            return ['background-color: lightgreen' if v else '' for v in is_max]
-                        return ['' for _ in s]
-
-                    styled_df = comparison_df.style.apply(highlight_best, axis=0)
-                    st.dataframe(styled_df, use_container_width=True)
-
-                    # Show summary statistics
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Melhor Retorno Total", f"{comparison_df['Retorno Total (%)'].max():.2f}%")
-                    with col2:
-                        st.metric("Pior Retorno Total", f"{comparison_df['Retorno Total (%)'].min():.2f}%")
-                    with col3:
-                        st.metric("Diferença", f"{comparison_df['Retorno Total (%)'].max() - comparison_df['Retorno Total (%)'].min():.2f}%")
-                else:
-                    st.success(f"✅ Análise completa para {symbol_label} ({data_source})")
-
-                # Current status display with improved layout
-                modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
-
-                st.markdown(f"### 📊 Status Atual do Mercado - Modelo: {modelo_nome}")
-
-                col1, col2, col3, col4 = st.columns(4)
-
-                current_price = df['close'].iloc[-1]
-                current_signal = df['Estado'].iloc[-1]
-                current_rsi = df['RSI_14'].iloc[-1]
-                current_rsl = df['RSL_20'].iloc[-1]
-
-                with col1:
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <h4 style="margin: 0; color: #1f77b4;">💰 Preço Atual</h4>
-                        <h2 style="margin: 0; color: #333;">{current_price:.2f}</h2>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                with col2:
-                    signal_class = "status-buy" if current_signal == "Buy" else "status-sell" if current_signal == "Sell" else "status-out"
-                    signal_icon = "🔵" if current_signal == "Buy" else "🔴" if current_signal == "Sell" else "⚫"
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <h4 style="margin: 0; color: #1f77b4;">🎯 Sinal Atual</h4>
-                        <div class="{signal_class}">{signal_icon} {current_signal}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                with col3:
-                    rsi_color = "#4CAF50" if current_rsi > 50 else "#f44336"
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <h4 style="margin: 0; color: #1f77b4;">📈 RSI (14)</h4>
-                        <h2 style="margin: 0; color: {rsi_color};">{current_rsi:.2f}</h2>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                with col4:
-                    rsl_color = "#4CAF50" if current_rsl > 1 else "#f44336"
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <h4 style="margin: 0; color: #1f77b4;">📊 RSL (20)</h4>
-                        <h2 style="margin: 0; color: {rsl_color};">{current_rsl:.3f}</h2>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                st.markdown("<br>", unsafe_allow_html=True)
-
-                # Create the interactive chart
-                modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
-
-                # Preparar informações de threshold e buffer para o rodapé
-                rodape_info = ""
-                if model_type == "OVELHA V2 (Machine Learning)":
-                    if 'thr_used' in df.columns and 'buffer_pct' in df.columns:
-                        # Verificar se as colunas têm valores válidos
-                        if pd.notna(df['thr_used'].iloc[-1]) and pd.notna(df['buffer_pct'].iloc[-1]):
-                            thr_atual = df['thr_used'].iloc[-1] * 100  # converter para percentual
-                            buf_atual = df['buffer_pct'].iloc[-1] * 100  # converter para percentual
-                            rodape_info = f" | Thr: {thr_atual:.3f}% | Buf: {buf_atual:.3f}%"
-                        else:
-                            rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
-                    else:
-                        rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
-
-                titulo_grafico = f"OVECCHIA TRADING - {symbol_label} ({data_source}) - {modelo_nome} - Timeframe: {interval.upper()}{rodape_info}"
-
-                fig = make_subplots(
-                    rows=2, cols=1,
-                    shared_xaxes=True,
-                    vertical_spacing=0.03,
-                    row_heights=[0.75, 0.25],
-                    subplot_titles=("Gráfico do Preço com Sinais", "Indicador de Sinais")
-                )
-
-                # Add price line with color coding
-                for i in range(len(df) - 1):
-                    fig.add_trace(go.Scatter(
-                        x=df['time'][i:i+2],
-                        y=df['close'][i:i+2],
-                        mode="lines",
-                        line=dict(color=df['Color'][i], width=2),
-                        showlegend=False,
-                        hoverinfo="skip"
-                    ), row=1, col=1)
-
-                # Add invisible trace for hover info
-                fig.add_trace(go.Scatter(
-                    x=df['time'],
-                    y=df['close'],
-                    mode='lines',
-                    line=dict(color='rgba(0,0,0,0)'),name='Price',
-                    hovertemplate="<b>Price:</b> %{y:.2f}<br><b>Time:</b> %{x}<extra></extra>",
-                    showlegend=False
-                ), row=1, col=1)
-
-                # Add all stop loss traces
-                stop_colors = {
-                    "Stop_Justo": "orange",
-                    "Stop_Balanceado": "gray",
-                    "Stop_Largo": "green"
-                }
-
-                for stop_type, color in stop_colors.items():
-                    if stop_type in df.columns: # Check if column exists
-                        fig.add_trace(go.Scatter(
-                            x=df['time'], y=df[stop_type],
-                            mode="lines", name=stop_type.replace("_", " "),
-                            line=dict(color=color, width=2, dash="dot"),
-                            hovertemplate=f"<b>{stop_type.replace('_', ' ')}:</b> %{{y:.2f}}<extra></extra>"
-                        ), row=1, col=1)
-
-                # Add signal indicator
-                fig.add_trace(go.Scatter(
-                    x=df['time'],
-                    y=df['Indicator'],
-                    mode="lines+markers",
-                    name="Signal Indicator",
-                    line=dict(color="purple", width=2),
-                    marker=dict(size=4),
-                    showlegend=False
-                ), row=2, col=1)
-
-                # Add legend items
-                fig.add_trace(go.Scatter(
-                    x=[None], y=[None], mode='lines',
-                    line=dict(color='blue', width=2),
-                    name='Sinal de Compra'
-                ), row=1, col=1)
-
-                fig.add_trace(go.Scatter(
-                    x=[None], y=[None], mode='lines',
-                    line=dict(color='red', width=2),
-                    name='Sinal de Venda'
-                ), row=1, col=1)
-
-                fig.add_trace(go.Scatter(
-                    x=[None], y=[None], mode='lines',
-                    line=dict(color='black', width=2),
-                    name='Ficar de Fora'
-                ), row=1, col=1)
-
-                # Add reference line for signal indicator
-                fig.add_shape(
-                    type="line",
-                    x0=df['time'].iloc[0],
-                    x1=df['time'].iloc[-1],
-                    y0=0.5,
-                    y1=0.5,
-                    line=dict(color="black", width=1, dash="dash"),
-                    xref="x", yref="y2"
-                )
-
-                # Update layout
-                fig.update_yaxes(range=[-0.1, 1.1], tickvals=[0, 0.5, 1],
-                                ticktext=['Venda', 'Ficar de Fora', 'Compra'], row=2, col=1)
-                fig.update_xaxes(showgrid=False, row=2, col=1)
-
-                # Update layout
-                fig.update_layout(
-                    title=dict(text=titulo_grafico, x=0.5, font=dict(size=18)),
-                    template="plotly_white",
-                    hovermode="x unified",
-                    height=700
-                )
-
-                # Display the chart
-                st.plotly_chart(fig, use_container_width=True)
-
-                st.markdown("---")
-
-                # Section 1: Advanced metrics
-                with st.expander("📊 **Métricas Avançadas e Top Trades**", expanded=True):
-                    if not returns_df.empty or not custom_returns_df.empty:
-                        # Choose best performing dataset for advanced analysis
-                        best_df = returns_df
-                        best_label = "Mudança de Estado"
-
-                        if not custom_returns_df.empty:
-                            if returns_df.empty or custom_returns_df['return_pct'].sum() > returns_df['return_pct'].sum():
-                                best_df = custom_returns_df
-                                best_label = exit_criteria
-
-                        if not best_df.empty:
-                            display_advanced_returns_section(best_df, best_label, df, symbol_label)
-                    else:
-                        st.info("Nenhum dado disponível para análise avançada.")
-
-                # Section 2: Investment simulation
-                with st.expander("💰 **Simulação de Investimento**", expanded=False):
-                    # Use the best performing strategy for simulation
-                    sim_df = returns_df
-                    sim_label = "Mudança de Estado"
-
-                    if custom_returns_df is not None and not custom_returns_df.empty:
-                        if returns_df.empty or custom_returns_df['return_pct'].sum() > returns_df['return_pct'].sum():
-                            sim_df = custom_returns_df
-                            sim_label = f"{exit_criteria}" + (" (Otimizado)" if optimize_params else "")
-
-                    if not sim_df.empty:
-                        display_investment_simulation(sim_df, df, symbol_label, sim_label)
-                    else:
-                        st.info("Não há dados suficientes para simulação de investimento.")
-
-                # Section 3: Optimization comparison (if available)
-                if optimize_params and optimization_results and 'all_results' in optimization_results:
-                    with st.expander("🔍 **Comparação de Otimização**", expanded=False):
-                        comparison_df = pd.DataFrame(optimization_results['all_results'])
-                        comparison_df = comparison_df.sort_values('total_return', ascending=False)
-
-                        # Format columns
-                        comparison_df['total_return'] = comparison_df['total_return'].round(2)
-                        comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
-                        comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
-
-                        # Rename columns for better display
-                        comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
-
-                        # Color code the best result
-                        def highlight_best(s):
-                            if s.name == 'Retorno Total (%)':
-                                is_max = s == s.max()
-                                return ['background-color: lightgreen' if v else '' for v in is_max]
-                            return ['' for _ in s]
-
-                        styled_df = comparison_df.style.apply(highlight_best, axis=0)
-                        st.dataframe(styled_df, use_container_width=True)
-
-                        # Show summary statistics
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Melhor Retorno Total", f"{comparison_df['Retorno Total (%)'].max():.2f}%")
-                        with col2:
-                            st.metric("Pior Retorno Total", f"{comparison_df['Retorno Total (%)'].min():.2f}%")
-                        with col3:
-                            st.metric("Diferença", f"{comparison_df['Retorno Total (%)'].max() - comparison_df['Retorno Total (%)'].min():.2f}%")
-
-                st.markdown("---")
-                # Technical analysis summary with improved layout
-                st.markdown("## 📋 Informações Técnicas")
-
-                # Adjust columns based on model type
-                if model_type == "OVELHA V2 (Machine Learning)" and 'thr_used' in df.columns and 'buffer_pct' in df.columns:
-                    col1, col2, col3 = st.columns(3)
-                else:
-                    col1, col2 = st.columns(2)
-
-                with col1:
-                    st.markdown("### 🛡️ Níveis de Stop Loss")
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <p><strong>🔴 Stop Justo:</strong> {df['Stop_Justo'].iloc[-1]:.2f}</p>
-                        <p><strong>🟡 Stop Balanceado:</strong> {df['Stop_Balanceado'].iloc[-1]:.2f}</p>
-                        <p><strong>🟢 Stop Largo:</strong> {df['Stop_Largo'].iloc[-1]:.2f}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                with col2:
-                    buy_signals = (df['Estado'] == 'Buy').sum()
-                    sell_signals = (df['Estado'] == 'Sell').sum()
-                    stay_out = (df['Estado'] == 'Stay Out').sum()
-
-                    st.markdown("### 📊 Distribuição dos Sinais")
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <p><strong>🔵 Sinais de Compra:</strong> {buy_signals}</p>
-                        <p><strong>🔴 Sinais de Venda:</strong> {sell_signals}</p>
-                        <p><strong>⚫ Fora do Mercado:</strong> {stay_out}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                # Add threshold and buffer information for OVELHA V2
-                if model_type == "OVELHA V2 (Machine Learning)" and 'thr_used' in df.columns and 'buffer_pct' in df.columns:
-                    with col3:
-                        if pd.notna(df['thr_used'].iloc[-1]) and pd.notna(df['buffer_pct'].iloc[-1]):
-                            thr_atual = df['thr_used'].iloc[-1] * 100
-                            buf_atual = df['buffer_pct'].iloc[-1] * 100
-                            st.markdown("### ⚙️ Parâmetros Dinâmicos")
-                            st.markdown(f"""
-                            <div class="metric-card">
-                                <p><strong>🎯 Threshold Atual:</strong> {thr_atual:.3f}%</p>
-                                <p><strong>🔄 Buffer Atual:</strong> {buf_atual:.3f}%</p>
-                                <p style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Valores calculados dinamicamente baseados na volatilidade (ATR)</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.markdown("### ⚙️ Parâmetros Dinâmicos")
-                            st.markdown(f"""
-                            <div class="metric-card">
-                                <p><strong>🎯 Threshold:</strong> Dinâmico</p>
-                                <p><strong>🔄 Buffer:</strong> Dinâmico</p>
-                                <p style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Baseados na volatilidade (ATR)</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"An error occurred during analysis: {str(e)}")
-                st.write("Please check your inputs and try again.")
+        except Exception as e:
+            st.error(f"An error occurred during analysis: {str(e)}")
+            st.write("Please check your inputs and try again.")
 
 with tab4:
     # Screening tab
     st.markdown("## 🔍 Screening de Múltiplos Ativos")
-    st.markdown("Monitore múltiplos ativos simultaneamente e identifique mudanças de estado nos sinais de trading.")
+    st.info("ℹ️ **Screening Mode:** O screening focará apenas na detecção de mudanças de estado dos sinais.")
 
     # Parameters section
     col1, col2 = st.columns([1, 1])
@@ -3156,18 +2818,18 @@ with tab4:
                 "PNVL3.SA", "PTBL3.SA", "RAPT4.SA", "SEER3.SA", "WIZC3.SA"
             ],
             "Ações Americanas": [
-                "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "BRK-B", "TSLA",
-                "TSM", "JPM", "WMT", "LLY", "ORCL", "V", "MA", "NFLX", "XOM", "COST",
-                "JNJ", "PLTR", "HD", "PG", "BAC", "ABBV", "KO", "CVX", "CRM", "UNH",
-                "PM", "IBM", "MS", "GS", "LIN", "INTU", "ABT", "DIS", "AXP", "MRK",
-                "MCD", "RTX", "CAT", "T", "NOW", "PEP", "UBER", "BKNG", "VZ", "TMO",
-                "ISRG", "ACN", "C", "SCHW", "GEV", "BA", "BLK", "QCOM", "TXN", "AMGN",
-                "SPGI", "ADBE", "BSX", "SYK", "ETN", "SO", "SPG", "TMUS", "NKE", "HON",
-                "MDT", "MMM", "MO", "USB", "LMT", "UPS", "UNP", "PYPL", "TGT", "DE",
-                "GILD", "CMCSA", "CHTR", "COP", "GE", "FDX", "DUK", "EMR", "DD", "NEE",
-                "SBUX", "F", "GM", "OXY", "BIIB", "CVS", "CL", "ED", "GLW", "D",
-                "PFE", "DG", "ADP", "ZTS", "BBY", "MNST", "TRV", "SLB", "ICE", "WELL",
-                "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC",
+                "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "BRK-B", "TSLA", 
+                "TSM", "JPM", "WMT", "LLY", "ORCL", "V", "MA", "NFLX", "XOM", "COST", 
+                "JNJ", "PLTR", "HD", "PG", "BAC", "ABBV", "KO", "CVX", "CRM", "UNH", 
+                "PM", "IBM", "MS", "GS", "LIN", "INTU", "ABT", "DIS", "AXP", "MRK", 
+                "MCD", "RTX", "CAT", "T", "NOW", "PEP", "UBER", "BKNG", "VZ", "TMO", 
+                "ISRG", "ACN", "C", "SCHW", "GEV", "BA", "BLK", "QCOM", "TXN", "AMGN", 
+                "SPGI", "ADBE", "BSX", "SYK", "ETN", "SO", "SPG", "TMUS", "NKE", "HON", 
+                "MDT", "MMM", "MO", "USB", "LMT", "UPS", "UNP", "PYPL", "TGT", "DE", 
+                "GILD", "CMCSA", "CHTR", "COP", "GE", "FDX", "DUK", "EMR", "DD", "NEE", 
+                "SBUX", "F", "GM", "OXY", "BIIB", "CVS", "CL", "ED", "GLW", "D", 
+                "PFE", "DG", "ADP", "ZTS", "BBY", "MNST", "TRV", "SLB", "ICE", "WELL", 
+                "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC", 
                 "NOC", "EXC", "SYY", "AON", "MET", "AFL", "TJX", "BMY", "HAL", "STZ"
             ],
             "Pares de Forex": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"],
@@ -3212,15 +2874,15 @@ with tab4:
             st.markdown("#### ⏱️ Intervalo de Tempo")
             interval_options_binance = {
                 "5 minutes": "5m",
-                "15 minutes": "15m",
+                "15 minutes": "15m", 
                 "60 minutes": "60m",
                 "1 hour": "1h",
                 "4 hours": "4h",
                 "1 day": "1d"
             }
             interval_display_screening = st.selectbox(
-                "Intervalo",
-                list(interval_options_binance.keys()),
+                "Intervalo", 
+                list(interval_options_binance.keys()), 
                 index=5,  # Default to 1d
                 key="interval_binance_screening"
             )
@@ -3289,7 +2951,7 @@ with tab4:
         st.markdown('</div>', unsafe_allow_html=True)
 
     # Analysis button for screening
-    analyze_button_screening = st.button("🚀 INICIAR SCREENING", type="primary", use_container_width=True, key="analyze_screening")
+    analyze_button_screening = st.button("🚀 INICIAR SCREENING", type="primary", use_container_width=True)
 
     # Screening analysis logic
     if analyze_button_screening:
@@ -3312,7 +2974,7 @@ with tab4:
 
                 try:
                     # Download data using appropriate API
-                    df_temp = get_market_data(current_symbol, start_date_screening.strftime("%Y-%m-%d"),
+                    df_temp = get_market_data(current_symbol, start_date_screening.strftime("%Y-%m-%d"), 
                                                 end_date_screening.strftime("%Y-%m-%d"), interval_screening, data_source_screening)
 
                     if df_temp is None or df_temp.empty:
@@ -3326,13 +2988,13 @@ with tab4:
                         })
                         continue
 
-                    # Choose model based on user selection for screening
+                    # Escolher modelo baseado na seleção do usuário para screening
                     if model_type_screening == "OVELHA V2 (Machine Learning)":
                         df_with_signals = calculate_ovelha_v2_signals(df_temp, strategy_type=strategy_type_screening, sma_short=sma_short_screening, sma_long=sma_long_screening, use_dynamic_threshold=True, vol_factor=0.5)
                         if df_with_signals is not None:
                             df_temp = df_with_signals
                         else:
-                            # Fallback to classic model if error
+                            # Fallback para modelo clássico se houver erro
                             model_type_screening_current = "OVELHA (Clássico)"
 
                     if model_type_screening == "OVELHA (Clássico)" or 'Estado' not in df_temp.columns: # Ensure Estado column exists for OVELHA
@@ -3376,18 +3038,18 @@ with tab4:
                             ):
                                 df_temp.at[i, 'Signal'] = 'Sell'
 
-                        # State persistence - apply signal immediately
+                        # State persistence - aplicar sinal imediatamente
                         df_temp['Estado'] = 'Stay Out'
 
                         for i in range(len(df_temp)):
                             if i == 0:
-                                # First candle always Stay Out
+                                # Primeiro candle sempre Stay Out
                                 continue
 
-                            # Previous state
+                            # Estado anterior
                             estado_anterior = df_temp['Estado'].iloc[i - 1]
 
-                            # Apply signal immediately
+                            # Aplicar sinal imediatamente
                             sinal_atual = df_temp['Signal'].iloc[i]
                             if sinal_atual != 'Stay Out':
                                 df_temp.loc[df_temp.index[i], 'Estado'] = sinal_atual
@@ -3538,18 +3200,18 @@ with tab5:
                 "PNVL3.SA", "PTBL3.SA", "RAPT4.SA", "SEER3.SA", "WIZC3.SA"
             ],
             "Ações Americanas": [
-                "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "BRK-B", "TSLA",
-                "TSM", "JPM", "WMT", "LLY", "ORCL", "V", "MA", "NFLX", "XOM", "COST",
-                "JNJ", "PLTR", "HD", "PG", "BAC", "ABBV", "KO", "CVX", "CRM", "UNH",
-                "PM", "IBM", "MS", "GS", "LIN", "INTU", "ABT", "DIS", "AXP", "MRK",
-                "MCD", "RTX", "CAT", "T", "NOW", "PEP", "UBER", "BKNG", "VZ", "TMO",
-                "ISRG", "ACN", "C", "SCHW", "GEV", "BA", "BLK", "QCOM", "TXN", "AMGN",
-                "SPGI", "ADBE", "BSX", "SYK", "ETN", "SO", "SPG", "TMUS", "NKE", "HON",
-                "MDT", "MMM", "MO", "USB", "LMT", "UPS", "UNP", "PYPL", "TGT", "DE",
-                "GILD", "CMCSA", "CHTR", "COP", "GE", "FDX", "DUK", "EMR", "DD", "NEE",
-                "SBUX", "F", "GM", "OXY", "BIIB", "CVS", "CL", "ED", "GLW", "D",
-                "PFE", "DG", "ADP", "ZTS", "BBY", "MNST", "TRV", "SLB", "ICE", "WELL",
-                "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC",
+                "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "BRK-B", "TSLA", 
+                "TSM", "JPM", "WMT", "LLY", "ORCL", "V", "MA", "NFLX", "XOM", "COST", 
+                "JNJ", "PLTR", "HD", "PG", "BAC", "ABBV", "KO", "CVX", "CRM", "UNH", 
+                "PM", "IBM", "MS", "GS", "LIN", "INTU", "ABT", "DIS", "AXP", "MRK", 
+                "MCD", "RTX", "CAT", "T", "NOW", "PEP", "UBER", "BKNG", "VZ", "TMO", 
+                "ISRG", "ACN", "C", "SCHW", "GEV", "BA", "BLK", "QCOM", "TXN", "AMGN", 
+                "SPGI", "ADBE", "BSX", "SYK", "ETN", "SO", "SPG", "TMUS", "NKE", "HON", 
+                "MDT", "MMM", "MO", "USB", "LMT", "UPS", "UNP", "PYPL", "TGT", "DE", 
+                "GILD", "CMCSA", "CHTR", "COP", "GE", "FDX", "DUK", "EMR", "DD", "NEE", 
+                "SBUX", "F", "GM", "OXY", "BIIB", "CVS", "CL", "ED", "GLW", "D", 
+                "PFE", "DG", "ADP", "ZTS", "BBY", "MNST", "TRV", "SLB", "ICE", "WELL", 
+                "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC", 
                 "NOC", "EXC", "SYY", "AON", "MET", "AFL", "TJX", "BMY", "HAL", "STZ"
             ],
             "Forex Principais": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X"],
@@ -3626,7 +3288,7 @@ with tab5:
 
                 try:
                     # Download data
-                    df_temp = get_market_data(current_symbol, start_date_bb.strftime("%Y-%m-%d"),
+                    df_temp = get_market_data(current_symbol, start_date_bb.strftime("%Y-%m-%d"), 
                                                 end_date_bb.strftime("%Y-%m-%d"), interval_bb, data_source_bb)
 
                     if df_temp is None or df_temp.empty:
@@ -3979,7 +3641,7 @@ with tab7:
         st.markdown("### 🎯 Missão")
         st.markdown("""
         <div class="metric-card">
-            <p>O Sistema OVECCHIA TRADING foi desenvolvido para democratizar o acesso a análises técnicas avançadas,
+            <p>O Sistema OVECCHIA TRADING foi desenvolvido para democratizar o acesso a análises técnicas avançadas, 
             oferecendo ferramentas profissionais de trading quantitativo de forma acessível e intuitiva.</p>
         </div>
         """, unsafe_allow_html=True)
@@ -4057,8 +3719,8 @@ with tab7:
     st.markdown("""
  <div style="background: linear-gradient(90deg, #e3f2fd, #f3e5f5); padding: 1rem; border-radius: 10px; border-left: 4px solid #ffc107; color: black;">
         <p><strong>⚠️ AVISO IMPORTANTE:</strong></p>
-        <p>Este sistema é desenvolvido para fins educacionais e de pesquisa. As análises e sinais gerados
-        <strong>NÃO constituem recomendações de investimento</strong>. Trading e investimentos envolvem riscos
+        <p>Este sistema é desenvolvido para fins educacionais e de pesquisa. As análises e sinais gerados 
+        <strong>NÃO constituem recomendações de investimento</strong>. Trading e investimentos envolvem riscos 
         significativos e você pode perder parte ou todo o seu capital investido.</p>
         <p><strong>Sempre consulte um profissional qualificado antes de tomar decisões de investimento.</strong></p>
     </div>
