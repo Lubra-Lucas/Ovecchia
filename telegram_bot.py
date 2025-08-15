@@ -296,11 +296,17 @@ class OvecchiaTradingBot:
             TWELVEDATA_API_KEY = os.environ.get('TWELVEDATA_API_KEY', "demo")
             
             # Processar símbolo para formato correto do 12Data
-            # Converter BTC-USD para BTC/USD format que 12Data espera
-            if '-' in symbol:
-                processed_symbol = symbol.replace('-', '/')
+            # Converter BTC/USD para btc-usd format que 12Data espera
+            processed_symbol = symbol
+            if '/' in symbol:
+                # BTC/USD -> btc-usd
+                processed_symbol = symbol.replace('/', '-').lower()
+            elif '-' in symbol:
+                # btc-usd -> btc-usd (já está correto)
+                processed_symbol = symbol.lower()
             else:
-                processed_symbol = symbol
+                # BTC -> btc-usd (assumir par com USD se não especificado)
+                processed_symbol = f"{symbol.lower()}-usd"
 
             # Mapear timeframes do Telegram para 12Data
             twelve_interval_map = {
@@ -853,11 +859,11 @@ class OvecchiaTradingBot:
 
                     if source == "ccxt":
                         df = self.get_ccxt_data(symbol, timeframe, 1000)
-                    elif source == "twelvedata":
+                    elif source == "12data":
                         end_date = datetime.now().date()
                         start_date = end_date - timedelta(days=365)
-                        df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
-                                                end_date.strftime("%Y-%m-%d"), timeframe, "twelvedata")
+                        df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"),
+                                                     end_date.strftime("%Y-%m-%d"), timeframe, 1000)
                     else: # Yahoo
                         end_date = datetime.now().date()
                         start_date = end_date - timedelta(days=365)
@@ -1593,7 +1599,7 @@ def screening_auto_command(message):
 
             # Normalizar fonte
             if source in ['12data', 'twelvedata']:
-                source = 'twelvedata'
+                source = '12data'
 
             # Extrair símbolos da lista
             if not symbols_str.startswith('[') or not symbols_str.endswith(']'):
@@ -1625,7 +1631,7 @@ def screening_auto_command(message):
             strategy_formatted = strategy_map[strategy]
 
             # Validar timeframe baseado na fonte
-            if source == 'twelvedata':
+            if source == '12data':
                 valid_timeframes = ['5m', '15m', '1h', '4h', '1d']
             else:
                 valid_timeframes = ['15m', '1h', '4h', '1d']
@@ -1654,7 +1660,7 @@ def screening_auto_command(message):
             # Verificar se conseguiu analisar pelo menos um símbolo
             if not current_states:
                 format_examples = {
-                    'twelvedata': 'btc-usd, eth-usd, aapl',
+                    '12data': 'BTC/USD, ETH/USD, AAPL',
                     'yahoo': 'BTC-USD, ETH-USD, PETR4.SA, AAPL',
                     'ccxt': 'BTC/USDT, ETH/USDT, LTC/USDT'
                 }
@@ -1711,6 +1717,7 @@ def screening_auto_command(message):
                 confirmation_message += f"\n⚠️ **{error_count} símbolos com erro** - verifique os nomes"
 
             confirmation_message += f"\n🔔 Próximo alerta em: {timeframe}"
+            confirmation_message += f"\n\n💡 **Dica:** Os símbolos são convertidos automaticamente para o formato da API (BTC/USD → btc-usd)"
 
             bot.reply_to(message, confirmation_message, parse_mode='Markdown')
             logger.info(f"Alerta automático configurado para {user_name}: {len(symbols_list)} símbolos via {source}, {timeframe}")
