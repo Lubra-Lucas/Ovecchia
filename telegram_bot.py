@@ -300,7 +300,7 @@ class OvecchiaTradingBot:
             # Mapear timeframes do Telegram para 12Data
             twelve_interval_map = {
                 '1m': '1min',
-                '5m': '5min', 
+                '5m': '5min',
                 '15m': '15min',
                 '30m': '30min',
                 '1h': '1h',
@@ -1622,7 +1622,7 @@ def screening_auto_command(message):
                     'yahoo': 'BTC-USD, ETH-USD, PETR4.SA, AAPL',
                     'ccxt': 'BTC/USDT, ETH/USDT, LTC/USDT'
                 }
-                
+
                 error_message = f"""❌ **ERRO AO CONFIGURAR ALERTA**
 
 🔍 **Problema:** Nenhum dos símbolos pôde ser analisado via {source.upper()}.
@@ -1816,8 +1816,6 @@ def help_command(message):
   📊 Símbolos Yahoo: [BTC-USD,ETH-USD,PETR4.SA]
   📊 Símbolos CCXT: [BTC/USDT,ETH/USDT,LTC/USDT]
 
-  Exemplo: /screening_auto 12data [btc-usd,eth-usd,ltc-usd] ovelha2 balanceada 4h
-
 ⏰ Timeframes: 5m (só 12Data), 15m, 1h, 4h, 1d
 
 📋 /list_alerts
@@ -1919,7 +1917,9 @@ def schedule_alerts_for_user(user_id, timeframe):
         schedule.clear(f'alert_user_{user_id}')
 
         # Programar nova tarefa baseada no timeframe
-        if timeframe == '5m':
+        if timeframe == '1m':
+            schedule.every(1).minutes.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
+        elif timeframe == '5m':
             schedule.every(5).minutes.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
         elif timeframe == '15m':
             schedule.every(15).minutes.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
