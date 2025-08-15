@@ -1205,7 +1205,116 @@ with tab2:
         st.markdown("## 📊 Guia de Utilização - Análise Individual do Ativo")
 
         st.markdown("### 📌 O que é a Análise Individual?")
-        st.info("A Análise Individual utiliza nosso modelo proprietário OVELHA V2, baseado em Machine Learning, para detectar automaticamente estados de mercado em tempo real. O sistema identifica três estados principais: **Buy** (compra), **Sell** (venda) e **Stay Out** (ficar fora do mercado), proporcionando sinais claros e precisos para suas operações.")
+        st.info("A **Análise Individual** é o coração do sistema OVECCHIA TRADING. Esta ferramenta permite analisar detalhadamente um ativo específico (ação, criptomoeda, forex, etc.) para identificar os melhores momentos de entrada e saída do mercado. Utilizando modelos proprietários (OVELHA e OVELHA V2), o sistema detecta automaticamente três estados de mercado: **Buy** (compra), **Sell** (venda) e **Stay Out** (ficar fora), oferecendo sinais claros para suas operações.")
+
+        st.markdown("### 🎯 Como Utilizar - Exemplo Prático")
+        st.markdown("**Vamos fazer uma análise passo a passo da Petrobras (PETR4.SA):**")
+        
+        st.markdown("#### 📝 Passo 1: Configuração da Fonte de Dados")
+        st.markdown("""
+        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <p><strong>🔹 Fonte de Dados:</strong> Selecione "Yahoo Finance" (recomendado para ações brasileiras)</p>
+            <p style="font-size: 0.9rem; color: #666;">💡 Yahoo Finance é gratuito e confiável para ações da B3, criptomoedas e ações americanas</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("#### 📝 Passo 2: Inserir o Ticker Correto")
+        st.markdown("""
+        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <p><strong>🔹 Ticker:</strong> Digite "PETR4.SA" (com ponto e SA no final)</p>
+            <p style="font-size: 0.9rem; color: #666;">⚠️ <strong>Atenção:</strong> Ações brasileiras sempre terminam em .SA (ex: VALE3.SA, ITUB4.SA)</p>
+            <p style="font-size: 0.9rem; color: #666;">📋 <strong>Outros exemplos:</strong></p>
+            <ul style="font-size: 0.9rem; color: #666;">
+                <li><strong>Criptomoedas:</strong> BTC-USD, ETH-USD (com hífen e USD)</li>
+                <li><strong>Ações americanas:</strong> AAPL, MSFT, GOOGL (apenas o código)</li>
+                <li><strong>Forex:</strong> EURUSD=X, GBPUSD=X (com =X no final)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("#### 📝 Passo 3: Definir Período de Análise")
+        st.markdown("""
+        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <p><strong>🔹 Data Inicial:</strong> Selecione uma data 6-12 meses atrás (ex: 01/01/2024)</p>
+            <p><strong>🔹 Data Final:</strong> Mantenha a data atual</p>
+            <p style="font-size: 0.9rem; color: #666;">💡 <strong>Dica:</strong> Períodos de 6-12 meses oferecem análises mais confiáveis</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("#### 📝 Passo 4: Escolher Timeframe")
+        st.markdown("""
+        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <p><strong>🔹 Intervalo de Tempo:</strong> Selecione "1 day" (recomendado para iniciantes)</p>
+            <p style="font-size: 0.9rem; color: #666;">📊 <strong>Orientações por perfil:</strong></p>
+            <ul style="font-size: 0.9rem; color: #666;">
+                <li><strong>Investidor (longo prazo):</strong> 1 day, 1 week</li>
+                <li><strong>Swing Trader (médio prazo):</strong> 4 hours, 1 day</li>
+                <li><strong>Day Trader (curto prazo):</strong> 15m, 30m, 1 hour</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("#### 📝 Passo 5: Selecionar o Modelo")
+        st.markdown("""
+        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <p><strong>🔹 Modelo:</strong> Escolha "OVELHA (Clássico)" para começar</p>
+            <p style="font-size: 0.9rem; color: #666;">🤖 <strong>Modelos disponíveis:</strong></p>
+            <ul style="font-size: 0.9rem; color: #666;">
+                <li><strong>OVELHA (Clássico):</strong> Modelo tradicional, mais previsível</li>
+                <li><strong>OVELHA V2 (Machine Learning):</strong> Modelo avançado com IA</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("#### 📝 Passo 6: Definir Estratégia")
+        st.markdown("""
+        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <p><strong>🔹 Estratégia:</strong> Selecione "Balanceado" (recomendado)</p>
+            <p style="font-size: 0.9rem; color: #666;">⚖️ <strong>Perfis de estratégia:</strong></p>
+            <ul style="font-size: 0.9rem; color: #666;">
+                <li><strong>Balanceado:</strong> Equilíbrio ideal entre oportunidades e segurança</li>
+                <li><strong>Agressivo:</strong> Mais sinais, maior risco</li>
+                <li><strong>Conservador:</strong> Poucos sinais, maior segurança</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("#### 📝 Passo 7: Configurar Saída (Opcional)")
+        st.markdown("""
+        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <p><strong>🔹 Critério de Saída:</strong> Mantenha "Mudança de Estado" (mais simples)</p>
+            <p><strong>🔹 Checkbox:</strong> Deixe marcado "Sair por mudança de estado?"</p>
+            <p style="font-size: 0.9rem; color: #666;">💡 Para o primeiro uso, mantenha as configurações padrão</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("#### 📝 Passo 8: Executar Análise")
+        st.markdown("""
+        <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #4CAF50;">
+            <p><strong>🚀 Clique em "INICIAR ANÁLISE INDIVIDUAL"</strong></p>
+            <p style="font-size: 0.9rem; color: #666;">⏱️ O sistema processará os dados em alguns segundos e exibirá:</p>
+            <ul style="font-size: 0.9rem; color: #666;">
+                <li>Status atual do mercado (Buy/Sell/Stay Out)</li>
+                <li>Gráfico interativo com sinais coloridos</li>
+                <li>Métricas de performance</li>
+                <li>Simulação de investimento</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("#### 📝 Interpretando os Resultados")
+        st.markdown("""
+        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #ffc107;">
+            <p><strong>📊 Como ler o gráfico:</strong></p>
+            <ul style="font-size: 0.9rem; color: #333;">
+                <li><strong>🔵 Linha Azul:</strong> Momento de compra - entre ou mantenha posição comprada</li>
+                <li><strong>🔴 Linha Vermelha:</strong> Momento de venda - saia da posição ou entre vendido</li>
+                <li><strong>⚫ Linha Preta:</strong> Fique de fora - aguarde melhor oportunidade</li>
+            </ul>
+            <p><strong>🎯 Status Atual:</strong> Mostra o sinal no momento mais recente</p>
+            <p><strong>💰 Simulação:</strong> Demonstra performance histórica da estratégia</p>
+        </div>
+        """, unsafe_allow_html=True)
 
         st.markdown("### 📌 Estados de Mercado - Modelo OVELHA V2")
         st.write("Nosso algoritmo de Machine Learning identifica três estados fundamentais:")
