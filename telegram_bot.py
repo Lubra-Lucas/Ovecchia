@@ -287,104 +287,103 @@ class OvecchiaTradingBot:
 
     def get_twelve_data_data(self, symbol, start_date, end_date, interval="1d", limit=1000):
         """
-        Função para coletar dados do 12Data.
-        Assume que o símbolo está no formato adequado para 12Data (ex: BTCUSDT, EURUSD)
-        E que o timeframe está em um formato compatível (ex: 5min, 15min, 1h, 1d)
+        Função para coletar dados do 12Data usando o endpoint correto de time_series
         """
         try:
             logger.info(f"Coletando dados para {symbol} via 12Data com intervalo {interval}")
 
-            # Configurar API Key do 12Data
-            TWELVEDATA_API_KEY = os.environ.get('TWELVEDATA_API_KEY', "YOUR_DEFAULT_API_KEY") # Substitua com sua chave real ou use variável de ambiente
-            if TWELVEDATA_API_KEY == "YOUR_DEFAULT_API_KEY":
-                logger.warning("Chave da API do 12Data não configurada. Usando chave padrão.")
-
-            # Converter formato de símbolo se necessário (ex: BTC-USD para BTCUSD)
-            processed_symbol = symbol.replace('-', '').upper()
+            # Configurar API Key do 12Data - Use uma chave demo ou configure sua própria
+            TWELVEDATA_API_KEY = os.environ.get('TWELVEDATA_API_KEY', "demo")
+            
+            # Processar símbolo para formato correto do 12Data
+            # Converter BTC-USD para BTC/USD format que 12Data espera
+            if '-' in symbol:
+                processed_symbol = symbol.replace('-', '/')
+            else:
+                processed_symbol = symbol
 
             # Mapear timeframes do Telegram para 12Data
             twelve_interval_map = {
                 '1m': '1min',
-                '5m': '5min',
+                '5m': '5min', 
                 '15m': '15min',
                 '30m': '30min',
                 '1h': '1h',
                 '4h': '4h',
-                '1d': '1d',
-                '1wk': '1wk'
+                '1d': '1day',
+                '1wk': '1week'
             }
             twelve_interval = twelve_interval_map.get(interval.lower())
             if not twelve_interval:
                 logger.error(f"Timeframe inválido para 12Data: {interval}")
                 return pd.DataFrame()
 
-            # Limitar o número de candles conforme a solicitação
-            # 12Data API geralmente permite especificar `from` e `to` ou `start_date`/`end_date`
-            # Para limitar a 1000 candles, precisamos calcular as datas ou ajustar a requisição
-            # Se o intervalo for grande, pode ser que `limit=1000` seja necessário, mas a API do 12Data pode limitar de outra forma.
-            # Vamos tentar usar `start_date` e `end_date` e se a resposta for menor que 1000, pode ser ok.
-            # Se for maior, teremos que ajustar a lógica para pegar os últimos 1000.
-
-            # Construir URL da API do 12Data
-            # Exemplo para dados históricos:
-            # https://api.twelvedata.com/timeandsales?symbol=AAPL&interval=15min&apikey=YOUR_API_KEY&outputsize=1000
-            # O `outputsize` controla o número de pontos de dados. '1000' é um bom começo.
-            url = f"https://api.twelvedata.com/timeandsales"
+            # Usar endpoint time_series correto da 12Data
+            url = "https://api.twelvedata.com/time_series"
             params = {
                 "symbol": processed_symbol,
                 "interval": twelve_interval,
                 "apikey": TWELVEDATA_API_KEY,
-                "outputsize": limit, # Usar o limite especificado
-                "start_date": start_date,
-                "end_date": end_date
+                "outputsize": min(limit, 5000),  # 12Data limita a 5000 com chave demo
+                "format": "JSON"
             }
 
-            response = requests.get(url, params=params)
-            response.raise_for_status() # Lança exceção para erros HTTP
+            logger.info(f"Fazendo requisição para 12Data: {url} com params: {params}")
+            
+            response = requests.get(url, params=params, timeout=30)
+            response.raise_for_status()
 
             data = response.json()
 
-            if data.get("status") == "error" or "code" in data: # Verifica erros específicos da API
+            # Verificar erros na resposta
+            if "status" in data and data["status"] == "error":
                 logger.error(f"Erro 12Data API: {data.get('message', 'Erro desconhecido')}")
                 return pd.DataFrame()
 
-            if not data or "rows" not in data or not data["rows"]:
+            if "code" in data and data["code"] != 200:
+                logger.error(f"Erro 12Data API: {data.get('message', 'Erro desconhecido')}")
+                return pd.DataFrame()
+
+            # Verificar se temos dados válidos
+            if not data or "values" not in data or not data["values"]:
                 logger.warning(f"12Data: Sem dados encontrados para {symbol} no intervalo {interval}")
                 return pd.DataFrame()
 
-            # Processar os dados retornados
-            # A estrutura pode variar, mas geralmente é uma lista de dicionários
-            # Vamos assumir que 'rows' contém os dados OHLCV
-            # Verifique a documentação do 12Data para a estrutura exata
-
-            # Estrutura comum para timeandsales/candles:
-            # [{ "datetime": "YYYY-MM-DD HH:MM:SS", "price": ..., "volume": ... }, ...]
-            # Para OHLCV, esperamos algo como:
-            # [{ "datetime": "YYYY-MM-DD HH:MM:SS", "open": ..., "high": ..., "low": ..., "close": ..., "volume": ... }, ...]
-
-            # Vamos adaptar para obter OHLCV se disponível, senão apenas price/volume
+            # Processar dados do formato 12Data
             ohlcv_data = []
-            for row in data["rows"]:
-                dt = datetime.strptime(row["datetime"], "%Y-%m-%d %H:%M:%S")
-                ohlcv_data.append({
-                    "time": dt,
-                    "open": float(row.get("open", row.get("price", 0))), # Tenta 'open', senão 'price'
-                    "high": float(row.get("high", row.get("price", 0))),
-                    "low": float(row.get("low", row.get("price", 0))),
-                    "close": float(row.get("close", row.get("price", 0))),
-                    "volume": float(row.get("volume", 0))
-                })
+            values = data["values"]
+            
+            # 12Data retorna dados em ordem decrescente, então vamos reverter
+            for item in reversed(values):
+                try:
+                    # Formato esperado: {"datetime": "2024-01-01 09:30:00", "open": "100.0", "high": "105.0", ...}
+                    dt = datetime.strptime(item["datetime"], "%Y-%m-%d %H:%M:%S")
+                    
+                    ohlcv_data.append({
+                        "time": dt,
+                        "open": float(item["open"]),
+                        "high": float(item["high"]),
+                        "low": float(item["low"]),
+                        "close": float(item["close"]),
+                        "volume": float(item.get("volume", 0))
+                    })
+                except (KeyError, ValueError) as e:
+                    logger.warning(f"Erro ao processar linha de dados: {item}. Erro: {e}")
+                    continue
+
+            if not ohlcv_data:
+                logger.error(f"Nenhum dado válido processado para {symbol}")
+                return pd.DataFrame()
 
             df = pd.DataFrame(ohlcv_data)
 
-            # Garantir que as colunas necessárias existam
-            required_columns = ['time', 'open', 'high', 'low', 'close', 'volume']
-            for col in required_columns:
-                if col not in df.columns:
-                    df[col] = 0.0 # Adiciona coluna com zero se não existir
-
-            # Ordenar por tempo
+            # Ordenar por tempo para garantir ordem cronológica
             df = df.sort_values("time").reset_index(drop=True)
+
+            # Verificar se há dados válidos
+            if df['close'].isna().all():
+                logger.error(f"Todos os preços de fechamento são NaN para {symbol}")
+                return pd.DataFrame()
 
             logger.info(f"Dados 12Data coletados com sucesso para {symbol}: {len(df)} registros")
             return df
@@ -408,7 +407,7 @@ class OvecchiaTradingBot:
             if data_source == "ccxt":
                 df = self.get_ccxt_data(symbol, interval, 1000)
             elif data_source == "twelvedata":
-                 df = self.get_twelve_data_data(symbol, start_date, end_date, interval, 1000)
+                df = self.get_twelve_data_data(symbol, start_date, end_date, interval, 1000)
             else: # Yahoo Finance
                 try:
                     # Yahoo Finance interval mapping
@@ -1537,17 +1536,22 @@ def screening_auto_command(message):
         # Parse arguments
         args = message.text.split()[1:]
 
-        if len(args) < 4: # Símbolos, modelo, estratégia, timeframe são obrigatórios (fonte agora é padrão 12Data)
+        if len(args) < 5: # fonte, símbolos, modelo, estratégia, timeframe são obrigatórios
             help_message = """
 🔄 *SCREENING AUTOMÁTICO*
 
 📝 *Como usar:*
-/screening_auto [símbolos] [modelo] [estrategia] [timeframe]
+/screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
 
-🔗 *Fonte de dados:* 12Data (padrão e única opção)
+🔗 *Fontes disponíveis:*
+• 12data - 12Data API (recomendado)
+• yahoo - Yahoo Finance
+• ccxt - Binance via CCXT
 
 📊 *Símbolos:* Lista separada por vírgulas entre colchetes
-Exemplo: [BTCUSDT,ETHUSDT,LTCUSDT,ADAUSDT,XRPUSDT]
+• Para 12Data: [btc-usd,eth-usd,ltc-usd]
+• Para Yahoo: [BTC-USD,ETH-USD,PETR4.SA]
+• Para CCXT: [BTC/USDT,ETH/USDT,LTC/USDT]
 
 🤖 *Modelos:*
 • ovelha - Modelo clássico
@@ -1559,14 +1563,16 @@ Exemplo: [BTCUSDT,ETHUSDT,LTCUSDT,ADAUSDT,XRPUSDT]
 • conservadora - Mais confiáveis
 
 ⏰ *Timeframes disponíveis:*
-• 5m - 5 minutos
+• 5m - 5 minutos (apenas 12Data)
 • 15m - 15 minutos
-• 1h - 1 hora (60 minutos)
+• 1h - 1 hora
 • 4h - 4 horas
 • 1d - 1 dia (diário)
 
-📈 *Exemplo:*
-`/screening_auto [BTCUSDT,ETHUSDT,LTCUSDT,ADAUSDT,XRPUSDT] ovelha2 balanceada 4h`
+📈 *Exemplos:*
+`/screening_auto 12data [btc-usd,eth-usd,ltc-usd] ovelha2 balanceada 4h`
+`/screening_auto yahoo [BTC-USD,ETH-USD,PETR4.SA] ovelha balanceada 1d`
+`/screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT] ovelha2 agressiva 4h`
 
 💡 *Nota:* O bot enviará alertas no intervalo escolhido
             """
@@ -1574,11 +1580,20 @@ Exemplo: [BTCUSDT,ETHUSDT,LTCUSDT,ADAUSDT,XRPUSDT]
             return
 
         try:
-            source = "twelvedata"  # Fonte fixa como 12Data
-            symbols_str = args[0]
-            model_type = args[1].lower()
-            strategy = args[2].lower()
-            timeframe = args[3].lower()
+            source = args[0].lower()
+            symbols_str = args[1]
+            model_type = args[2].lower()
+            strategy = args[3].lower()
+            timeframe = args[4].lower()
+
+            # Validar fonte
+            if source not in ['12data', 'twelvedata', 'yahoo', 'ccxt']:
+                bot.reply_to(message, "❌ Fonte inválida. Use: 12data, yahoo ou ccxt")
+                return
+
+            # Normalizar fonte
+            if source in ['12data', 'twelvedata']:
+                source = 'twelvedata'
 
             # Extrair símbolos da lista
             if not symbols_str.startswith('[') or not symbols_str.endswith(']'):
@@ -1609,10 +1624,14 @@ Exemplo: [BTCUSDT,ETHUSDT,LTCUSDT,ADAUSDT,XRPUSDT]
 
             strategy_formatted = strategy_map[strategy]
 
-            # Validar timeframe
-            valid_timeframes = ['5m', '15m', '1h', '4h', '1d']
+            # Validar timeframe baseado na fonte
+            if source == 'twelvedata':
+                valid_timeframes = ['5m', '15m', '1h', '4h', '1d']
+            else:
+                valid_timeframes = ['15m', '1h', '4h', '1d']
+
             if timeframe not in valid_timeframes:
-                bot.reply_to(message, f"❌ Timeframe inválido. Use: {', '.join(valid_timeframes)}")
+                bot.reply_to(message, f"❌ Timeframe inválido para {source}. Use: {', '.join(valid_timeframes)}")
                 return
 
             # Configurar alerta automático
@@ -1626,7 +1645,7 @@ Exemplo: [BTCUSDT,ETHUSDT,LTCUSDT,ADAUSDT,XRPUSDT]
             }
 
             # Fazer primeira verificação
-            bot.reply_to(message, f"🔄 Configurando alerta automático...\n📊 {len(symbols_list)} símbolos\n⏰ Intervalo: {timeframe}")
+            bot.reply_to(message, f"🔄 Configurando alerta automático...\n📊 {len(symbols_list)} símbolos via {source.upper()}\n⏰ Intervalo: {timeframe}")
 
             current_states, changes = trading_bot.perform_automated_screening(
                 user_id, symbols_list, source, model_type, strategy_formatted, timeframe
@@ -1634,24 +1653,28 @@ Exemplo: [BTCUSDT,ETHUSDT,LTCUSDT,ADAUSDT,XRPUSDT]
 
             # Verificar se conseguiu analisar pelo menos um símbolo
             if not current_states:
+                format_examples = {
+                    'twelvedata': 'btc-usd, eth-usd, aapl',
+                    'yahoo': 'BTC-USD, ETH-USD, PETR4.SA, AAPL',
+                    'ccxt': 'BTC/USDT, ETH/USDT, LTC/USDT'
+                }
+                
                 error_message = f"""❌ **ERRO AO CONFIGURAR ALERTA**
 
-🔍 **Problema:** Nenhum dos símbolos pôde ser analisado.
+🔍 **Problema:** Nenhum dos símbolos pôde ser analisado via {source.upper()}.
 
 🔧 **Possíveis causas:**
-• Símbolos inválidos ou não existem na fonte {source.upper()}
-• Problemas de conectividade
+• Símbolos inválidos para a fonte {source.upper()}
+• Problemas de conectividade com a API
 • Timeframe {timeframe} não suportado para alguns símbolos
 
-💡 **Sugestões:**
-• Verifique se os símbolos estão corretos
-• Para CCXT: use formato BTC/USDT, ETH/USDT, etc.
-• Para Yahoo: use PETR4.SA, AAPL, BTC-USD, etc.
-• Para 12Data: use BTCUSDT, EURUSD, etc.
-• Tente um timeframe maior (4h, 1d)
+💡 **Formato correto para {source.upper()}:**
+{format_examples.get(source, 'Verifique a documentação')}
 
 📝 **Exemplo correto:**
-`/screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT] ovelha2 balanceada 4h`"""
+`/screening_auto {source} [{format_examples.get(source, 'SYMBOL1,SYMBOL2').replace(', ', ',')}] {model_type} {strategy} {timeframe}`
+
+🔄 **Tente novamente** com símbolos válidos para a fonte escolhida."""
                 bot.reply_to(message, error_message, parse_mode='Markdown')
                 return
 
@@ -1666,7 +1689,7 @@ Exemplo: [BTCUSDT,ETHUSDT,LTCUSDT,ADAUSDT,XRPUSDT]
             confirmation_message = f"""✅ *ALERTA AUTOMÁTICO CONFIGURADO*
 
 📊 **Configuração:**
-🔗 Fonte: 12DATA
+🔗 Fonte: {source.upper()}
 🎯 Estratégia: {strategy}
 🤖 Modelo: {model_type.upper()}
 ⏰ Intervalo: {timeframe}
@@ -1690,7 +1713,7 @@ Exemplo: [BTCUSDT,ETHUSDT,LTCUSDT,ADAUSDT,XRPUSDT]
             confirmation_message += f"\n🔔 Próximo alerta em: {timeframe}"
 
             bot.reply_to(message, confirmation_message, parse_mode='Markdown')
-            logger.info(f"Alerta automático configurado para {user_name}: {len(symbols_list)} símbolos, {timeframe}")
+            logger.info(f"Alerta automático configurado para {user_name}: {len(symbols_list)} símbolos via {source}, {timeframe}")
 
         except Exception as e:
             logger.error(f"Erro ao processar argumentos: {str(e)}")
@@ -1816,16 +1839,21 @@ def help_command(message):
   Individual: /screening balanceada BTC-USD ETH-USD PETR4.SA
   ⚠️ Configuração: Timeframe 1d fixo, 2 anos de dados
 
-🔄 /screening_auto [símbolos] [modelo] [estrategia] [timeframe]
-  📝 ALERTAS AUTOMÁTICOS DE SCREENING (12DATA)
+🔄 /screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
+  📝 ALERTAS AUTOMÁTICOS DE SCREENING
   • Monitora até 10 símbolos automaticamente
   • Envia alertas quando detecta mudanças de estado
   • Funciona no intervalo de tempo escolhido
-  • Usa exclusivamente 12Data como fonte
+  • Suporte a múltiplas fontes de dados
 
-  Exemplo: /screening_auto [BTCUSDT,ETHUSDT,LTCUSDT] ovelha2 balanceada 4h
+  🔗 Fontes: 12data, yahoo, ccxt
+  📊 Símbolos 12Data: [btc-usd,eth-usd,ltc-usd]
+  📊 Símbolos Yahoo: [BTC-USD,ETH-USD,PETR4.SA]
+  📊 Símbolos CCXT: [BTC/USDT,ETH/USDT,LTC/USDT]
 
-⏰ Timeframes 12Data: 5m, 15m, 1h, 4h, 1d
+  Exemplo: /screening_auto 12data [btc-usd,eth-usd,ltc-usd] ovelha2 balanceada 4h
+
+⏰ Timeframes: 5m (só 12Data), 15m, 1h, 4h, 1d
 
 📋 /list_alerts
   📝 VER ALERTAS ATIVOS
