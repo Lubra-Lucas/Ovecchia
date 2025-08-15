@@ -1053,8 +1053,12 @@ trading_bot = OvecchiaTradingBot()
 @bot.message_handler(commands=['screening'])
 def screening_command(message):
     try:
-        user_name = message.from_user.first_name
-        logger.info(f"Comando /screening recebido de {user_name}")
+        user_name = message.from_user.first_name or "Usuário"
+        user_id = message.from_user.id
+        logger.info(f"Comando /screening recebido de {user_name} (ID: {user_id})")
+        
+        # Adicionar delay para evitar conflitos com múltiplas requisições
+        time.sleep(0.5)
 
         # Parse arguments with fuzzy matching
         parsed = parse_flexible_command(message.text)
@@ -1234,9 +1238,18 @@ def screening_command(message):
             bot.reply_to(message, f"ℹ️ Nenhuma mudança de estado detectada nos {len(symbols)} ativos analisados.", parse_mode='Markdown')
             logger.info(f"Nenhum alerta encontrado para {user_name}")
 
+    except telebot.apihelper.ApiException as e:
+        logger.error(f"Erro da API Telegram no /screening: {str(e)}")
+        try:
+            bot.reply_to(message, "❌ Erro temporário da API. Aguarde alguns segundos e tente novamente.")
+        except:
+            pass  # Se nem conseguir responder, não fazer nada
     except Exception as e:
         logger.error(f"Erro no comando /screening: {str(e)}")
-        bot.reply_to(message, "❌ Erro ao processar screening. Tente novamente.")
+        try:
+            bot.reply_to(message, "❌ Erro ao processar screening. Tente novamente.")
+        except:
+            pass  # Evitar erro em cascata
 
 
 
@@ -1246,8 +1259,11 @@ def screening_command(message):
 def analise_command(message):
     try:
         user_id = message.from_user.id
-        user_name = message.from_user.first_name
-        logger.info(f"Comando /analise recebido de {user_name}")
+        user_name = message.from_user.first_name or "Usuário"
+        logger.info(f"Comando /analise recebido de {user_name} (ID: {user_id})")
+        
+        # Adicionar delay para evitar conflitos
+        time.sleep(0.5)
 
         # Verificar se usuário pausou operações
         if user_id in trading_bot.paused_users:
@@ -1480,13 +1496,24 @@ YYYY-MM-DD (exemplo: 2024-01-01)
         else:
             bot.reply_to(message, f"❌ {chart_result['error']}")
 
+    except telebot.apihelper.ApiException as e:
+        # Limpar tarefa ativa em caso de erro
+        if 'user_id' in locals() and user_id in trading_bot.active_tasks:
+            del trading_bot.active_tasks[user_id]
+        logger.error(f"Erro da API Telegram no /analise: {str(e)}")
+        try:
+            bot.reply_to(message, "❌ Erro temporário da API. Aguarde e tente novamente.")
+        except:
+            pass
     except Exception as e:
         # Limpar tarefa ativa em caso de erro
-        if user_id in trading_bot.active_tasks:
+        if 'user_id' in locals() and user_id in trading_bot.active_tasks:
             del trading_bot.active_tasks[user_id]
-
         logger.error(f"Erro no comando /analise: {str(e)}")
-        bot.reply_to(message, "❌ Erro ao processar análise. Use /pause se o bot travou ou verifique os parâmetros.")
+        try:
+            bot.reply_to(message, "❌ Erro ao processar análise. Tente novamente em alguns segundos.")
+        except:
+            pass
 
 
 
@@ -1770,6 +1797,36 @@ def list_alerts_command(message):
         logger.error(f"Erro geral no comando /list_alerts para usuário {user_id}: {str(e)}")
         bot.reply_to(message, "❌ Erro ao listar alertas. Tente novamente ou use /stop_alerts se houver problemas.")
 
+@bot.message_handler(commands=['restart'])
+def restart_command(message):
+    """Comando para reinicializar o bot sem parar o workflow"""
+    try:
+        user_name = message.from_user.first_name or "Usuário"
+        user_id = message.from_user.id
+        logger.info(f"Comando /restart recebido de {user_name} (ID: {user_id})")
+        
+        # Limpar estados do usuário
+        if user_id in trading_bot.active_alerts:
+            del trading_bot.active_alerts[user_id]
+        if user_id in trading_bot.alert_states:
+            del trading_bot.alert_states[user_id]
+        if user_id in trading_bot.active_tasks:
+            del trading_bot.active_tasks[user_id]
+        trading_bot.paused_users.discard(user_id)
+        
+        # Limpar jobs do scheduler para este usuário
+        schedule.clear(f'alert_user_{user_id}')
+        
+        bot.reply_to(message, f"🔄 Bot reinicializado para você, {user_name}!\n\n✅ Estados limpos:\n• Alertas automáticos\n• Tarefas ativas\n• Cache de análises\n\n🚀 Pronto para novos comandos!")
+        logger.info(f"Bot reinicializado para usuário {user_name}")
+        
+    except Exception as e:
+        logger.error(f"Erro no comando /restart: {str(e)}")
+        try:
+            bot.reply_to(message, "❌ Erro ao reinicializar. Tente novamente.")
+        except:
+            pass
+
 @bot.message_handler(commands=['help'])
 def help_command(message):
     try:
@@ -1829,6 +1886,12 @@ def help_command(message):
   • Interrompe todos os alertas configurados
   • Para o monitoramento automático
 
+🔄 /restart
+  📝 REINICIALIZAR BOT (sem parar o workflow)
+  • Limpa estados do usuário
+  • Resolve travamentos temporários
+  • Cancela tarefas ativas
+
 ❓ /help - Esta mensagem de ajuda
 
 🎯 ESTRATÉGIAS:
@@ -1881,6 +1944,9 @@ def handle_message(message):
 
         logger.info(f"📨 Mensagem de {user_name} (ID: {user_id}): {user_message}")
         print(f"📨 {user_name}: {user_message}")
+        
+        # Adicionar pequeno delay para evitar conflitos
+        time.sleep(0.2)
 
         # Tentar identificar comando com fuzzy matching
         parsed = parse_flexible_command(user_message)
@@ -1907,6 +1973,8 @@ def handle_message(message):
         else:
             bot.reply_to(message, "🤖 Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /analise - Análise individual\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos (12Data)\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
 
+    except telebot.apihelper.ApiException as e:
+        logger.error(f"Erro da API Telegram no handler de mensagem: {str(e)}")
     except Exception as e:
         logger.error(f"Erro ao processar mensagem: {str(e)}")
 
@@ -2003,10 +2071,10 @@ def run_scheduler():
     while True:
         try:
             schedule.run_pending()
-            time.sleep(60)  # Verificar a cada minuto
+            time.sleep(30)  # Verificar a cada 30 segundos (reduzido de 60)
         except Exception as e:
             logger.error(f"Erro no scheduler: {str(e)}")
-            time.sleep(60)
+            time.sleep(30)
 
 def test_bot_connection():
     """Testa a conexão com a API do Telegram"""
@@ -2022,8 +2090,9 @@ def test_bot_connection():
 
 def run_bot():
     """Função para rodar o bot"""
-    max_retries = 5
+    max_retries = 10  # Aumentado para mais tentativas
     retry_count = 0
+    last_error_time = 0
 
     # Teste inicial de conectividade
     if not test_bot_connection():
@@ -2058,16 +2127,18 @@ def run_bot():
             logger.info("🤖 Bot iniciado com sucesso! Aguardando mensagens...")
             print("🤖 Bot funcionando! Aguardando comandos...")
 
-            # Rodar o bot com configurações otimizadas
+            # Rodar o bot com configurações otimizadas e mais robustas
             bot.polling(
                 none_stop=True,
-                interval=1,           # Verificar mensagens a cada 1 segundo
-                timeout=20,           # Timeout de 20 segundos
-                allowed_updates=None, # Aceitar todos os tipos de update
-                skip_pending=True     # Pular mensagens pendentes antigas
+                interval=0.5,         # Reduzido para 0.5s para maior responsividade
+                timeout=30,           # Aumentado para 30 segundos
+                long_polling_timeout=30,  # Timeout do long polling
+                allowed_updates=["message", "callback_query"],  # Apenas updates necessários
+                skip_pending=False    # Não pular mensagens pendentes
             )
 
         except telebot.apihelper.ApiException as e:
+            current_time = time.time()
             logger.error(f"Erro da API do Telegram: {str(e)}")
             print(f"❌ Erro da API Telegram: {str(e)}")
 
@@ -2075,11 +2146,19 @@ def run_bot():
                 logger.error("❌ Token inválido ou expirado!")
                 print("❌ ERRO CRÍTICO: Token do bot inválido!")
                 break
+            
+            # Se o mesmo erro ocorreu recentemente, aumentar o tempo de espera
+            if current_time - last_error_time < 60:  # Menos de 1 minuto desde o último erro
+                retry_count += 2  # Penalizar mais por erros frequentes
+            else:
+                retry_count += 1
+            
+            last_error_time = current_time
 
-            retry_count += 1
             if retry_count < max_retries:
-                wait_time = 10 * retry_count
-                logger.info(f"🔄 Tentando novamente em {wait_time} segundos...")
+                wait_time = min(60, 5 * retry_count)  # Máximo 1 minuto de espera
+                logger.info(f"🔄 Tentando novamente em {wait_time} segundos... (tentativa {retry_count}/{max_retries})")
+                print(f"⏳ Aguardando {wait_time}s antes de tentar novamente...")
                 time.sleep(wait_time)
 
         except Exception as e:
@@ -2087,9 +2166,17 @@ def run_bot():
             logger.error(f"Erro crítico no bot (tentativa {retry_count}/{max_retries}): {str(e)}")
             print(f"❌ Erro ao iniciar bot (tentativa {retry_count}/{max_retries}): {str(e)}")
 
+            # Limpar estados em caso de erro crítico
+            trading_bot.active_alerts.clear()
+            trading_bot.alert_states.clear()
+            trading_bot.active_tasks.clear()
+            trading_bot.paused_users.clear()
+            schedule.clear()
+
             if retry_count < max_retries:
-                wait_time = 5 * retry_count  # Aumentar tempo de espera a cada tentativa
-                logger.info(f"🔄 Tentando novamente em {wait_time} segundos...")
+                wait_time = min(30, 5 * retry_count)  # Máximo 30s de espera
+                logger.info(f"🔄 Estados limpos. Tentando novamente em {wait_time} segundos...")
+                print(f"🧹 Limpando estados... Tentativa em {wait_time}s")
                 time.sleep(wait_time)
             else:
                 logger.error("🛑 Máximo de tentativas excedido. Bot será encerrado.")
