@@ -1213,7 +1213,7 @@ with tab2:
         st.markdown("#### 📝 Passo 1: Configuração da Fonte de Dados")
         st.markdown("""
         <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
-            <p><strong>🔹 Fonte de Dados:</strong> Selecione \"Yahoo Finance\" (recomendado para ações brasileiras) ou \"TwelveData\" para criptomoedas e outros mercados.</p>
+            <p><strong>🔹 Fonte de Dados:</strong> Selecione \"Yahoo Finance\" (recomendado para ações brasileiras) ou \"TwelveData\" para criptomoedas,forex,metais e índices globais.</p>
             <p style=\"font-size: 0.9rem; color: #666;\">💡 Yahoo Finance é gratuito e confiável para ações da B3, criptomoedas e ações americanas. TwelveData oferece suporte aprimorado e flexibilidade de dados para criptomoedas e índices globais.</p>
         </div>
         """, unsafe_allow_html=True)
@@ -1222,7 +1222,7 @@ with tab2:
         st.markdown("""
         <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
             <p><strong>🔹 Ticker:</strong> Digite \"PETR4.SA\" (com ponto e SA no final)</p>
-            <p style=\"font-size: 0.9rem; color: #666;\">⚠️ <strong>Atenção:</strong> Ações brasileiras sempre terminam em .SA (ex: VALE3.SA, ITUB4.SA)</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">⚠️ <strong>Atenção:</strong> No Yahoo Finance, as ações brasileiras sempre terminam em .SA (ex: VALE3.SA, ITUB4.SA). Se estiver utilizando o TwelveData não é necessário S.A </p>
             <p style=\"font-size: 0.9rem; color: #666;\">📋 <strong>Outros exemplos:</strong></p>
             <ul style=\"font-size: 0.9rem; color: #666;\">
                 <li><strong>Criptomoedas:</strong> BTC-USD, ETH-USD (com hífen e USD)</li>
