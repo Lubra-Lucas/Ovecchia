@@ -75,12 +75,8 @@ def find_best_match(input_text, options, threshold=0.6):
 def fuzzy_command_match(user_input):
     """Identifica comandos com tolerância a erros"""
     commands = {
-        'start': ['start', 'iniciar', 'comecar', 'inicio'],
         'analise': ['analise', 'analisar', 'analysis', 'analyze', 'grafico', 'chart'],
         'screening': ['screening', 'screnning', 'screning', 'screen', 'varredura', 'busca'],
-        'topos_fundos': ['topos_fundos', 'toposfundos', 'topo_fundo', 'topofundo', 'reversao', 'oportunidades'],
-        'status': ['status', 'estado', 'situacao', 'info'],
-        'restart': ['restart', 'reiniciar', 'reboot', 'reset'],
         'help': ['help', 'ajuda', 'ajudar', 'comandos', '?']
     }
 
@@ -1090,58 +1086,6 @@ class OvecchiaTradingBot:
 trading_bot = OvecchiaTradingBot()
 
 # Command handlers
-@bot.message_handler(commands=['start'])
-def start_command(message):
-    try:
-        user_name = message.from_user.first_name or "Usuário"
-        user_id = message.from_user.id
-        chat_id = message.chat.id
-        logger.info(f"✅ Comando /start recebido de {user_name} (ID: {user_id}, Chat: {chat_id})")
-        print(f"📱 Novo usuário: {user_name} iniciou o bot")
-
-        welcome_message = """🤖 Bem-vindo ao OVECCHIA TRADING BOT!
-
-👋 Olá, {user_name}! Sou o seu assistente de trading pessoal, pronto para fornecer análises técnicas avançadas e sinais de compra/venda.
-
-🤖 NOVIDADES:
-• 🔗 MÚLTIPLAS FONTES: Yahoo Finance + CCXT (Binance) + 12Data
-• 🧠 MACHINE LEARNING: Modelo OVELHA V2 com Random Forest
-• 🔔 ALERTAS AUTOMÁTICOS: Monitoramento contínuo de portfólios
-
-🛠️ COMANDOS DE GESTÃO:
-/list_alerts - Ver seus alertas ativos
-/stop_alerts - Parar alertas automáticos
-/status - Status do bot
-/help - Ajuda completa
-
-📈 ESTRATÉGIAS:
-• agressiva - Mais sinais, maior frequência
-• balanceada - Equilíbrio ideal (recomendada)
-• conservadora - Sinais mais confiáveis
-
-🤖 MODELOS:
-• ovelha - Modelo clássico baseado em indicadores técnicos
-• ovelha2 - Machine Learning avançado com Random Forest
-
-🔗 FONTES DE DADOS:
-• yahoo - Yahoo Finance (ações, forex, commodities)
-• ccxt - Binance via CCXT (ideal para criptomoedas)
-• twelvedata - 12Data (criptos, forex, ações - requer API Key)
-
-🚀 EXEMPLOS RÁPIDOS:
-• Análise ação: /analise yahoo balanceada PETR4.SA 1d
-• Análise cripto ML: /analise twelvedata agressiva BTCUSDT 4h ovelha2
-• Screening: /screening balanceada açõesBR
-• Alertas: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
-
-Comece agora mesmo digitando um comando ou usando /help para ver todas as funcionalidades!
-""".format(user_name=user_name)
-
-        bot.reply_to(message, welcome_message)
-        logger.info(f"Mensagem de boas-vindas enviada para {user_name}")
-    except Exception as e:
-        logger.error(f"Erro no comando /start: {str(e)}")
-        bot.reply_to(message, "❌ Erro interno. Tente novamente mais tarde.")
 
 @bot.message_handler(commands=['screening'])
 def screening_command(message):
@@ -1331,208 +1275,9 @@ def screening_command(message):
         logger.error(f"Erro no comando /screening: {str(e)}")
         bot.reply_to(message, "❌ Erro ao processar screening. Tente novamente.")
 
-@bot.message_handler(commands=['topos_fundos'])
-def topos_fundos_command(message):
-    try:
-        user_name = message.from_user.first_name
-        logger.info(f"Comando /topos_fundos recebido de {user_name}")
 
-        # Parse arguments with fuzzy matching
-        parsed = parse_flexible_command(message.text)
-        if parsed and parsed['command'] == 'topos_fundos':
-            args = parsed['args']
-        else:
-            args = message.text.split()[1:]  # Fallback para método original
 
-        # Listas pré-definidas (mesmas do screening)
-        predefined_lists = {
-            'açõesbr': [
-                "ABEV3.SA", "ALPA4.SA", "AMER3.SA", "ARZZ3.SA", "ASAI3.SA",
-                "AZUL4.SA", "B3SA3.SA", "BBAS3.SA", "BBDC3.SA", "BBDC4.SA",
-                "BBSE3.SA", "BEEF3.SA", "BPAC11.SA", "BPAN4.SA", "BRAP4.SA",
-                "BRFS3.SA", "BRKM5.SA", "CASH3.SA", "CCRO3.SA", "CIEL3.SA",
-                "CMIG4.SA", "CMIN3.SA", "COGN3.SA", "CPFE3.SA", "CPLE6.SA",
-                "CRFB3.SA", "CSAN3.SA", "CSMG3.SA", "CSNA3.SA", "CVCB3.SA",
-                "CYRE3.SA", "DXCO3.SA", "EGIE3.SA", "ELET3.SA", "ELET6.SA",
-                "EMBR3.SA", "ENBR3.SA", "ENEV3.SA", "ENGI11.SA", "EQTL3.SA",
-                "EZTC3.SA", "FLRY3.SA", "GGBR4.SA", "GOAU4.SA", "GOLL4.SA",
-                "HAPV3.SA", "HYPE3.SA", "IGTI11.SA", "IRBR3.SA", "ITSA4.SA",
-                "ITUB4.SA", "JBSS3.SA", "KLBN11.SA", "LREN3.SA", "LWSA3.SA",
-                "MGLU3.SA", "MOVI3.SA", "MRFG3.SA", "MRVE3.SA", "MULT3.SA",
-                "NTCO3.SA", "PCAR3.SA", "PETR3.SA", "PETR4.SA", "PETZ3.SA",
-                "POSI3.SA", "PRIO3.SA", "QUAL3.SA", "RADL3.SA", "RAIL3.SA",
-                "RAIZ4.SA", "RDOR3.SA", "RENT3.SA", "SANB11.SA", "SBSP3.SA",
-                "SLCE3.SA", "SMTO3.SA", "SOMA3.SA", "SUZB3.SA", "TAEE11.SA",
-                "TIMS3.SA", "TOTS3.SA", "TRPL4.SA", "UGPA3.SA", "USIM5.SA",
-                "VALE3.SA", "VAMO3.SA", "VBBR3.SA", "VIIA3.SA", "VIVT3.SA",
-                "WEGE3.SA", "YDUQ3.SA", "ALSO3.SA", "SEQL3.SA", "SIMH3.SA",
-                "TTEN3.SA", "VIVA3.SA", "WEST3.SA", "OIBR4.SA", "CMIG3.SA",
-                "AESB3.SA", "NEOE3.SA", "CAML3.SA", "POMO4.SA", "GRND3.SA",
-                "ODPV3.SA", "ENAT3.SA", "LOGG3.SA", "MDIA3.SA", "RECV3.SA",
-                "SAPR11.SA", "SAPR4.SA", "SBFG3.SA", "TEND3.SA", "TFCO4.SA",
-                "HBOR3.SA", "HBSA3.SA", "SHOW3.SA", "ESPA3.SA", "ROMI3.SA",
-                "JHSF3.SA", "GUAR3.SA", "KEPL3.SA", "JSLG3.SA", "PGMN3.SA",
-                "PNVL3.SA", "PTBL3.SA", "RAPT4.SA", "SEER3.SA", "WIZC3.SA"
-            ],
-            'açõeseua': [
-                "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "BRK-B", "TSLA",
-                "TSM", "JPM", "WMT", "LLY", "ORCL", "V", "MA", "NFLX", "XOM", "COST",
-                "JNJ", "PLTR", "HD", "PG", "BAC", "ABBV", "KO", "CVX", "CRM", "UNH",
-                "PM", "IBM", "MS", "GS", "LIN", "INTU", "ABT", "DIS", "AXP", "MRK",
-                "MCD", "RTX", "CAT", "T", "NOW", "PEP", "UBER", "BKNG", "VZ", "TMO",
-                "ISRG", "ACN", "C", "SCHW", "GEV", "BA", "BLK", "QCOM", "TXN", "AMGN",
-                "SPGI", "ADBE", "BSX", "SYK", "ETN", "SO", "SPG", "TMUS", "NKE", "HON",
-                "MDT", "MMM", "MO", "USB", "LMT", "UPS", "UNP", "PYPL", "TGT", "DE",
-                "GILD", "CMCSA", "CHTR", "COP", "GE", "FDX", "DUK", "EMR", "DD", "NEE",
-                "SBUX", "F", "GM", "OXY", "BIIB", "CVS", "CL", "ED", "GLW", "D",
-                "PFE", "DG", "ADP", "ZTS", "BBY", "MNST", "TRV", "SLB", "ICE", "WELL",
-                "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC",
-                "NOC", "EXC", "SYY", "AON", "MET", "AFL", "TJX", "BMY", "HAL", "STZ"
-            ],
-            'criptos': [
-                "BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD",
-                "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD",
-                "TRX-USD", "LINK-USD", "MATIC-USD", "LTC-USD", "BCH-USD",
-                "FIL-USD", "APT-USD", "ARB-USD", "NEAR-USD", "VET-USD"
-            ],
-            'forex': ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"],
-            'commodities': ["GC=F", "SI=F", "CL=F", "NG=F", "HG=F", "ZC=F", "ZS=F", "KE=F", "CC=F", "KC=F"]
-        }
 
-        if not args:
-            help_message = """
-📊 *DETECÇÃO DE TOPOS E FUNDOS*
-
-📝 *Como usar:*
-/topos_fundos [lista/ativos]
-
-📊 *Listas pré-definidas:*
-• açõesBR - Ações brasileiras
-• açõesEUA - Ações americanas
-• criptos - Criptomoedas
-• forex - Pares de moedas
-• commodities - Commodities
-
-⏰ *Configurações fixas:*
-• Timeframe: 1 dia (fixo)
-• Período: 2 anos de dados históricos
-
-📈 *Exemplos:*
-`/topos_fundos açõesBR`
-`/topos_fundos açõesEUA`
-`/topos_fundos criptos`
-`/topos_fundos BTC-USD ETH-USD PETR4.SA VALE3.SA`
-
-🎯 *O que detecta:*
-• Possíveis fundos (oportunidades de compra)
-• Possíveis topos (oportunidades de venda)
-• Baseado em Bollinger Bands
-            """
-            bot.reply_to(message, help_message, parse_mode='Markdown')
-            return
-
-        symbols = []
-
-        # Verificar se é uma lista pré-definida ou ativos individuais
-        if len(args) == 1 and args[0].lower() in predefined_lists:
-            list_name = args[0].lower()
-            symbols = predefined_lists[list_name]
-            list_display_name = {
-                'açõesbr': 'Ações Brasileiras',
-                'açõeseua': 'Ações Americanas',
-                'criptos': 'Criptomoedas',
-                'forex': 'Forex',
-                'commodities': 'Commodities'
-            }
-            bot.reply_to(message, f"📊 Analisando topos e fundos: {list_display_name[list_name]} ({len(symbols)} ativos)", parse_mode='Markdown')
-        else:
-            symbols = args
-
-        if not symbols:
-            bot.reply_to(message, "❌ Por favor, forneça uma lista válida ou pelo menos um ativo para análise.", parse_mode='Markdown')
-            return
-
-        # Limitação para evitar timeout
-        if len(symbols) > 50:
-            bot.reply_to(message, f"⚠️ Lista muito grande ({len(symbols)} ativos). Analisando os primeiros 200 ativos...", parse_mode='Markdown')
-            symbols = symbols[:200]
-
-        bot.reply_to(message, f"🔄 Analisando topos e fundos para {len(symbols)} ativos...", parse_mode='Markdown')
-
-        # Detectar topos e fundos
-        results = trading_bot.detect_tops_bottoms(symbols)
-
-        if results:
-            # Data atual da análise
-            data_analise = datetime.now().strftime("%d/%m/%Y")
-
-            response = f"📊 *DETECÇÃO DE TOPOS E FUNDOS*\n📅 {data_analise}\n\n⏰ Timeframe: 1 dia (fixo)\n📅 Período: 2 anos de dados\n📈 Total analisado: {len(symbols)} ativos\n\n"
-
-            buy_opportunities = [r for r in results if 'Compra' in r['signal']]
-            sell_opportunities = [r for r in results if 'Venda' in r['signal']]
-
-            if buy_opportunities:
-                response += "🟢 *POSSÍVEIS FUNDOS (COMPRA):*\n"
-                for result in buy_opportunities:
-                    response += f"• *{result['symbol']}*: {result['current_price']:.2f}\n"
-                    response += f"  📊 Distância: {result['distance_pct']:.2f}%\n\n"
-
-            if sell_opportunities:
-                response += "🔴 *POSSÍVEIS TOPOS (VENDA):*\n"
-                for result in sell_opportunities:
-                    response += f"• *{result['symbol']}*: {result['current_price']:.2f}\n"
-                    response += f"  📊 Distância: {result['distance_pct']:.2f}%\n\n"
-
-            # Dividir mensagem se muito longa
-            if len(response) > 4000:
-                parts = response.split('🔴 *POSSÍVEIS TOPOS (VENDA):*')
-                if len(parts) > 1:
-                    # Enviar fundos primeiro
-                    first_part = parts[0]
-                    bot.reply_to(message, first_part, parse_mode='Markdown')
-                    # Enviar topos depois
-                    second_part = "🔴 *POSSÍVEIS TOPOS (VENDA):*" + parts[1]
-                    bot.reply_to(message, second_part, parse_mode='Markdown')
-                else:
-                    bot.reply_to(message, response, parse_mode='Markdown')
-            else:
-                bot.reply_to(message, response, parse_mode='Markdown')
-
-            logger.info(f"Topos e fundos enviados para {user_name}: {len(results)} oportunidades de {len(symbols)} ativos")
-        else:
-            bot.reply_to(message, f"ℹ️ Nenhuma oportunidade de topo ou fundo detectada nos {len(symbols)} ativos analisados.", parse_mode='Markdown')
-
-    except Exception as e:
-        logger.error(f"Erro no comando /topos_fundos: {str(e)}")
-        bot.reply_to(message, "❌ Erro ao processar topos e fundos. Tente novamente.")
-
-@bot.message_handler(commands=['status'])
-def status_command(message):
-    try:
-        logger.info(f"Comando /status recebido de {message.from_user.first_name}")
-
-        status_message = """
-📊 *STATUS DO BOT*
-
-🤖 Bot: Online ✅
-⏰ Timeframe: 1 dia
-📅 Período análise: 365 dias
-🔄 Última verificação: """ + datetime.now().strftime("%d/%m/%Y %H:%M") + """
-
-🎯 *Estratégias disponíveis:*
-• Agressiva 🔥
-• Balanceada ⚖️
-• Conservadora 🛡️
-
-📈 *Funcionalidades ativas:*
-• Screening de ativos ✅
-• Detecção topos/fundos ✅
-• Alertas em tempo real ✅
-        """
-        bot.reply_to(message, status_message, parse_mode='Markdown')
-    except Exception as e:
-        logger.error(f"Erro no comando /status: {str(e)}")
-        bot.reply_to(message, "❌ Erro ao verificar status.")
 
 @bot.message_handler(commands=['analise'])
 def analise_command(message):
@@ -1780,158 +1525,7 @@ YYYY-MM-DD (exemplo: 2024-01-01)
         logger.error(f"Erro no comando /analise: {str(e)}")
         bot.reply_to(message, "❌ Erro ao processar análise. Use /pause se o bot travou ou verifique os parâmetros.")
 
-@bot.message_handler(commands=['restart'])
-def restart_command(message):
-    try:
-        user_name = message.from_user.first_name
-        logger.info(f"Comando /restart recebido de {user_name}")
 
-        restart_message = """🔄 REINICIANDO BOT...
-
-⚠️ O bot será reiniciado completamente.
-⏳ Aguarde alguns segundos e tente novamente.
-
-🤖 Status: Reiniciando sistema...
-📡 Reconectando aos serviços...
-🔧 Limpando cache e memória...
-
-✅ O bot voltará online em instantes!"""
-
-        bot.reply_to(message, restart_message)
-        logger.info(f"Mensagem de restart enviada para {user_name}")
-
-        # Aguardar um pouco para enviar a mensagem antes de reiniciar
-        time.sleep(1)
-
-        # Forçar restart imediato - usar os._exit para garantir que o processo seja encerrado
-        logger.info("🔄 Executando restart forçado por comando do usuário...")
-
-        try:
-            # Limpar todas as tarefas ativas
-            trading_bot.active_tasks.clear()
-            trading_bot.paused_users.clear()
-            trading_bot.active_alerts.clear()
-            trading_bot.alert_states.clear()
-
-            # Limpar scheduler
-            schedule.clear()
-
-            # Parar polling se estiver ativo
-            bot.stop_polling()
-        except:
-            pass  # Ignorar erros na limpeza
-
-        # Forçar saída imediata do processo
-        logger.info("🛑 Forçando saída do processo para restart completo...")
-        os._exit(0)  # Saída forçada - o workflow reiniciará automaticamente
-
-    except Exception as e:
-        logger.error(f"Erro no comando /restart: {str(e)}")
-        bot.reply_to(message, "❌ Erro ao reiniciar o bot. Tente novamente.")
-
-@bot.message_handler(commands=['pause'])
-def pause_command(message):
-    try:
-        user_id = message.from_user.id
-        user_name = message.from_user.first_name
-        logger.info(f"Comando /pause recebido de {user_name}")
-
-        # Verificar se há tarefas ativas
-        if user_id in trading_bot.active_tasks:
-            task_info = trading_bot.active_tasks[user_id]
-            task_type = task_info.get('task_type', 'desconhecida')
-            start_time = task_info.get('start_time', datetime.now())
-            duration = datetime.now() - start_time
-
-            # Verificar se a tarefa está travada há muito tempo
-            is_stuck = duration.seconds > 120  # Mais de 2 minutos
-
-            # Adicionar usuário à lista de pausados
-            trading_bot.paused_users.add(user_id)
-
-            # Remover tarefa ativa
-            if user_id in trading_bot.active_tasks:
-                del trading_bot.active_tasks[user_id]
-
-            if is_stuck:
-                pause_message = f"""⏸️ **TAREFA TRAVADA CANCELADA**
-
-🚨 **Tarefa travada:** {task_type}
-⏱️ **Tempo de execução:** {duration.seconds} segundos (MUITO LONGO)
-✅ **Status:** Operação cancelada forçadamente
-
-⚠️ **RECOMENDAÇÃO URGENTE:**
-• Use /restart para limpar completamente o bot
-• Evite timeframes pequenos (15m, 30m) com CCXT
-• O modelo ovelha2 com timeframes pequenos pode travar o bot
-
-🚀 **Alternativas rápidas:**
-• /analise ccxt agressiva BTC/USDT 4h ovelha (mais rápido)
-• /analise yahoo balanceada BTC-USD 1d ovelha2 (via Yahoo)
-• Timeframes ≥ 4h funcionam melhor com CCXT"""
-            else:
-                pause_message = f"""⏸️ **TAREFA PAUSADA COM SUCESSO**
-
-🔄 **Tarefa interrompida:** {task_type}
-⏱️ **Tempo de execução:** {duration.seconds} segundos
-✅ **Status:** Operação cancelada
-
-💡 **O que aconteceu:**
-• A tarefa em execução foi interrompida
-• O bot voltará a responder normalmente
-• Você pode enviar novos comandos agora
-
-🚀 **Próximos passos:**
-• Tente usar timeframes maiores (4h, 1d) para análises mais rápidas
-• Para criptos via CCXT, use intervalos de 1h ou superior
-• O modelo ovelha2 é mais lento que o ovelha clássico"""
-
-            bot.reply_to(message, pause_message, parse_mode='Markdown')
-            logger.info(f"Tarefa pausada para {user_name}: {task_type} (duração: {duration.seconds}s)")
-
-        else:
-            # Mesmo sem tarefa ativa, limpar possíveis estados
-            trading_bot.paused_users.discard(user_id)
-
-            # Verificar se há tarefas ativas de outros usuários que podem estar travando o bot
-            total_active_tasks = len(trading_bot.active_tasks)
-
-            if total_active_tasks > 0:
-                info_message = f"""⚠️ **BOT PODE ESTAR TRAVADO**
-
-🔧 **Situação detectada:**
-• Você não tem tarefas ativas
-• Mas há {total_active_tasks} tarefa(s) de outros usuários
-• O bot pode estar sobrecarregado
-
-🚨 **SOLUÇÃO:**
-• Use /restart para forçar reinício completo
-• Isso limpará todas as tarefas travadas
-• O bot voltará ao normal imediatamente
-
-💡 **Após o restart:**
-• Evite timeframes pequenos com CCXT
-• Use 4h ou superior para análises estáveis"""
-            else:
-                info_message = """ℹ️ **NENHUMA TAREFA ATIVA**
-
-✅ O bot não está executando nenhuma tarefa no momento.
-
-🔧 **Se o bot estava travado:**
-• A operação foi limpa com sucesso
-• Você pode enviar comandos normalmente
-
-💡 **Dicas para evitar travamentos:**
-• Use timeframes maiores: 1h, 4h, 1d
-• Para análises rápidas, prefira o modelo 'ovelha' clássico
-• CCXT funciona melhor com intervalos ≥ 1h"""
-
-            bot.reply_to(message, info_message, parse_mode='Markdown')
-            logger.info(f"Comando pause executado sem tarefas ativas para {user_name}")
-
-    except Exception as e:
-        logger.error(f"Erro no comando /pause: {str(e)}")
-        bot.reply_to(message, "❌ Erro ao pausar tarefa. Tente /restart se o problema persistir.")
 
 @bot.message_handler(commands=['screening_auto'])
 def screening_auto_command(message):
@@ -1943,20 +1537,17 @@ def screening_auto_command(message):
         # Parse arguments
         args = message.text.split()[1:]
 
-        if len(args) < 5: # Fonte, símbolos, modelo, estratégia, timeframe são obrigatórios
+        if len(args) < 4: # Símbolos, modelo, estratégia, timeframe são obrigatórios (fonte agora é padrão 12Data)
             help_message = """
 🔄 *SCREENING AUTOMÁTICO*
 
 📝 *Como usar:*
-/screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
+/screening_auto [símbolos] [modelo] [estrategia] [timeframe]
 
-🔗 *Fontes disponíveis:*
-• ccxt - Binance via CCXT (criptomoedas)
-• yahoo - Yahoo Finance
-• twelvedata - 12Data
+🔗 *Fonte de dados:* 12Data (padrão e única opção)
 
 📊 *Símbolos:* Lista separada por vírgulas entre colchetes
-Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
+Exemplo: [BTCUSDT,ETHUSDT,LTCUSDT,ADAUSDT,XRPUSDT]
 
 🤖 *Modelos:*
 • ovelha - Modelo clássico
@@ -1967,11 +1558,15 @@ Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
 • balanceada - Equilibrada
 • conservadora - Mais confiáveis
 
-⏰ *Timeframes:*
-• 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d
+⏰ *Timeframes disponíveis:*
+• 5m - 5 minutos
+• 15m - 15 minutos
+• 1h - 1 hora (60 minutos)
+• 4h - 4 horas
+• 1d - 1 dia (diário)
 
 📈 *Exemplo:*
-`/screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT] ovelha2 balanceada 4h`
+`/screening_auto [BTCUSDT,ETHUSDT,LTCUSDT,ADAUSDT,XRPUSDT] ovelha2 balanceada 4h`
 
 💡 *Nota:* O bot enviará alertas no intervalo escolhido
             """
@@ -1979,16 +1574,11 @@ Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
             return
 
         try:
-            source = args[0].lower()
-            symbols_str = args[1]
-            model_type = args[2].lower()
-            strategy = args[3].lower()
-            timeframe = args[4].lower()
-
-            # Validar fonte
-            if source not in ['ccxt', 'yahoo', 'twelvedata']:
-                bot.reply_to(message, "❌ Fonte inválida. Use: ccxt, yahoo ou twelvedata")
-                return
+            source = "twelvedata"  # Fonte fixa como 12Data
+            symbols_str = args[0]
+            model_type = args[1].lower()
+            strategy = args[2].lower()
+            timeframe = args[3].lower()
 
             # Extrair símbolos da lista
             if not symbols_str.startswith('[') or not symbols_str.endswith(']'):
@@ -2020,7 +1610,7 @@ Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
             strategy_formatted = strategy_map[strategy]
 
             # Validar timeframe
-            valid_timeframes = ['15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d']
+            valid_timeframes = ['5m', '15m', '1h', '4h', '1d']
             if timeframe not in valid_timeframes:
                 bot.reply_to(message, f"❌ Timeframe inválido. Use: {', '.join(valid_timeframes)}")
                 return
@@ -2076,7 +1666,7 @@ Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
             confirmation_message = f"""✅ *ALERTA AUTOMÁTICO CONFIGURADO*
 
 📊 **Configuração:**
-🔗 Fonte: {source.upper()}
+🔗 Fonte: 12DATA
 🎯 Estratégia: {strategy}
 🤖 Modelo: {model_type.upper()}
 ⏰ Intervalo: {timeframe}
@@ -2201,8 +1791,6 @@ def help_command(message):
 
 📋 COMANDOS DISPONÍVEIS:
 
-🏠 /start - Iniciar o bot
-
 📊 /analise [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
   📝 ANÁLISE INDIVIDUAL COM GRÁFICO
   • Gera gráfico completo do ativo escolhido
@@ -2228,17 +1816,16 @@ def help_command(message):
   Individual: /screening balanceada BTC-USD ETH-USD PETR4.SA
   ⚠️ Configuração: Timeframe 1d fixo, 2 anos de dados
 
-🔄 /screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
-  📝 ALERTAS AUTOMÁTICOS DE SCREENING
+🔄 /screening_auto [símbolos] [modelo] [estrategia] [timeframe]
+  📝 ALERTAS AUTOMÁTICOS DE SCREENING (12DATA)
   • Monitora até 10 símbolos automaticamente
   • Envia alertas quando detecta mudanças de estado
   • Funciona no intervalo de tempo escolhido
-  • Suporte a CCXT (Binance), Yahoo, 12Data
+  • Usa exclusivamente 12Data como fonte
 
-  Exemplo: /screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT] ovelha2 balanceada 4h
+  Exemplo: /screening_auto [BTCUSDT,ETHUSDT,LTCUSDT] ovelha2 balanceada 4h
 
-🔗 Fontes: ccxt, yahoo, twelvedata
-⏰ Timeframes: 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d
+⏰ Timeframes 12Data: 5m, 15m, 1h, 4h, 1d
 
 📋 /list_alerts
   📝 VER ALERTAS ATIVOS
@@ -2250,20 +1837,6 @@ def help_command(message):
   📝 PARAR ALERTAS AUTOMÁTICOS
   • Interrompe todos os alertas configurados
   • Para o monitoramento automático
-
-⏸️ /pause
-  📝 PAUSAR TAREFA EM EXECUÇÃO
-  • Interrompe análises que estão demorando muito
-  • Libera o bot para receber novos comandos
-
-📈 /topos_fundos [lista/ativos]
-  📝 DETECÇÃO DE TOPOS E FUNDOS
-  • Identifica possíveis pontos de reversão
-  • Usa Bollinger Bands para análise
-
-📊 /status - Ver status do bot
-
-🔄 /restart - Reiniciar o bot (em caso de problemas)
 
 ❓ /help - Esta mensagem de ajuda
 
@@ -2286,14 +1859,21 @@ def help_command(message):
 ⏰ TIMEFRAMES POR COMANDO:
 • /analise: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
 • /screening: 1d fixo
-• /screening_auto: 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d
-• /topos_fundos: 1d fixo
+• /screening_auto: 5m, 15m, 1h, 4h, 1d (12Data apenas)
 
 💡 EXEMPLOS PRÁTICOS:
 • Análise rápida: /analise yahoo balanceada PETR4.SA 1d
 • Análise cripto ML: /analise twelvedata agressiva BTCUSDT 4h ovelha2
 • Screening geral: /screening balanceada açõesBR
-• Alerta de criptos: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
+• Alerta 12Data: /screening_auto [BTCUSDT,ETHUSDT] ovelha2 balanceada 4h
+
+📝 FORMATOS DE SÍMBOLOS:
+• Yahoo: PETR4.SA, AAPL, BTC-USD, EURUSD=X
+• CCXT: BTC/USDT, ETH/USDT, LTC/USDT
+• 12Data: BTCUSDT, ETHUSDT, EURUSD, AAPL
+
+🔔 NOTA SOBRE 12DATA:
+O comando /screening_auto agora usa exclusivamente 12Data e suporta timeframes a partir de 5 minutos, ideal para monitoramento de alta frequência de criptomoedas, forex e ações.
 """
         bot.reply_to(message, help_message)
     except Exception as e:
@@ -2319,18 +1899,10 @@ def handle_message(message):
             logger.info(f"Comando fuzzy identificado: {command} (original: {parsed['original_text']})")
 
             # Redirecionar para o handler apropriado
-            if command == 'start':
-                start_command(message)
-            elif command == 'analise':
+            if command == 'analise':
                 analise_command(message)
             elif command == 'screening':
                 screening_command(message)
-            elif command == 'topos_fundos':
-                topos_fundos_command(message)
-            elif command == 'status':
-                status_command(message)
-            elif command == 'restart':
-                restart_command(message)
             elif command == 'help':
                 help_command(message)
             return
@@ -2338,11 +1910,11 @@ def handle_message(message):
         # Mensagens de saudação
         user_message_lower = user_message.lower()
         if any(word in user_message_lower for word in ['oi', 'olá', 'hello', 'hi']):
-            bot.reply_to(message, "👋 Olá! Use /help para ver os comandos disponíveis.")
+            bot.reply_to(message, "👋 Olá! Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /analise - Análise individual\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
         elif any(word in user_message_lower for word in ['ajuda', 'help']):
             help_command(message)
         else:
-            bot.reply_to(message, "🤖 Use /help para ver os comandos disponíveis.\n\n💡 Dica: Você pode digitar comandos mesmo com pequenos erros de digitação!")
+            bot.reply_to(message, "🤖 Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /analise - Análise individual\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos (12Data)\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
 
     except Exception as e:
         logger.error(f"Erro ao processar mensagem: {str(e)}")
@@ -2354,22 +1926,14 @@ def schedule_alerts_for_user(user_id, timeframe):
         schedule.clear(f'alert_user_{user_id}')
 
         # Programar nova tarefa baseada no timeframe
-        if timeframe == '15m':
+        if timeframe == '5m':
+            schedule.every(5).minutes.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
+        elif timeframe == '15m':
             schedule.every(15).minutes.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
-        elif timeframe == '30m':
-            schedule.every(30).minutes.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
         elif timeframe == '1h':
             schedule.every(1).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
-        elif timeframe == '2h':
-            schedule.every(2).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
         elif timeframe == '4h':
             schedule.every(4).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
-        elif timeframe == '6h':
-            schedule.every(6).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
-        elif timeframe == '8h':
-            schedule.every(8).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
-        elif timeframe == '12h':
-            schedule.every(12).hours.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
         elif timeframe == '1d':
             schedule.every(1).days.do(send_scheduled_alert, user_id).tag(f'alert_user_{user_id}')
 
@@ -2482,16 +2046,11 @@ def run_bot():
             # Configurar comandos do bot
             try:
                 bot.set_my_commands([
-                    telebot.types.BotCommand("start", "Iniciar o bot"),
                     telebot.types.BotCommand("analise", "Análise individual com gráfico"),
                     telebot.types.BotCommand("screening", "Screening de múltiplos ativos"),
                     telebot.types.BotCommand("screening_auto", "Alertas automáticos de screening"),
-                    telebot.types.BotCommand("topos_fundos", "Detectar topos e fundos"),
                     telebot.types.BotCommand("list_alerts", "Ver alertas ativos"),
                     telebot.types.BotCommand("stop_alerts", "Parar alertas automáticos"),
-                    telebot.types.BotCommand("pause", "Pausar tarefa em execução"),
-                    telebot.types.BotCommand("status", "Ver status do bot"),
-                    telebot.types.BotCommand("restart", "Reiniciar o bot"),
                     telebot.types.BotCommand("help", "Ajuda com comandos")
                 ])
                 logger.info("✅ Comandos do bot configurados")
