@@ -467,7 +467,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
     st.markdown("### 📊 Métricas Principais")
     
     # Métricas em formato mais compacto
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
         st.markdown(f"""
         <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
@@ -506,17 +506,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
             <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{profit_factor_display}</div>
         </div>
         """, unsafe_allow_html=True)
-    with col6:
-        # Calcular retorno por mudança de estado
-        mudanca_estado_total = returns_data['return_pct'].sum() if not returns_data.empty else 0
-        mudanca_color = "#4CAF50" if mudanca_estado_total >= 0 else "#f44336"
-        mudanca_icon = "🟢" if mudanca_estado_total >= 0 else "🔴"
-        st.markdown(f"""
-        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
-            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Mudança de Estado</div>
-            <div style="font-size: 1.1rem; font-weight: bold; color: {mudanca_color};">{mudanca_icon} {mudanca_estado_total:.2f}%</div>
-        </div>
-        """, unsafe_allow_html=True)
+    
 
     # === SEÇÃO 2: MÉTRICAS AVANÇADAS ===
     st.markdown("### 🎯 Métricas Avançadas")
@@ -884,7 +874,12 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
     with col2:
         # Show period info
         period_days = (end_date - start_date).days
-        st.metric("Período da Simulação", f"{period_days} dias")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Período da Simulação</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{period_days} dias</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Calculate simulation results
     final_capital = initial_investment
@@ -913,33 +908,47 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric(
-            "Capital Final (Estratégia)",
-            f"R$ {final_capital_compound:,.2f}",
-            f"{strategy_return:+.2f}%"
-        )
+        return_color = "#4CAF50" if strategy_return >= 0 else "#f44336"
+        return_icon = "🟢" if strategy_return >= 0 else "🔴"
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Capital Final (Estratégia)</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">R$ {final_capital_compound:,.2f}</div>
+            <div style="font-size: 0.9rem; font-weight: bold; color: {return_color};">{return_icon} {strategy_return:+.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col2:
-        st.metric(
-            "Buy & Hold",
-            f"R$ {buy_hold_final:,.2f}",
-            f"{buy_hold_return:+.2f}%"
-        )
+        bh_color = "#4CAF50" if buy_hold_return >= 0 else "#f44336"
+        bh_icon = "🟢" if buy_hold_return >= 0 else "🔴"
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Buy & Hold</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">R$ {buy_hold_final:,.2f}</div>
+            <div style="font-size: 0.9rem; font-weight: bold; color: {bh_color};">{bh_icon} {buy_hold_return:+.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col3:
-        outperf_color = "🟢" if outperformance > 0 else "🔴"
-        st.metric(
-            "Outperformance",
-            f"{outperf_color} {outperformance:+.2f}%"
-        )
+        outperf_color = "#4CAF50" if outperformance > 0 else "#f44336"
+        outperf_icon = "🟢" if outperformance > 0 else "🔴"
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Outperformance</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: {outperf_color};">{outperf_icon} {outperformance:+.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col4:
         profit_loss = final_capital_compound - initial_investment
-        profit_color = "🟢" if profit_loss > 0 else "🔴"
-        st.metric(
-            "Lucro/Prejuízo",
-            f"{profit_color} R$ {profit_loss:+,.2f}"
-        )
+        profit_color = "#4CAF50" if profit_loss > 0 else "#f44336"
+        profit_icon = "🟢" if profit_loss > 0 else "🔴"
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Lucro/Prejuízo</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: {profit_color};">{profit_icon} R$ {profit_loss:+,.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Additional metrics
     st.markdown("#### 📈 Métricas de Performance")
@@ -959,17 +968,37 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
     max_dd_monetary = initial_investment * (abs(max_dd_value) / 100)
     
     with col1:
-        st.metric("Retorno Anualizado", f"{annualized_return:.2f}%")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Retorno Anualizado</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{annualized_return:.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col2:
-        st.metric("Total de Operações", total_trades)
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Total de Operações</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{total_trades}</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col3:
         win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
-        st.metric("Taxa de Acerto", f"{win_rate:.1f}%")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Taxa de Acerto</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{win_rate:.1f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col4:
-        st.metric("Máx. Perda (R$)", f"R$ {max_dd_monetary:,.2f}")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Máx. Perda (R$)</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #f44336;">R$ {max_dd_monetary:,.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Summary box
     if outperformance > 0:
@@ -1800,9 +1829,6 @@ with tab3:
 
     # Analysis button
     analyze_button_individual = st.button("🚀 INICIAR ANÁLISE INDIVIDUAL", type="primary", use_container_width=True)
-    
-    # Test button
-    test_button = st.button("teste")
 
     # Analysis logic (same as before but only for individual analysis)
     if analyze_button_individual:
