@@ -40,6 +40,45 @@ except Exception as e:
     logger.error(f"❌ Erro ao inicializar bot do Telegram: {str(e)}")
     raise
 
+# Helper function to safely reply to messages
+def safe_bot_reply(message, text, parse_mode=None):
+    """Safely replies to a message, handling potential API errors."""
+    try:
+        bot.reply_to(message, text, parse_mode=parse_mode)
+    except telebot.apihelper.ApiTelegramException as e:
+        logger.error(f"Telegram API error: {e}")
+        # Handle specific errors if necessary, e.g., message too long
+        if "message is too long" in str(e):
+            parts = text.split('\n')
+            current_part = ""
+            for part in parts:
+                if len(current_part) + len(part) + 1 < 4096:
+                    current_part += part + "\n"
+                else:
+                    try:
+                        bot.reply_to(message, current_part, parse_mode=parse_mode)
+                    except:
+                        pass # Ignore if even sending parts fails
+                    current_part = part + "\n"
+            if current_part:
+                try:
+                    bot.reply_to(message, current_part, parse_mode=parse_mode)
+                except:
+                    pass
+        else:
+            # For other API errors, maybe send a generic message
+            try:
+                bot.reply_to(message, "❌ Ocorreu um erro ao processar sua solicitação. Tente novamente.")
+            except:
+                pass # Ignore if sending generic message fails too
+    except Exception as e:
+        logger.error(f"Unexpected error in safe_bot_reply: {str(e)}")
+        # Generic fallback for non-API errors
+        try:
+            bot.reply_to(message, "❌ Ocorreu um erro inesperado. Tente novamente.")
+        except:
+            pass
+
 # Funções auxiliares para tolerância a erros
 def normalize_text(text):
     """Normaliza texto removendo acentos e convertendo para minúsculas"""
@@ -820,8 +859,7 @@ class OvecchiaTradingBot:
                     elif source == "12data":
                         end_date = datetime.now().date()
                         start_date = end_date - timedelta(days=365)
-                        df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"),
-                                                     end_date.strftime("%Y-%m-%d"), timeframe, 2000)
+                        df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), timeframe, 2000)
                     else: # Yahoo
                         end_date = datetime.now().date()
                         start_date = end_date - timedelta(days=365)
@@ -1056,7 +1094,7 @@ def screening_command(message):
         user_name = message.from_user.first_name or "Usuário"
         user_id = message.from_user.id
         logger.info(f"Comando /screening recebido de {user_name} (ID: {user_id})")
-        
+
         # Adicionar delay para evitar conflitos com múltiplas requisições
         time.sleep(0.5)
 
@@ -1124,39 +1162,39 @@ def screening_command(message):
 
         if not args:
             help_message = """
-🔍 *SCREENING DE ATIVOS*
+                            🔍 *SCREENING DE ATIVOS*
 
-📝 *Como usar:*
-/screening [estrategia] [lista/ativos]
+                            📝 *Como usar:*
+                            /screening [estrategia] [lista/ativos]
 
-🎯 *Estratégias disponíveis:*
-• agressiva - Mais sinais
-• balanceada - Equilibrada (padrão)
-• conservadora - Sinais mais confiáveis
+                            🎯 *Estratégias disponíveis:*
+                            • agressiva - Mais sinais
+                            • balanceada - Equilibrada (padrão)
+                            • conservadora - Sinais mais confiáveis
 
-📊 *Listas pré-definidas:*
-• açõesBR - Ações brasileiras
-• açõesEUA - Ações americanas
-• criptos - Criptomoedas
-• forex - Pares de moedas
-• commodities - Commodities
+                            📊 *Listas pré-definidas:*
+                            • açõesBR - Ações brasileiras
+                            • açõesEUA - Ações americanas
+                            • criptos - Criptomoedas
+                            • forex - Pares de moedas
+                            • commodities - Commodities
 
-⏰ *Configurações fixas:*
-• Timeframe: 1 dia (fixo)
-• Período: 2 anos de dados históricos
+                            ⏰ *Configurações fixas:*
+                            • Timeframe: 1 dia (fixo)
+                            • Período: 2 anos de dados históricos
 
-📈 *Exemplos:*
-`/screening balanceada açõesBR`
-`/screening agressiva açõesEUA`
-`/screening conservadora criptos`
-`/screening balanceada BTC-USD ETH-USD PETR4.SA VALE3.SA`
+                            📈 *Exemplos:*
+                            `/screening balanceada açõesBR`
+                            `/screening agressiva açõesEUA`
+                            `/screening conservadora criptos`
+                            `/screening balanceada BTC-USD ETH-USD PETR4.SA VALE3.SA`
 
-💡 *Nota:* Você pode usar listas pré-definidas OU especificar ativos individuais
-            """
-            bot.reply_to(message, help_message, parse_mode='Markdown')
+                            💡 *Nota:* Você pode usar listas pré-definidas OU especificar ativos individuais
+                                        """
+            safe_bot_reply(message, help_message, 'Markdown')
             return
 
-        bot.reply_to(message, "🔄 Processando screening...", parse_mode='Markdown')
+        safe_bot_reply(message, "🔄 Processando screening...", 'Markdown')
 
         strategy = "Balanceado"
         symbols = []
@@ -1184,19 +1222,19 @@ def screening_command(message):
                 'forex': 'Forex',
                 'commodities': 'Commodities'
             }
-            bot.reply_to(message, f"📊 Analisando lista: {list_display_name[list_name]} ({len(symbols)} ativos)", parse_mode='Markdown')
+            safe_bot_reply(message, f"📊 Analisando lista: {list_display_name[list_name]} ({len(symbols)} ativos)", 'Markdown')
         else:
             symbols = remaining_args
 
         if not symbols:
-            bot.reply_to(message, "❌ Por favor, forneça uma lista válida ou pelo menos um ativo para análise.", parse_mode='Markdown')
+            safe_bot_reply(message, "❌ Por favor, forneça uma lista válida ou pelo menos um ativo para análise.", 'Markdown')
             return
 
         logger.info(f"Realizando screening para {len(symbols)} ativos com estratégia {strategy}")
 
         # Realizar screening (limitado a 50 ativos por vez para evitar timeout)
         if len(symbols) > 50:
-            bot.reply_to(message, f"⚠️ Lista muito grande ({len(symbols)} ativos). Analisando os ativos...", parse_mode='Markdown')
+            safe_bot_reply(message, f"⚠️ Lista muito grande ({len(symbols)} ativos). Analisando os ativos...", 'Markdown')
             symbols = symbols[:200]
 
         # Realizar screening
@@ -1222,34 +1260,28 @@ def screening_command(message):
                 current_message = f"🚨 *ALERTAS DE MUDANÇA DE ESTADO*\n📅 {data_analise}\n\n📊 Estratégia: {strategy}\n⏰ Timeframe: 1 dia\n📈 Total analisado: {len(symbols)} ativos\n\n"
 
                 for part in parts[1:]:  # Skip header
-                    if len(current_message + part + '\n\n') > 4000:
-                        bot.reply_to(message, current_message, parse_mode='Markdown')
-                        current_message = part + '\n\n'
-                    else:
+                    if len(current_message) + len(part) + 1 < 4096:
                         current_message += part + '\n\n'
+                    else:
+                        safe_bot_reply(message, current_message, 'Markdown')
+                        current_message = part + '\n\n'
 
                 if current_message.strip():
-                    bot.reply_to(message, current_message, parse_mode='Markdown')
+                    safe_bot_reply(message, current_message, 'Markdown')
             else:
-                bot.reply_to(message, response, parse_mode='Markdown')
+                safe_bot_reply(message, response, 'Markdown')
 
             logger.info(f"Screening enviado para {user_name}: {len(results)} alertas de {len(symbols)} ativos")
         else:
-            bot.reply_to(message, f"ℹ️ Nenhuma mudança de estado detectada nos {len(symbols)} ativos analisados.", parse_mode='Markdown')
+            safe_bot_reply(message, f"ℹ️ Nenhuma mudança de estado detectada nos {len(symbols)} ativos analisados.", 'Markdown')
             logger.info(f"Nenhum alerta encontrado para {user_name}")
 
     except telebot.apihelper.ApiException as e:
         logger.error(f"Erro da API Telegram no /screening: {str(e)}")
-        try:
-            bot.reply_to(message, "❌ Erro temporário da API. Aguarde alguns segundos e tente novamente.")
-        except:
-            pass  # Se nem conseguir responder, não fazer nada
+        safe_bot_reply(message, "❌ Erro temporário da API. Aguarde alguns segundos e tente novamente.")
     except Exception as e:
         logger.error(f"Erro no comando /screening: {str(e)}")
-        try:
-            bot.reply_to(message, "❌ Erro ao processar screening. Tente novamente.")
-        except:
-            pass  # Evitar erro em cascata
+        safe_bot_reply(message, "❌ Erro ao processar screening. Tente novamente.")
 
 
 
@@ -1261,7 +1293,7 @@ def analise_command(message):
         user_id = message.from_user.id
         user_name = message.from_user.first_name or "Usuário"
         logger.info(f"Comando /analise recebido de {user_name} (ID: {user_id})")
-        
+
         # Adicionar delay para evitar conflitos
         time.sleep(0.5)
 
@@ -1275,15 +1307,15 @@ def analise_command(message):
             duration = datetime.now() - active_task.get('start_time', datetime.now())
 
             if duration.seconds < 30:  # Menos de 30 segundos
-                bot.reply_to(message, "⏳ Já há uma análise em andamento. Aguarde ou use /pause para cancelar.")
+                safe_bot_reply(message, "⏳ Já há uma análise em andamento. Aguarde ou use /pause para cancelar.")
                 return
             elif duration.seconds < 120:  # Entre 30s e 2min
-                bot.reply_to(message, f"⚠️ Análise ativa há {duration.seconds}s. Use /pause para cancelar ou aguarde.")
+                safe_bot_reply(message, f"⚠️ Análise ativa há {duration.seconds}s. Use /pause para cancelar ou aguarde.")
                 return
             else:
                 # Tarefa travada há mais de 2 minutos, limpar e alertar
                 del trading_bot.active_tasks[user_id]
-                bot.reply_to(message, f"⚠️ Tarefa anterior travada foi limpa. Iniciando nova análise...\n💡 Dica: Use timeframes maiores para evitar travamentos.")
+                safe_bot_reply(message, f"⚠️ Tarefa anterior travada foi limpa. Iniciando nova análise...\n💡 Dica: Use timeframes maiores para evitar travamentos.")
 
         # Parse arguments with fuzzy matching
         parsed = parse_flexible_command(message.text)
@@ -1294,45 +1326,46 @@ def analise_command(message):
 
         # Argumentos esperados: [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
         if len(args) < 4: # Fonte, estratégia, ativo, timeframe são obrigatórios
-            help_message = """📊 ANÁLISE INDIVIDUAL DE ATIVO
+            help_message = """
+                            📊 ANÁLISE INDIVIDUAL DE ATIVO
 
-📝 Como usar:
-/analise [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
+                            📝 Como usar:
+                            /analise [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
 
-🔗 Fontes disponíveis:
-• yahoo - Yahoo Finance (padrão)
-• ccxt - Binance via CCXT (criptomoedas)
-• twelvedata - 12Data (criptos, forex, ações)
+                            🔗 Fontes disponíveis:
+                            • yahoo - Yahoo Finance (padrão)
+                            • ccxt - Binance via CCXT (criptomoedas)
+                            • twelvedata - 12Data (criptos, forex, ações)
 
-🎯 Estratégias disponíveis:
-• agressiva - Mais sinais, maior frequência
-• balanceada - Equilibrada (recomendada)
-• conservadora - Sinais mais confiáveis
+                            🎯 Estratégias disponíveis:
+                            • agressiva - Mais sinais, maior frequência
+                            • balanceada - Equilibrada (recomendada)
+                            • conservadora - Sinais mais confiáveis
 
-🤖 Modelos disponíveis:
-• ovelha - Modelo clássico (padrão)
-• ovelha2 - Machine Learning (Random Forest)
+                            🤖 Modelos disponíveis:
+                            • ovelha - Modelo clássico (padrão)
+                            • ovelha2 - Machine Learning (Random Forest)
 
-⏰ Timeframes disponíveis:
-1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+                            ⏰ Timeframes disponíveis:
+                            1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
 
-📅 Formato de datas (opcional):
-YYYY-MM-DD (exemplo: 2024-01-01)
+                            📅 Formato de datas (opcional):
+                            YYYY-MM-DD (exemplo: 2024-01-01)
 
-📈 Exemplos:
-/analise yahoo balanceada PETR4.SA 1d
-/analise twelvedata agressiva BTCUSDT 4h ovelha2
-/analise yahoo conservadora AAPL 1d ovelha 2024-06-01 2024-12-01
+                            📈 Exemplos:
+                            /analise yahoo balanceada PETR4.SA 1d
+                            /analise twelvedata agressiva BTCUSDT 4h ovelha2
+                            /analise yahoo conservadora AAPL 1d ovelha 2024-06-01 2024-12-01
 
-💡 Ativos suportados:
-• Yahoo: PETR4.SA, VALE3.SA, AAPL, BTC-USD, EURUSD=X
-• CCXT: BTC/USDT, ETH/USDT, BNB/USDT
-• 12Data: BTCUSDT, EURUSD, AAPL
+                            💡 Ativos suportados:
+                            • Yahoo: PETR4.SA, VALE3.SA, AAPL, BTC-USD, EURUSD=X
+                            • CCXT: BTC/USDT, ETH/USDT, BNB/USDT
+                            • 12Data: BTCUSDT, EURUSD, AAPL
 
-ℹ️ Se não especificar fonte, será usado YAHOO
-ℹ️ Se não especificar modelo, será usado OVELHA clássico
-ℹ️ Se não especificar datas, será usado período padrão baseado no timeframe"""
-            bot.reply_to(message, help_message)
+                            ℹ️ Se não especificar fonte, será usado YAHOO
+                            ℹ️ Se não especificar modelo, será usado OVELHA clássico
+                            ℹ️ Se não especificar datas, será usado período padrão baseado no timeframe"""
+            safe_bot_reply(message, help_message)
             return
 
         source_input = args[0].lower()
@@ -1357,7 +1390,7 @@ YYYY-MM-DD (exemplo: 2024-01-01)
                         datetime.strptime(start_date, '%Y-%m-%d')
                         datetime.strptime(end_date, '%Y-%m-%d')
                     except ValueError:
-                        bot.reply_to(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
+                        safe_bot_reply(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
                         return
             else:
                 # 5º argumento não é modelo, deve ser data
@@ -1369,12 +1402,12 @@ YYYY-MM-DD (exemplo: 2024-01-01)
                     if end_date:
                         datetime.strptime(end_date, '%Y-%m-%d')
                 except ValueError:
-                    bot.reply_to(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
+                    safe_bot_reply(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
                     return
 
         # Validar fonte
         if source_input not in ['yahoo', 'ccxt', 'twelvedata']:
-            bot.reply_to(message, "❌ Fonte inválida. Use: yahoo, ccxt ou twelvedata")
+            safe_bot_reply(message, "❌ Fonte inválida. Use: yahoo, ccxt ou twelvedata")
             return
 
         # Mapear estratégias
@@ -1385,7 +1418,7 @@ YYYY-MM-DD (exemplo: 2024-01-01)
         }
 
         if strategy_input not in strategy_map:
-            bot.reply_to(message, "❌ Estratégia inválida. Use: agressiva, balanceada ou conservadora")
+            safe_bot_reply(message, "❌ Estratégia inválida. Use: agressiva, balanceada ou conservadora")
             return
 
         strategy = strategy_map[strategy_input]
@@ -1393,7 +1426,7 @@ YYYY-MM-DD (exemplo: 2024-01-01)
         # Validar timeframes
         valid_timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1wk']
         if timeframe not in valid_timeframes:
-            bot.reply_to(message, f"❌ Timeframe inválido. Use: {', '.join(valid_timeframes)}")
+            safe_bot_reply(message, f"❌ Timeframe inválido. Use: {', '.join(valid_timeframes)}")
             return
 
         model_display = "OVELHA V2" if model_input == "ovelha2" else "OVELHA"
@@ -1411,15 +1444,15 @@ YYYY-MM-DD (exemplo: 2024-01-01)
             warning_msg = "\n⚠️ ATENÇÃO: Timeframes pequenos podem travar o bot! Recomendo usar 4h ou superior."
 
         if start_date and end_date:
-            bot.reply_to(message, f"🔄 Analisando {symbol} ({source_input}) de {start_date} até {end_date} com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...{warning_msg}")
+            safe_bot_reply(message, f"🔄 Analisando {symbol} ({source_input}) de {start_date} até {end_date} com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...{warning_msg}")
         else:
-            bot.reply_to(message, f"🔄 Analisando {symbol} ({source_input}) com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...{warning_msg}")
+            safe_bot_reply(message, f"🔄 Analisando {symbol} ({source_input}) com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...{warning_msg}")
 
         # Verificar se foi pausado antes de continuar
         if user_id in trading_bot.paused_users:
             if user_id in trading_bot.active_tasks:
                 del trading_bot.active_tasks[user_id]
-            bot.reply_to(message, "⏸️ Análise cancelada pelo usuário.")
+            safe_bot_reply(message, "⏸️ Análise cancelada pelo usuário.")
             return
 
         # Implementar timeout para análises que podem travar
@@ -1453,7 +1486,7 @@ YYYY-MM-DD (exemplo: 2024-01-01)
                 del trading_bot.active_tasks[user_id]
             trading_bot.paused_users.add(user_id)
 
-            bot.reply_to(message, f"""⏰ **TIMEOUT - ANÁLISE CANCELADA**
+            safe_bot_reply(message, f"""⏰ **TIMEOUT - ANÁLISE CANCELADA**
 
 🚨 A análise de {symbol} no timeframe {timeframe} demorou mais que {analysis_timeout}s e foi cancelada.
 
@@ -1463,7 +1496,7 @@ YYYY-MM-DD (exemplo: 2024-01-01)
 🚀 **Alternativas que funcionam:**
 • /analise ccxt agressiva BTC/USDT 4h ovelha (mais rápido)
 • /analise yahoo balanceada BTC-USD 1d ovelha2 (via Yahoo)
-• Timeframes ≥ 4h são mais estáveis""", parse_mode='Markdown')
+• Timeframes ≥ 4h são mais estáveis""", 'Markdown')
 
             logger.warning(f"Timeout na análise para {user_name}: {symbol} {timeframe}")
             return
@@ -1494,28 +1527,20 @@ YYYY-MM-DD (exemplo: 2024-01-01)
 
             logger.info(f"Análise enviada para {user_name}: {symbol}")
         else:
-            bot.reply_to(message, f"❌ {chart_result['error']}")
+            safe_bot_reply(message, f"❌ {chart_result['error']}")
 
     except telebot.apihelper.ApiException as e:
         # Limpar tarefa ativa em caso de erro
         if 'user_id' in locals() and user_id in trading_bot.active_tasks:
             del trading_bot.active_tasks[user_id]
         logger.error(f"Erro da API Telegram no /analise: {str(e)}")
-        try:
-            bot.reply_to(message, "❌ Erro temporário da API. Aguarde e tente novamente.")
-        except:
-            pass
+        safe_bot_reply(message, "❌ Erro temporário da API. Aguarde e tente novamente.")
     except Exception as e:
         # Limpar tarefa ativa em caso de erro
         if 'user_id' in locals() and user_id in trading_bot.active_tasks:
             del trading_bot.active_tasks[user_id]
         logger.error(f"Erro no comando /analise: {str(e)}")
-        try:
-            bot.reply_to(message, "❌ Erro ao processar análise. Tente novamente em alguns segundos.")
-        except:
-            pass
-
-
+        safe_bot_reply(message, "❌ Erro ao processar análise. Tente novamente em alguns segundos.")
 
 @bot.message_handler(commands=['screening_auto'])
 def screening_auto_command(message):
@@ -1529,45 +1554,45 @@ def screening_auto_command(message):
 
         if len(args) < 5: # fonte, símbolos, modelo, estratégia, timeframe são obrigatórios
             help_message = """
-🔄 *SCREENING AUTOMÁTICO*
+                            🔄 *SCREENING AUTOMÁTICO*
 
-📝 *Como usar:*
-/screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
+                            📝 *Como usar:*
+                            /screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
 
-🔗 *Fontes disponíveis:*
-• 12data - 12Data API (recomendado)
-• yahoo - Yahoo Finance
-• ccxt - Binance via CCXT
+                            🔗 *Fontes disponíveis:*
+                            • 12data - 12Data API (recomendado)
+                            • yahoo - Yahoo Finance
+                            • ccxt - Binance via CCXT
 
-📊 *Símbolos:* Lista separada por vírgulas entre colchetes
-• Para 12Data: [BTC/USD,ETH/USD,LTC/USD]
-• Para Yahoo: [BTC-USD,ETH-USD,PETR4.SA]
-• Para CCXT: [BTC/USDT,ETH/USDT,LTC/USDT]
+                            📊 *Símbolos:* Lista separada por vírgulas entre colchetes
+                            • Para 12Data: [BTC/USD,ETH/USD,LTC/USD]
+                            • Para Yahoo: [BTC-USD,ETH-USD,PETR4.SA]
+                            • Para CCXT: [BTC/USDT,ETH/USDT,LTC/USDT]
 
-🤖 *Modelos:*
-• ovelha - Modelo clássico
-• ovelha2 - Machine Learning (Random Forest)
+                            🤖 *Modelos:*
+                            • ovelha - Modelo clássico
+                            • ovelha2 - Machine Learning (Random Forest)
 
-🎯 *Estratégias:*
-• agressiva - Mais sinais
-• balanceada - Equilibrada
-• conservadora - Mais confiáveis
+                            🎯 *Estratégias:*
+                            • agressiva - Mais sinais
+                            • balanceada - Equilibrada
+                            • conservadora - Mais confiáveis
 
-⏰ *Timeframes disponíveis:*
-• 5m - 5 minutos (apenas 12Data)
-• 15m - 15 minutos
-• 1h - 1 hora
-• 4h - 4 horas
-• 1d - 1 dia (diário)
+                            ⏰ *Timeframes disponíveis:*
+                            • 5m - 5 minutos (apenas 12Data)
+                            • 15m - 15 minutos
+                            • 1h - 1 hora
+                            • 4h - 4 horas
+                            • 1d - 1 dia (diário)
 
-📈 *Exemplos:*
-`/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] ovelha2 balanceada 4h`
-`/screening_auto yahoo [BTC-USD,ETH-USD,PETR4.SA] ovelha balanceada 1d`
-`/screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT] ovelha2 agressiva 4h`
+                            📈 *Exemplos:*
+                            `/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] ovelha2 balanceada 4h`
+                            `/screening_auto yahoo [BTC-USD,ETH-USD,PETR4.SA] ovelha balanceada 1d`
+                            `/screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT] ovelha2 agressiva 4h`
 
-💡 *Nota:* O bot enviará alertas no intervalo escolhido
-            """
-            bot.reply_to(message, help_message, parse_mode='Markdown')
+                            💡 *Nota:* O bot enviará alertas no intervalo escolhido
+                                        """
+            safe_bot_reply(message, help_message, 'Markdown')
             return
 
         try:
@@ -1579,7 +1604,7 @@ def screening_auto_command(message):
 
             # Validar fonte
             if source not in ['12data', 'twelvedata', 'yahoo', 'ccxt']:
-                bot.reply_to(message, "❌ Fonte inválida. Use: twelvedata , yahoo ou ccxt,")
+                safe_bot_reply(message, "❌ Fonte inválida. Use: twelvedata , yahoo ou ccxt,")
                 return
 
             # Normalizar fonte
@@ -1588,18 +1613,18 @@ def screening_auto_command(message):
 
             # Extrair símbolos da lista
             if not symbols_str.startswith('[') or not symbols_str.endswith(']'):
-                bot.reply_to(message, "❌ Formato de símbolos inválido. Use: [SYMBOL1,SYMBOL2,...]")
+                safe_bot_reply(message, "❌ Formato de símbolos inválido. Use: [SYMBOL1,SYMBOL2,...]")
                 return
 
             symbols_list = [s.strip() for s in symbols_str[1:-1].split(',')]
 
             if len(symbols_list) == 0 or len(symbols_list) > 10:
-                bot.reply_to(message, "❌ Lista deve conter entre 1 e 10 símbolos")
+                safe_bot_reply(message, "❌ Lista deve conter entre 1 e 10 símbolos")
                 return
 
             # Validar modelo
             if model_type not in ['ovelha', 'ovelha2']:
-                bot.reply_to(message, "❌ Modelo inválido. Use: ovelha ou ovelha2")
+                safe_bot_reply(message, "❌ Modelo inválido. Use: ovelha ou ovelha2")
                 return
 
             # Validar estratégia
@@ -1610,7 +1635,7 @@ def screening_auto_command(message):
             }
 
             if strategy not in strategy_map:
-                bot.reply_to(message, "❌ Estratégia inválida. Use: agressiva, balanceada ou conservadora")
+                safe_bot_reply(message, "❌ Estratégia inválida. Use: agressiva, balanceada ou conservadora")
                 return
 
             strategy_formatted = strategy_map[strategy]
@@ -1622,7 +1647,7 @@ def screening_auto_command(message):
                 valid_timeframes = ['5m','15m', '1h', '4h', '1d']
 
             if timeframe not in valid_timeframes:
-                bot.reply_to(message, f"❌ Timeframe inválido para {source}. Use: {', '.join(valid_timeframes)}")
+                safe_bot_reply(message, f"❌ Timeframe inválido para {source}. Use: {', '.join(valid_timeframes)}")
                 return
 
             # Configurar alerta automático
@@ -1636,7 +1661,7 @@ def screening_auto_command(message):
             }
 
             # Fazer primeira verificação
-            bot.reply_to(message, f"🔄 Configurando alerta automático...\n📊 {len(symbols_list)} símbolos via {source.upper()}\n⏰ Intervalo: {timeframe}")
+            safe_bot_reply(message, f"🔄 Configurando alerta automático...\n📊 {len(symbols_list)} símbolos via {source.upper()}\n⏰ Intervalo: {timeframe}")
 
             current_states, changes = trading_bot.perform_automated_screening(
                 user_id, symbols_list, source, model_type, strategy_formatted, timeframe
@@ -1652,21 +1677,21 @@ def screening_auto_command(message):
 
                 error_message = f"""❌ **ERRO AO CONFIGURAR ALERTA**
 
-🔍 **Problema:** Nenhum dos símbolos pôde ser analisado via {source.upper()}.
+                🔍 **Problema:** Nenhum dos símbolos pôde ser analisado via {source.upper()}.
 
-🔧 **Possíveis causas:**
-• Símbolos inválidos para a fonte {source.upper()}
-• Problemas de conectividade com a API
-• Timeframe {timeframe} não suportado para alguns símbolos
+                🔧 **Possíveis causas:**
+                • Símbolos inválidos para a fonte {source.upper()}
+                • Problemas de conectividade com a API
+                • Timeframe {timeframe} não suportado para alguns símbolos
 
-💡 **Formato correto para {source.upper()}:**
-{format_examples.get(source, 'Verifique a documentação')}
+                💡 **Formato correto para {source.upper()}:**
+                {format_examples.get(source, 'Verifique a documentação')}
 
-📝 **Exemplo correto:**
-`/screening_auto {source} [{format_examples.get(source, 'SYMBOL1,SYMBOL2').replace(', ', ',')}] {model_type} {strategy} {timeframe}`
+                📝 **Exemplo correto:**
+                `/screening_auto {source} [{format_examples.get(source, 'SYMBOL1,SYMBOL2').replace(', ', ',')}] {model_type} {strategy} {timeframe}`
 
-🔄 **Tente novamente** com símbolos válidos para a fonte escolhida."""
-                bot.reply_to(message, error_message, parse_mode='Markdown')
+                🔄 **Tente novamente** com símbolos válidos para a fonte escolhida."""
+                safe_bot_reply(message, error_message, 'Markdown')
                 return
 
             # Programar alertas baseado no timeframe
@@ -1679,16 +1704,16 @@ def screening_auto_command(message):
             # Enviar confirmação
             confirmation_message = f"""✅ *ALERTA AUTOMÁTICO CONFIGURADO*
 
-📊 **Configuração:**
-🔗 Fonte: {source.upper()}
-🎯 Estratégia: {strategy}
-🤖 Modelo: {model_type.upper()}
-⏰ Intervalo: {timeframe}
+                📊 **Configuração:**
+                🔗 Fonte: {source.upper()}
+                🎯 Estratégia: {strategy}
+                🤖 Modelo: {model_type.upper()}
+                ⏰ Intervalo: {timeframe}
 
-📈 **Resultado:** {success_count}/{len(symbols_list)} símbolos válidos
+                📈 **Resultado:** {success_count}/{len(symbols_list)} símbolos válidos
 
-📊 **Símbolos monitorados:**
-"""
+                📊 **Símbolos monitorados:**
+                """
             for symbol in symbols_list:
                 if symbol in current_states:
                     state = current_states[symbol]['state']
@@ -1704,16 +1729,16 @@ def screening_auto_command(message):
             confirmation_message += f"\n🔔 Próximo alerta em: {timeframe}"
             confirmation_message += f"\n\n💡 **Dica:** Os símbolos são convertidos automaticamente para o formato da API (BTC/USD → btc-usd)"
 
-            bot.reply_to(message, confirmation_message, parse_mode='Markdown')
+            safe_bot_reply(message, confirmation_message, 'Markdown')
             logger.info(f"Alerta automático configurado para {user_name}: {len(symbols_list)} símbolos via {source}, {timeframe}")
 
         except Exception as e:
             logger.error(f"Erro ao processar argumentos: {str(e)}")
-            bot.reply_to(message, "❌ Erro ao processar comando. Verifique a sintaxe.")
+            safe_bot_reply(message, "❌ Erro ao processar comando. Verifique a sintaxe.")
 
     except Exception as e:
         logger.error(f"Erro no comando /screening_auto: {str(e)}")
-        bot.reply_to(message, "❌ Erro interno. Tente novamente.")
+        safe_bot_reply(message, "❌ Erro interno. Tente novamente.")
 
 @bot.message_handler(commands=['stop_alerts'])
 def stop_alerts_command(message):
@@ -1726,14 +1751,14 @@ def stop_alerts_command(message):
             del trading_bot.active_alerts[user_id]
             if user_id in trading_bot.alert_states:
                 del trading_bot.alert_states[user_id]
-            bot.reply_to(message, "🛑 Alertas automáticos interrompidos com sucesso!")
+            safe_bot_reply(message, "🛑 Alertas automáticos interrompidos com sucesso!")
             logger.info(f"Alertas interrompidos para {user_name}")
         else:
-            bot.reply_to(message, "ℹ️ Nenhum alerta automático ativo encontrado.")
+            safe_bot_reply(message, "ℹ️ Nenhum alerta automático ativo encontrado.")
 
     except Exception as e:
         logger.error(f"Erro no comando /stop_alerts: {str(e)}")
-        bot.reply_to(message, "❌ Erro ao interromper alertas.")
+        safe_bot_reply(message, "❌ Erro ao interromper alertas.")
 
 @bot.message_handler(commands=['list_alerts'])
 def list_alerts_command(message):
@@ -1751,13 +1776,13 @@ def list_alerts_command(message):
 
             if missing_keys:
                 logger.error(f"Chaves faltando na configuração de alerta para usuário {user_id}: {missing_keys}")
-                bot.reply_to(message, f"❌ Erro na configuração do alerta. Chaves faltando: {', '.join(missing_keys)}. Use /stop_alerts e configure novamente.")
+                safe_bot_reply(message, f"❌ Erro na configuração do alerta. Chaves faltando: {', '.join(missing_keys)}. Use /stop_alerts e configure novamente.")
                 return
 
             # Validar se symbols é uma lista
             if not isinstance(alert_config['symbols'], list):
                 logger.error(f"Campo 'symbols' não é uma lista para usuário {user_id}: {type(alert_config['symbols'])}")
-                bot.reply_to(message, "❌ Erro na configuração dos símbolos. Use /stop_alerts e configure novamente.")
+                safe_bot_reply(message, "❌ Erro na configuração dos símbolos. Use /stop_alerts e configure novamente.")
                 return
 
             symbols_list = ', '.join(alert_config['symbols'])
@@ -1769,33 +1794,35 @@ def list_alerts_command(message):
                 model = str(alert_config['model']).upper()
                 timeframe = str(alert_config['timeframe'])
 
-                alert_info = f"""📋 *ALERTA ATIVO*
+                alert_info = f"""
+                            📋 *ALERTA ATIVO*
 
-🔗 Fonte: {source}
-🎯 Estratégia: {strategy}
-🤖 Modelo: {model}
-⏰ Intervalo: {timeframe}
+                            🔗 Fonte: {source}
+                            🎯 Estratégia: {strategy}
+                            🤖 Modelo: {model}
+                            ⏰ Intervalo: {timeframe}
 
-📈 Símbolos ({len(alert_config['symbols'])}): {symbols_list}
+                            📈 Símbolos ({len(alert_config['symbols'])}): {symbols_list}
 
-🔔 Use /stop_alerts para interromper"""
+                            🔔 Use /stop_alerts para interromper
+                            """
 
-                bot.reply_to(message, alert_info, parse_mode='Markdown')
+                safe_bot_reply(message, alert_info, 'Markdown')
                 logger.info(f"Lista de alertas enviada para {user_name}: {len(alert_config['symbols'])} símbolos")
 
             except Exception as format_error:
                 logger.error(f"Erro ao formatar mensagem de alerta para usuário {user_id}: {str(format_error)}")
                 # Enviar mensagem básica sem formatação
                 basic_info = f"📋 ALERTA ATIVO\n\nFonte: {alert_config.get('source', 'N/A')}\nSímbolos: {len(alert_config.get('symbols', []))}\n\nUse /stop_alerts para interromper"
-                bot.reply_to(message, basic_info)
+                safe_bot_reply(message, basic_info)
 
         else:
-            bot.reply_to(message, "ℹ️ Nenhum alerta automático ativo.")
+            safe_bot_reply(message, "ℹ️ Nenhum alerta automático ativo.")
             logger.info(f"Nenhum alerta ativo para {user_name}")
 
     except Exception as e:
         logger.error(f"Erro geral no comando /list_alerts para usuário {user_id}: {str(e)}")
-        bot.reply_to(message, "❌ Erro ao listar alertas. Tente novamente ou use /stop_alerts se houver problemas.")
+        safe_bot_reply(message, "❌ Erro ao listar alertas. Tente novamente ou use /stop_alerts se houver problemas.")
 
 @bot.message_handler(commands=['restart'])
 def restart_command(message):
@@ -1804,7 +1831,7 @@ def restart_command(message):
         user_name = message.from_user.first_name or "Usuário"
         user_id = message.from_user.id
         logger.info(f"Comando /restart recebido de {user_name} (ID: {user_id})")
-        
+
         # Limpar estados do usuário
         if user_id in trading_bot.active_alerts:
             del trading_bot.active_alerts[user_id]
@@ -1813,126 +1840,124 @@ def restart_command(message):
         if user_id in trading_bot.active_tasks:
             del trading_bot.active_tasks[user_id]
         trading_bot.paused_users.discard(user_id)
-        
+
         # Limpar jobs do scheduler para este usuário
         schedule.clear(f'alert_user_{user_id}')
-        
-        bot.reply_to(message, f"🔄 Bot reinicializado para você, {user_name}!\n\n✅ Estados limpos:\n• Alertas automáticos\n• Tarefas ativas\n• Cache de análises\n\n🚀 Pronto para novos comandos!")
+
+        safe_bot_reply(message, f"🔄 Bot reinicializado para você, {user_name}!\n\n✅ Estados limpos:\n• Alertas automáticos\n• Tarefas ativas\n• Cache de análises\n\n🚀 Pronto para novos comandos!")
         logger.info(f"Bot reinicializado para usuário {user_name}")
-        
+
     except Exception as e:
         logger.error(f"Erro no comando /restart: {str(e)}")
-        try:
-            bot.reply_to(message, "❌ Erro ao reinicializar. Tente novamente.")
-        except:
-            pass
+        safe_bot_reply(message, "❌ Erro ao reinicializar. Tente novamente.")
 
 @bot.message_handler(commands=['help'])
 def help_command(message):
     try:
         logger.info(f"Comando /help recebido de {message.from_user.first_name}")
 
-        help_message = """🤖 AJUDA - OVECCHIA TRADING BOT
+        help_message = """
+                        🤖 AJUDA - OVECCHIA TRADING BOT
 
-📋 COMANDOS DISPONÍVEIS:
+                        📋 COMANDOS DISPONÍVEIS:
 
-📊 /analise [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
-  📝 ANÁLISE INDIVIDUAL COM GRÁFICO
-  • Gera gráfico completo do ativo escolhido
-  • Mostra sinais de compra/venda em tempo real
-  • Suporte a múltiplos timeframes e estratégias
+                        📊 /analise [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
+                          📝 ANÁLISE INDIVIDUAL COM GRÁFICO
+                          • Gera gráfico completo do ativo escolhido
+                          • Mostra sinais de compra/venda em tempo real
+                          • Suporte a múltiplos timeframes e estratégias
 
-  🔗 Fontes: yahoo (padrão), ccxt, twelvedata
-  🎯 Estratégias: agressiva, balanceada, conservadora
-  🤖 Modelos: ovelha (padrão), ovelha2
-  ⏰ Timeframes: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
-  📅 Datas: YYYY-MM-DD
+                          🔗 Fontes: yahoo (padrão), ccxt, twelvedata
+                          🎯 Estratégias: agressiva, balanceada, conservadora
+                          🤖 Modelos: ovelha (padrão), ovelha2
+                          ⏰ Timeframes: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+                          📅 Datas: YYYY-MM-DD
 
-  Exemplo básico: /analise yahoo balanceada PETR4.SA 1d
-  Com 12Data e ML: /analise twelvedata agressiva BTCUSDT 4h ovelha2
+                          Exemplo básico: /analise yahoo balanceada PETR4.SA 1d
+                          Com 12Data e ML: /analise twelvedata agressiva BTCUSDT 4h ovelha2
 
-🔍 /screening [estrategia] [lista/ativos]
-  📝 SCREENING PONTUAL DE MÚLTIPLOS ATIVOS
-  • Verifica mudanças de estado em vários ativos
-  • Detecta oportunidades de compra/venda
-  • Análise instantânea de listas ou ativos individuais
+                        🔍 /screening [estrategia] [lista/ativos]
+                          📝 SCREENING PONTUAL DE MÚLTIPLOS ATIVOS
+                          • Verifica mudanças de estado em vários ativos
+                          • Detecta oportunidades de compra/venda
+                          • Análise instantânea de listas ou ativos individuais
 
-  Com lista: /screening balanceada açõesBR
-  Individual: /screening balanceada BTC-USD ETH-USD PETR4.SA
-  ⚠️ Configuração: Timeframe 1d fixo, 2 anos de dados
+                          Com lista: /screening balanceada açõesBR
+                          Individual: /screening balanceada BTC-USD ETH-USD PETR4.SA
+                          ⚠️ Configuração: Timeframe 1d fixo, 2 anos de dados
 
-🔄 /screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
-  📝 ALERTAS AUTOMÁTICOS DE SCREENING
-  • Monitora até 10 símbolos automaticamente
-  • Envia alertas quando detecta mudanças de estado
-  • Funciona no intervalo de tempo escolhido
-  • Suporte a múltiplas fontes de dados
+                        🔄 /screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
+                          📝 ALERTAS AUTOMÁTICOS DE SCREENING
+                          • Monitora até 10 símbolos automaticamente
+                          • Envia alertas quando detecta mudanças de estado
+                          • Funciona no intervalo de tempo escolhido
+                          • Suporte a múltiplas fontes de dados
 
-  🔗 Fontes: 12data, yahoo, ccxt
-  📊 Símbolos 12Data: [btc-usd,eth-usd,ltc-usd]
-  📊 Símbolos Yahoo: [BTC-USD,ETH-USD,PETR4.SA]
-  📊 Símbolos CCXT: [BTC/USDT,ETH/USDT,LTC/USDT]
+                          🔗 Fontes: 12data, yahoo, ccxt
+                          📊 Símbolos 12Data: [BTC/USD,ETH/USD,LTC/USD]
+                          📊 Símbolos Yahoo: [BTC-USD,ETH-USD,PETR4.SA]
+                          📊 Símbolos CCXT: [BTC/USDT,ETH/USDT,LTC/USDT]
 
-⏰ Timeframes: 5m (só 12Data), 15m, 1h, 4h, 1d
+                        ⏰ Timeframes: 5m (só 12Data), 15m, 1h, 4h, 1d
 
-📋 /list_alerts
-  📝 VER ALERTAS ATIVOS
-  • Mostra configuração atual dos alertas
-  • Lista símbolos monitorados
-  • Exibe estratégia, modelo e timeframe configurados
+                        📋 /list_alerts
+                          📝 VER ALERTAS ATIVOS
+                          • Mostra configuração atual dos alertas
+                          • Lista símbolos monitorados
+                          • Exibe estratégia, modelo e timeframe configurados
 
-🛑 /stop_alerts
-  📝 PARAR ALERTAS AUTOMÁTICOS
-  • Interrompe todos os alertas configurados
-  • Para o monitoramento automático
+                        🛑 /stop_alerts
+                          📝 PARAR ALERTAS AUTOMÁTICOS
+                          • Interrompe todos os alertas configurados
+                          • Para o monitoramento automático
 
-🔄 /restart
-  📝 REINICIALIZAR BOT (sem parar o workflow)
-  • Limpa estados do usuário
-  • Resolve travamentos temporários
-  • Cancela tarefas ativas
+                        🔄 /restart
+                          📝 REINICIALIZAR BOT (sem parar o workflow)
+                          • Limpa estados do usuário
+                          • Resolve travamentos temporários
+                          • Cancela tarefas ativas
 
-❓ /help - Esta mensagem de ajuda
+                        ❓ /help - Esta mensagem de ajuda
 
-🎯 ESTRATÉGIAS:
-• agressiva - Mais sinais, maior frequência
-• balanceada - Equilibrio entre sinais e confiabilidade (recomendada)
-• conservadora - Sinais mais confiáveis, menor frequência
+                        🎯 ESTRATÉGIAS:
+                        • agressiva - Mais sinais, maior frequência
+                        • balanceada - Equilibrio entre sinais e confiabilidade (recomendada)
+                        • conservadora - Sinais mais confiáveis, menor frequência
 
-🤖 MODELOS:
-• ovelha - Modelo clássico
-• ovelha2 - Machine Learning (mais avançado)
+                        🤖 MODELOS:
+                        • ovelha - Modelo clássico
+                        • ovelha2 - Machine Learning (mais avançado)
 
-📊 LISTAS PRÉ-DEFINIDAS:
-• açõesBR - Ações brasileiras
-• açõesEUA - Ações americanas
-• criptos - Criptomoedas
-• forex - Pares de moedas
-• commodities - Commodities
+                        📊 LISTAS PRÉ-DEFINIDAS:
+                        • açõesBR - Ações brasileiras
+                        • açõesEUA - Ações americanas
+                        • criptos - Criptomoedas
+                        • forex - Pares de moedas
+                        • commodities - Commodities
 
-⏰ TIMEFRAMES POR COMANDO:
-• /analise: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
-• /screening: 1d fixo
-• /screening_auto: 5m, 15m, 1h, 4h, 1d (12Data apenas)
+                        ⏰ TIMEFRAMES POR COMANDO:
+                        • /analise: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+                        • /screening: 1d fixo
+                        • /screening_auto: 5m, 15m, 1h, 4h, 1d (12Data apenas)
 
-💡 EXEMPLOS PRÁTICOS:
-• Análise rápida: /analise yahoo balanceada PETR4.SA 1d
-• Análise cripto ML: /analise twelvedata agressiva BTCUSDT 4h ovelha2
-• Screening geral: /screening balanceada açõesBR
-• Alerta 12Data: /screening_auto [BTCUSDT,ETHUSDT] ovelha2 balanceada 4h
+                        💡 EXEMPLOS PRÁTICOS:
+                        • Análise rápida: /analise yahoo balanceada PETR4.SA 1d
+                        • Análise cripto ML: /analise twelvedata agressiva BTCUSDT 4h ovelha2
+                        • Screening geral: /screening balanceada açõesBR
+                        • Alerta 12Data: /screening_auto [BTCUSDT,ETHUSDT] ovelha2 balanceada 4h
 
-📝 FORMATOS DE SÍMBOLOS:
-• Yahoo: PETR4.SA, AAPL, BTC-USD, EURUSD=X
-• CCXT: BTC/USDT, ETH/USDT, LTC/USDT
-• 12Data: BTCUSDT, ETHUSDT, EURUSD, AAPL
+                        📝 FORMATOS DE SÍMBOLOS:
+                        • Yahoo: PETR4.SA, AAPL, BTC-USD, EURUSD=X
+                        • CCXT: BTC/USDT, ETH/USDT, LTC/USDT
+                        • 12Data: BTCUSDT, ETHUSDT, EURUSD, AAPL
 
-🔔 NOTA SOBRE 12DATA:
-O comando /screening_auto agora usa exclusivamente 12Data e suporta timeframes a partir de 5 minutos, ideal para monitoramento de alta frequência de criptomoedas, forex e ações.
-"""
-        bot.reply_to(message, help_message)
+                        🔔 NOTA SOBRE 12DATA:
+                        O comando /screening_auto agora usa exclusivamente 12Data e suporta timeframes a partir de 5 minutos, ideal para monitoramento de alta frequência de criptomoedas, forex e ações.
+                        """
+        safe_bot_reply(message, help_message)
     except Exception as e:
         logger.error(f"Erro no comando /help: {str(e)}")
-        bot.reply_to(message, "❌ Erro ao exibir ajuda.")
+        safe_bot_reply(message, "❌ Erro ao exibir ajuda.")
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
@@ -1944,7 +1969,7 @@ def handle_message(message):
 
         logger.info(f"📨 Mensagem de {user_name} (ID: {user_id}): {user_message}")
         print(f"📨 {user_name}: {user_message}")
-        
+
         # Adicionar pequeno delay para evitar conflitos
         time.sleep(0.2)
 
@@ -1967,11 +1992,11 @@ def handle_message(message):
         # Mensagens de saudação
         user_message_lower = user_message.lower()
         if any(word in user_message_lower for word in ['oi', 'olá', 'hello', 'hi']):
-            bot.reply_to(message, "👋 Olá! Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /analise - Análise individual\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
+            safe_bot_reply(message, "👋 Olá! Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /analise - Análise individual\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
         elif any(word in user_message_lower for word in ['ajuda', 'help']):
             help_command(message)
         else:
-            bot.reply_to(message, "🤖 Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /analise - Análise individual\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos (12Data)\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
+            safe_bot_reply(message, "🤖 Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /analise - Análise individual\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos (12Data)\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
 
     except telebot.apihelper.ApiException as e:
         logger.error(f"Erro da API Telegram no handler de mensagem: {str(e)}")
@@ -2146,13 +2171,13 @@ def run_bot():
                 logger.error("❌ Token inválido ou expirado!")
                 print("❌ ERRO CRÍTICO: Token do bot inválido!")
                 break
-            
+
             # Se o mesmo erro ocorreu recentemente, aumentar o tempo de espera
             if current_time - last_error_time < 60:  # Menos de 1 minuto desde o último erro
                 retry_count += 2  # Penalizar mais por erros frequentes
             else:
                 retry_count += 1
-            
+
             last_error_time = current_time
 
             if retry_count < max_retries:
