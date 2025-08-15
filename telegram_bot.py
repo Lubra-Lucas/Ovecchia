@@ -1649,6 +1649,7 @@ def screening_auto_command(message):
                             • conservadora - Mais confiáveis
 
                             ⏰ *Timeframes disponíveis:*
+                            • 1m - 1 minuto (apenas 12Data)
                             • 5m - 5 minutos (apenas 12Data)
                             • 15m - 15 minutos
                             • 1h - 1 hora
@@ -1656,10 +1657,11 @@ def screening_auto_command(message):
                             • 1d - 1 dia (diário)
 
                             📈 *Exemplos:*
+                            `/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] ovelha2 balanceada 1m`
                             `/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] ovelha2 balanceada 4h`
                             `/screening_auto yahoo [BTC-USD,ETH-USD,PETR4.SA] ovelha balanceada 1d`
 
-                            💡 *Nota:* O bot enviará alertas no intervalo escolhido
+                            💡 *Nota:* Os símbolos são convertidos automaticamente para o formato da API (BTC/USD → btc-usd)
                                         """
             safe_bot_reply(message, help_message, 'Markdown')
             return
@@ -1707,7 +1709,7 @@ def screening_auto_command(message):
 
             # Validar timeframe baseado na fonte
             if source == '12data':
-                valid_timeframes = ['5m', '15m', '1h', '4h', '1d']
+                valid_timeframes = ['1m', '5m', '15m', '1h', '4h', '1d']
             else: # Yahoo
                 valid_timeframes = ['5m','15m', '1h', '4h', '1d'] # Yahoo suporta 5m, mas não 1m
 
@@ -2031,20 +2033,20 @@ def help_command(message):
                         ⏰ TIMEFRAMES POR COMANDO:
                         • /analise: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
                         • /screening: 1d fixo
-                        • /screening_auto: 5m, 15m, 1h, 4h, 1d (12Data apenas)
+                        • /screening_auto: 1m, 5m, 15m, 1h, 4h, 1d (12Data apenas)
 
                         💡 EXEMPLOS PRÁTICOS:
                         • Análise rápida: /analise yahoo balanceada PETR4.SA 1d
                         • Análise cripto ML: /analise 12data agressiva BTCUSDT 4h ovelha2
                         • Screening geral: /screening balanceada açõesBR
-                        • Alerta 12Data: /screening_auto [BTCUSDT,ETHUSDT] ovelha2 balanceada 4h
+                        • Alerta 12Data: /screening_auto [BTCUSDT,ETHUSDT] ovelha2 balanceada 1m
 
                         📝 FORMATOS DE SÍMBOLOS:
                         • Yahoo: PETR4.SA, AAPL, BTC-USD, EURUSD=X
                         • 12Data: BTCUSDT, ETHUSDT, EURUSD, AAPL
 
                         🔔 NOTA SOBRE 12DATA:
-                        O comando /screening_auto agora usa exclusivamente 12Data e suporta timeframes a partir de 5 minutos, ideal para monitoramento de alta frequência de criptomoedas, forex e ações.
+                        O comando /screening_auto agora usa exclusivamente 12Data e suporta timeframes a partir de 1 minuto, ideal para monitoramento de alta frequência de criptomoedas, forex e ações.
                         """
         safe_bot_reply(message, help_message)
     except Exception as e:
