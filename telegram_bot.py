@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+import os
+import sys
+
+# Configurar matplotlib ANTES de qualquer import que possa usar GUI
+import matplotlib
+matplotlib.use('Agg')  # Use backend sem GUI
+
 import telebot
 import logging
 import yfinance as yf
@@ -8,8 +15,6 @@ from datetime import datetime, timedelta
 import warnings
 import threading
 import time
-import os
-import sys
 import difflib
 import unicodedata
 import re
@@ -20,6 +25,7 @@ import schedule
 import json
 
 warnings.filterwarnings('ignore')
+os.environ['MPLBACKEND'] = 'Agg'  # Força backend Agg
 
 # Configure logging
 logging.basicConfig(
@@ -32,16 +38,21 @@ logger = logging.getLogger(__name__)
 import os
 BOT_TOKEN = os.environ.get('BOT_TOKEN', "8487471783:AAElQBvIhVcbtVmEoPEdnuafMUR4mwGJh1k")
 
-# Initialize bot with error handling
+# Initialize bot with error handling e configurações thread-safe
 try:
-    bot = telebot.TeleBot(BOT_TOKEN, threaded=False, skip_pending=True)
+    bot = telebot.TeleBot(
+        BOT_TOKEN, 
+        threaded=True,  # Habilitar threading
+        skip_pending=True,
+        num_threads=2,  # Limitar threads para evitar conflitos
+        parse_mode=None
+    )
     logger.info("🤖 Bot do Telegram inicializado com sucesso")
 except Exception as e:
     logger.error(f"❌ Erro ao inicializar bot do Telegram: {str(e)}")
     raise
 
 # Thread lock para evitar processamento simultâneo
-import threading
 request_lock = threading.Lock()
 user_locks = {}  # Lock por usuário
 
@@ -948,11 +959,17 @@ class OvecchiaTradingBot:
     def generate_analysis_chart(self, symbol, strategy_type, timeframe, model_type="ovelha", custom_start_date=None, custom_end_date=None, data_source="yahoo"):
         """Gera gráfico de análise para um ativo específico usando matplotlib"""
         try:
+            # Configurar matplotlib para thread safety
+            import matplotlib
+            matplotlib.use('Agg')
             import matplotlib.pyplot as plt
             import matplotlib.dates as mdates
             from matplotlib.patches import Rectangle
             import tempfile
             import os
+            
+            # Usar figura thread-safe
+            plt.ioff()  # Desligar modo interativo
 
             # Define período baseado no timeframe ou usa datas personalizadas
             if custom_start_date and custom_end_date:
@@ -1066,7 +1083,7 @@ class OvecchiaTradingBot:
             plt.tight_layout()
             plt.subplots_adjust(top=0.93)
 
-            # Salvar gráfico
+            # Salvar gráfico com melhor cleanup
             temp_dir = tempfile.gettempdir()
             # Sanitizar nome do arquivo removendo caracteres especiais
             safe_symbol = symbol.replace('/', '_').replace('.', '_').replace('-', '_').replace('\\', '_').replace(':', '_')
@@ -1074,7 +1091,15 @@ class OvecchiaTradingBot:
             chart_path = os.path.join(temp_dir, chart_filename)
 
             plt.savefig(chart_path, dpi=150, bbox_inches='tight', facecolor='white')
-            plt.close()  # Fechar figura para liberar memória
+            
+            # Cleanup completo para evitar memory leaks
+            plt.cla()  # Limpar eixos
+            plt.clf()  # Limpar figura
+            plt.close('all')  # Fechar todas as figuras
+            
+            # Forçar garbage collection
+            import gc
+            gc.collect()
 
             # Verificar se o arquivo foi criado
             if not os.path.exists(chart_path):
@@ -2171,13 +2196,21 @@ def send_scheduled_alert(user_id):
         logger.error(f"Erro ao enviar alerta programado para usuário {user_id}: {str(e)}")
 
 def run_scheduler():
-    """Thread separada para executar o scheduler"""
-    while True:
+    """Thread separada para executar o scheduler com melhor tratamento de erros"""
+    scheduler_active = True
+    while scheduler_active:
         try:
             schedule.run_pending()
-            time.sleep(30)  # Verificar a cada 30 segundos (reduzido de 60)
+            time.sleep(30)  # Verificar a cada 30 segundos
+        except KeyboardInterrupt:
+            logger.info("Scheduler interrompido pelo usuário")
+            scheduler_active = False
         except Exception as e:
             logger.error(f"Erro no scheduler: {str(e)}")
+            # Limpar schedule em caso de erro crítico
+            if "main thread" in str(e).lower() or "tkinter" in str(e).lower():
+                logger.warning("Erro relacionado a threads detectado - limpando scheduler")
+                schedule.clear()
             time.sleep(30)
 
 def test_bot_connection():
@@ -2223,8 +2256,12 @@ def run_bot():
             except Exception as e:
                 logger.warning(f"⚠️ Erro ao configurar comandos: {str(e)}")
 
-            # Iniciar thread do scheduler
-            scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+            # Iniciar thread do scheduler com melhor configuração
+            scheduler_thread = threading.Thread(
+                target=run_scheduler, 
+                daemon=True,
+                name="SchedulerThread"
+            )
             scheduler_thread.start()
             logger.info("🔄 Scheduler de alertas iniciado")
 
@@ -2234,11 +2271,12 @@ def run_bot():
             # Rodar o bot com configurações otimizadas para maior estabilidade
             bot.polling(
                 none_stop=True,
-                interval=1,           # 1 segundo para evitar sobrecarga
-                timeout=20,           # Timeout menor para evitar travamentos
-                long_polling_timeout=20,  # Timeout do long polling menor
+                interval=2,           # 2 segundos para dar mais tempo
+                timeout=30,           # Timeout um pouco maior
+                long_polling_timeout=15,  # Long polling mais curto
                 allowed_updates=["message"],  # Apenas mensagens
-                skip_pending=True     # Pular mensagens pendentes antigas
+                skip_pending=True,    # Pular mensagens pendentes antigas
+                restart_on_change=False  # Não reiniciar automaticamente
             )
 
         except telebot.apihelper.ApiException as e:
