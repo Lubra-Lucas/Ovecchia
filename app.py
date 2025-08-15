@@ -660,7 +660,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         return ''
     
     # Apply styling
-    styled_df = final_df.style.applymap(color_returns, subset=['Retorno (%)'])
+    styled_df = final_df.style.map(color_returns, subset=['Retorno (%)'])
     
     # Display with fixed height for scrolling
     st.dataframe(
@@ -869,7 +869,7 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             value=10000.0,
             step=1000.0,
             format="%.2f",
-            key=f"investment_simulation_{symbol_label}_{strategy_name}"
+            key="investment_simulation_main"
         )
     
     with col2:
@@ -1992,11 +1992,16 @@ with tab3:
                 current_signal = None
                 entry_price = None
                 entry_time = None
+                previous_estado = None
 
                 for i in range(len(df)):
                     estado = df['Estado'].iloc[i]
                     price = df['close'].iloc[i]
                     time = df['time'].iloc[i]
+
+                    # Skip if same as previous to avoid infinite loops
+                    if estado == previous_estado and i > 0:
+                        continue
 
                     # Filter signals based on trading direction
                     should_enter = False
@@ -2007,14 +2012,13 @@ with tab3:
                     elif direction == "Apenas Vendido":
                         should_enter = estado == 'Sell'
 
-                    if estado != current_signal and should_enter:
+                    # State change logic
+                    if estado != current_signal:
+                        # Close current position if exists
                         if current_signal is not None and entry_price is not None:
-                            # Calculate return when signal changes
                             if current_signal == 'Buy':
-                                # Exit from buy position
                                 return_pct = ((price - entry_price) / entry_price) * 100
                             else:  # current_signal == 'Sell'
-                                # Exit from sell position (short)
                                 return_pct = ((entry_price - price) / entry_price) * 100
 
                             returns_data.append({
@@ -2026,31 +2030,17 @@ with tab3:
                                 'return_pct': return_pct
                             })
 
-                        # Start new position
-                        current_signal = estado
-                        entry_price = price
-                        entry_time = time
-                    elif (estado == 'Stay Out' or 
-                          (direction == "Apenas Comprado" and estado == 'Sell') or
-                          (direction == "Apenas Vendido" and estado == 'Buy')) and current_signal is not None:
-                        # Exit position to stay out or opposite signal
-                        if current_signal == 'Buy':
-                            return_pct = ((price - entry_price) / entry_price) * 100
-                        else:  # current_signal == 'Sell'
-                            return_pct = ((entry_price - price) / entry_price) * 100
+                        # Start new position if should enter
+                        if should_enter:
+                            current_signal = estado
+                            entry_price = price
+                            entry_time = time
+                        else:
+                            current_signal = None
+                            entry_price = None
+                            entry_time = None
 
-                        returns_data.append({
-                            'signal': current_signal,
-                            'entry_time': entry_time,
-                            'exit_time': time,
-                            'entry_price': entry_price,
-                            'exit_price': price,
-                            'return_pct': return_pct
-                        })
-
-                        current_signal = None
-                        entry_price = None
-                        entry_time = None
+                    previous_estado = estado
 
                 return pd.DataFrame(returns_data)
 
