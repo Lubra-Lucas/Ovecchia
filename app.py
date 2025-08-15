@@ -550,34 +550,63 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         final_equity = equity_curve['equity'].iloc[-1]
         st.metric("Patrimônio Final", f"R$ {final_equity:,.2f}")
 
-    # === SEÇÃO 5: ÚLTIMOS 20 TRADES ===
-    st.markdown("### 📋 Últimos 20 Trades")
+    # === SEÇÃO 5: ÚLTIMOS TRADES ===
+    st.markdown("### 📋 Histórico de Trades")
     
-    # Get last 20 returns
-    last_returns = returns_data.tail(20).copy()
+    # Show number of trades to display
+    num_trades_to_show = min(len(returns_data), 30)
+    st.markdown(f"**Exibindo os últimos {num_trades_to_show} trades (mais recentes primeiro)**")
+    
+    # Get last trades
+    last_returns = returns_data.tail(num_trades_to_show).copy()
     last_returns = last_returns.sort_values('exit_time', ascending=False)
 
     # Create detailed table for last trades
     display_df = last_returns[['entry_time', 'exit_time', 'signal', 'entry_price', 'exit_price', 'return_pct']].copy()
-    display_df['Entrada'] = display_df['entry_time'].dt.strftime('%d/%m/%Y %H:%M')
-    display_df['Saída'] = display_df['exit_time'].dt.strftime('%d/%m/%Y %H:%M')
-    display_df['Sinal'] = display_df['signal']
-    display_df['Preço Entrada'] = display_df['entry_price'].round(2)
-    display_df['Preço Saída'] = display_df['exit_price'].round(2)
+    display_df['Data Entrada'] = display_df['entry_time'].dt.strftime('%d/%m/%Y')
+    display_df['Data Saída'] = display_df['exit_time'].dt.strftime('%d/%m/%Y')
+    display_df['Tipo'] = display_df['signal'].map({'Buy': '🟢 Compra', 'Sell': '🔴 Venda'})
+    display_df['Entrada'] = display_df['entry_price'].round(2)
+    display_df['Saída'] = display_df['exit_price'].round(2)
     display_df['Retorno (%)'] = display_df['return_pct'].round(2)
     
-    # Color coding function
+    # Create final display dataframe
+    final_df = display_df[['Data Entrada', 'Data Saída', 'Tipo', 'Entrada', 'Saída', 'Retorno (%)']].copy()
+    
+    # Color coding function for styling
     def color_returns(val):
         if isinstance(val, (int, float)):
-            color = 'color: green' if val > 0 else 'color: red' if val < 0 else 'color: gray'
-            return color
+            if val > 0:
+                return 'background-color: rgba(0, 255, 0, 0.1); color: green; font-weight: bold'
+            elif val < 0:
+                return 'background-color: rgba(255, 0, 0, 0.1); color: red; font-weight: bold'
+            else:
+                return 'color: gray'
         return ''
     
-    styled_df = display_df[['Entrada', 'Saída', 'Sinal', 'Preço Entrada', 'Preço Saída', 'Retorno (%)']].style.applymap(
-        color_returns, subset=['Retorno (%)']
+    # Apply styling
+    styled_df = final_df.style.applymap(color_returns, subset=['Retorno (%)'])
+    
+    # Display with fixed height for scrolling
+    st.dataframe(
+        styled_df, 
+        use_container_width=True, 
+        hide_index=True,
+        height=400  # Fixed height enables scrolling
     )
     
-    st.dataframe(styled_df, use_container_width=True, hide_index=True)
+    # Summary of visible trades
+    positive_trades = len(last_returns[last_returns['return_pct'] > 0])
+    negative_trades = len(last_returns[last_returns['return_pct'] < 0])
+    avg_return_visible = last_returns['return_pct'].mean()
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Trades Positivos", f"{positive_trades}/{len(last_returns)}")
+    with col2:
+        st.metric("Trades Negativos", f"{negative_trades}/{len(last_returns)}")
+    with col3:
+        st.metric("Retorno Médio", f"{avg_return_visible:.2f}%")
 
 def calculate_equity_curve(returns_data, initial_capital=10000):
     """Calculate equity curve from returns data"""
@@ -2438,116 +2467,113 @@ with tab3:
             # Display the chart
             st.plotly_chart(fig, use_container_width=True)
 
-            # Botão para análise de retornos (opcional)
+            # Análise de retornos automática
             st.markdown("---")
             
-            # Check if user wants to run returns analysis
-            run_returns_analysis = st.button("📈 GERAR ANÁLISE AVANÇADA DE RETORNOS", 
-                                            type="secondary", 
-                                            use_container_width=True,
-                                            help="Gera análise detalhada com métricas avançadas, simulação de investimento e gráfico de patrimônio")
+            # Returns Analysis Section - sempre exibida
+            st.markdown("## 📈 Análise de Retornos")
+            
+            # Basic returns summary first
+            direction_label = trading_direction.replace("Ambos (Compra e Venda)", "Ambos").replace("Apenas ", "")
+            
+            # Show basic summary for both methods
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("### 📊 Mudança de Estado")
+                if not returns_df.empty:
+                    display_returns_section(returns_df, "Mudança de Estado")
+                else:
+                    st.info("Nenhuma operação encontrada.")
+            
+            with col2:
+                if optimize_params and optimization_results:
+                    st.markdown(f"### 🎯 {exit_criteria} (Otimizado)")
+                    if best_params:
+                        if exit_criteria == "Tempo":
+                            st.success(f"🏆 Melhor: **{best_params} candles**")
+                        elif exit_criteria == "Stop Loss":
+                            st.success(f"🏆 Melhor: **{best_params}**")
+                        elif exit_criteria == "Alvo Fixo":
+                            st.success(f"🏆 Melhor: **Stop {best_params['stop']}% / Alvo {best_params['target']}%**")
+                        elif exit_criteria == "Média Móvel":
+                            st.success(f"🏆 Melhor: **MM{best_params}**")
+                else:
+                    st.markdown(f"### 🎯 {exit_criteria}")
+                
+                if not custom_returns_df.empty:
+                    display_returns_section(custom_returns_df, exit_criteria)
+                else:
+                    st.info("Nenhuma operação encontrada.")
 
-            if run_returns_analysis:
-                with st.spinner("Gerando análise avançada de retornos..."):
-                    # Returns Analysis Section
-                    st.markdown("## 📈 Análise Avançada de Retornos")
-                    st.markdown("Análise completa com métricas avançadas, simulação de investimento e curva de patrimônio")
+            # Advanced analysis in expandable sections
+            st.markdown("---")
+            
+            # Section 1: Advanced metrics
+            with st.expander("📊 **Métricas Avançadas e Top Trades**", expanded=True):
+                if not returns_df.empty or not custom_returns_df.empty:
+                    # Choose best performing dataset for advanced analysis
+                    best_df = returns_df
+                    best_label = "Mudança de Estado"
+                    
+                    if not custom_returns_df.empty:
+                        if returns_df.empty or custom_returns_df['return_pct'].sum() > returns_df['return_pct'].sum():
+                            best_df = custom_returns_df
+                            best_label = exit_criteria
+                    
+                    if not best_df.empty:
+                        display_advanced_returns_section(best_df, best_label, df, symbol_label)
+                else:
+                    st.info("Nenhum dado disponível para análise avançada.")
+            
+            # Section 2: Investment simulation
+            with st.expander("💰 **Simulação de Investimento**", expanded=False):
+                # Use the best performing strategy for simulation
+                sim_df = returns_df
+                sim_label = "Mudança de Estado"
+                
+                if not custom_returns_df.empty:
+                    if returns_df.empty or custom_returns_df['return_pct'].sum() > returns_df['return_pct'].sum():
+                        sim_df = custom_returns_df
+                        sim_label = f"{exit_criteria}" + (" (Otimizado)" if optimize_params else "")
+                
+                if not sim_df.empty:
+                    display_investment_simulation(sim_df, df, symbol_label, sim_label)
+                else:
+                    st.info("Não há dados suficientes para simulação de investimento.")
+            
+            # Section 3: Optimization comparison (if available)
+            if optimize_params and optimization_results and all_results:
+                with st.expander("🔍 **Comparação de Otimização**", expanded=False):
+                    comparison_df = pd.DataFrame(all_results)
+                    comparison_df = comparison_df.sort_values('total_return', ascending=False)
 
-                    # Create tabs for different return calculations
-                    direction_label = trading_direction.replace("Ambos (Compra e Venda)", "Ambos").replace("Apenas ", "")
+                    # Format columns
+                    comparison_df['total_return'] = comparison_df['total_return'].round(2)
+                    comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
+                    comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
 
-                    if optimize_params and optimization_results:
-                        tab1, tab2, tab3, tab4 = st.tabs([
-                            f"📊 Mudança de Estado - {direction_label}", 
-                            f"🎯 {exit_criteria} (Otimizado) - {direction_label}", 
-                            "📋 Comparação Detalhada",
-                            "💰 Simulação de Investimento"
-                        ])
-                    else:
-                        tab1, tab2, tab3 = st.tabs([
-                            f"📊 Mudança de Estado - {direction_label}", 
-                            f"🎯 {exit_criteria} - {direction_label}",
-                            "💰 Simulação de Investimento"
-                        ])
+                    # Rename columns for better display
+                    comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
 
-                    with tab1:
-                        st.write(f"**Retornos baseados na mudança natural do estado dos sinais - {trading_direction}**")
-                        if not returns_df.empty:
-                            display_advanced_returns_section(returns_df, "Mudança de Estado", df, symbol_label)
-                        else:
-                            st.info(f"Nenhuma operação completa encontrada no período analisado para a direção: {trading_direction}.")
+                    # Color code the best result
+                    def highlight_best(s):
+                        if s.name == 'Retorno Total (%)':
+                            is_max = s == s.max()
+                            return ['background-color: lightgreen' if v else '' for v in is_max]
+                        return ['' for _ in s]
 
-                    with tab2:
-                        if optimize_params and optimization_results:
-                            st.write(f"**Retornos otimizados para: {exit_criteria} - {trading_direction}**")
-                            if best_params:
-                                if exit_criteria == "Tempo":
-                                    st.success(f"🏆 Melhor configuração: **{best_params} candles**")
-                                elif exit_criteria == "Stop Loss":
-                                    st.success(f"🏆 Melhor configuração: **{best_params}**")
-                                elif exit_criteria == "Alvo Fixo":
-                                    st.success(f"🏆 Melhor configuração: **Stop {best_params['stop']}% / Alvo {best_params['target']}%**")
-                                elif exit_criteria == "Média Móvel":
-                                    st.success(f"🏆 Melhor configuração: **MM{best_params}**")
-                        else:
-                            st.write(f"**Retornos baseados no critério: {exit_criteria} - {trading_direction}**")
+                    styled_df = comparison_df.style.apply(highlight_best, axis=0)
+                    st.dataframe(styled_df, use_container_width=True)
 
-                        if not custom_returns_df.empty:
-                            display_advanced_returns_section(custom_returns_df, exit_criteria, df, symbol_label)
-                        else:
-                            st.info(f"Nenhuma operação completa encontrada com este critério no período analisado para a direção: {trading_direction}.")
-
-                    if optimize_params and optimization_results:
-                        with tab3:
-                            st.write("**Comparação detalhada de todos os parâmetros testados**")
-
-                            # Create a more detailed comparison
-                            if all_results:
-                                comparison_df = pd.DataFrame(all_results)
-                                comparison_df = comparison_df.sort_values('total_return', ascending=False)
-
-                                # Format columns
-                                comparison_df['total_return'] = comparison_df['total_return'].round(2)
-                                comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
-                                comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
-
-                                # Rename columns for better display
-                                comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
-
-                                # Color code the best result
-                                def highlight_best(s):
-                                    if s.name == 'Retorno Total (%)':
-                                        is_max = s == s.max()
-                                        return ['background-color: lightgreen' if v else '' for v in is_max]
-                                    return ['' for _ in s]
-
-                                styled_df = comparison_df.style.apply(highlight_best, axis=0)
-                                st.dataframe(styled_df, use_container_width=True)
-
-                                # Show summary statistics
-                                col1, col2, col3 = st.columns(3)
-                                with col1:
-                                    st.metric("Melhor Retorno Total", f"{comparison_df['Retorno Total (%)'].max():.2f}%")
-                                with col2:
-                                    st.metric("Pior Retorno Total", f"{comparison_df['Retorno Total (%)'].min():.2f}%")
-                                with col3:
-                                    st.metric("Diferença", f"{comparison_df['Retorno Total (%)'].max() - comparison_df['Retorno Total (%)'].min():.2f}%")
-                            else:
-                                st.info("Nenhum resultado de otimização disponível.")
-
-                        with tab4:
-                            # Investment simulation for optimized strategy
-                            if not custom_returns_df.empty:
-                                display_investment_simulation(custom_returns_df, df, symbol_label, f"{exit_criteria} (Otimizado)")
-                            else:
-                                st.info("Não há dados suficientes para simulação de investimento.")
-                    else:
-                        with tab3:
-                            # Investment simulation for basic strategy
-                            if not returns_df.empty:
-                                display_investment_simulation(returns_df, df, symbol_label, "Mudança de Estado")
-                            else:
-                                st.info("Não há dados suficientes para simulação de investimento.")
+                    # Show summary statistics
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Melhor Retorno Total", f"{comparison_df['Retorno Total (%)'].max():.2f}%")
+                    with col2:
+                        st.metric("Pior Retorno Total", f"{comparison_df['Retorno Total (%)'].min():.2f}%")
+                    with col3:
+                        st.metric("Diferença", f"{comparison_df['Retorno Total (%)'].max() - comparison_df['Retorno Total (%)'].min():.2f}%")
 
             st.markdown("---")
             # Technical analysis summary with improved layout
