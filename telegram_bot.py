@@ -293,18 +293,9 @@ class OvecchiaTradingBot:
             # Sua chave da Twelve Data
             API_KEY = "8745d2a910c841e4913afc40a6368dcb"
 
-            # Processar símbolo para formato correto do 12Data
-            # Converter BTC/USD para btc-usd format que 12Data espera
+            # Usar o símbolo exatamente como o usuário digitou
+            # TwelveData espera o formato "BTC/USD", "ETH/USD", etc.
             processed_symbol = symbol
-            if '/' in symbol:
-                # BTC/USD -> btc-usd
-                processed_symbol = symbol.replace('/', '-').lower()
-            elif '-' in symbol:
-                # btc-usd -> btc-usd (já está correto)
-                processed_symbol = symbol.lower()
-            else:
-                # BTC -> btc-usd (assumir par com USD se não especificado)
-                processed_symbol = f"{symbol.lower()}-usd"
 
             # Mapear timeframes do Telegram para 12Data
             twelve_interval_map = {
@@ -1522,7 +1513,7 @@ def screening_auto_command(message):
 • ccxt - Binance via CCXT
 
 📊 *Símbolos:* Lista separada por vírgulas entre colchetes
-• Para 12Data: [btc-usd,eth-usd,ltc-usd]
+• Para 12Data: [BTC/USD,ETH/USD,LTC/USD]
 • Para Yahoo: [BTC-USD,ETH-USD,PETR4.SA]
 • Para CCXT: [BTC/USDT,ETH/USDT,LTC/USDT]
 
@@ -1543,7 +1534,7 @@ def screening_auto_command(message):
 • 1d - 1 dia (diário)
 
 📈 *Exemplos:*
-`/screening_auto 12data [btc-usd,eth-usd,ltc-usd] ovelha2 balanceada 4h`
+`/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] ovelha2 balanceada 4h`
 `/screening_auto yahoo [BTC-USD,ETH-USD,PETR4.SA] ovelha balanceada 1d`
 `/screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT] ovelha2 agressiva 4h`
 
