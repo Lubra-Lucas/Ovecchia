@@ -2437,12 +2437,10 @@ with tab3:
 
             st.markdown(f"### 📊 Status Atual do Mercado - Modelo: {modelo_nome}")
 
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2 = st.columns(2)
 
             current_price = df['close'].iloc[-1]
             current_signal = df['Estado'].iloc[-1]
-            current_rsi = df['RSI_14'].iloc[-1]
-            current_rsl = df['RSL_20'].iloc[-1]
 
             with col1:
                 st.markdown(f"""
@@ -2459,24 +2457,6 @@ with tab3:
                 <div class="metric-card">
                     <h4 style="margin: 0; color: #1f77b4;">🎯 Sinal Atual</h4>
                     <div class="{signal_class}">{signal_icon} {current_signal}</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col3:
-                rsi_color = "#4CAF50" if current_rsi > 50 else "#f44336"
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h4 style="margin: 0; color: #1f77b4;">📈 RSI (14)</h4>
-                    <h2 style="margin: 0; color: {rsi_color};">{current_rsi:.2f}</h2>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col4:
-                rsl_color = "#4CAF50" if current_rsl > 1 else "#f44336"
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h4 style="margin: 0; color: #1f77b4;">📊 RSL (20)</h4>
-                    <h2 style="margin: 0; color: {rsl_color};">{current_rsl:.3f}</h2>
                 </div>
                 """, unsafe_allow_html=True)
 
