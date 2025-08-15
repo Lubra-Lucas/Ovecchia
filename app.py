@@ -1319,35 +1319,24 @@ with tab2:
 
         
 
-        st.markdown("### 📌 Parâmetros Essenciais")
-        st.write("Para realizar a análise individual, você deverá configurar os seguintes parâmetros:")
-        st.write("• **Nome do Ativo 💹**: Insira o código do ativo que deseja analisar (ex.: PETR4.SA, BTC-USD, AAPL).")
-        st.write("• **Intervalo de Data 📅**: Escolha o período inicial e final da análise. O Yahoo Finance permite definir datas específicas, mas possui restrições para dados intradiários. Já o TwelveData oferece a possibilidade de recuperar até 5000 dados anteriores, o que é útil para análises intradiárias mais longas. Recomendamos intervalos superiores a 30 dias para maior precisão nos sinais.")
-        st.write("• **Intervalo de Tempo ⏱️**: Selecione a periodicidade desejada, como 1 minuto, 15 minutos, 1 hora, ou 1 dia, de acordo com seu perfil operacional.")
-        st.write("• **Estratégia de Sinais 📈**: Selecione entre Agressiva, Balanceada ou Conservadora para ajustar o sistema ao seu apetite por risco.")
-        st.write("• **Direção da Operação 🎯**: Escolha entre operar em ambas direções (comprado e vendido), somente comprado ou somente vendido.")
-
-        st.markdown("### 📌 Critérios de Saída")
-        st.write("O sistema oferece diferentes critérios para encerrar as operações:")
-        st.write("• **Mudança de Estado**: Sai quando o sinal muda (Buy→Sell ou vice-versa)")
-        st.write("• **Stop Loss**: Sai ao atingir limite de perda baseado na volatilidade do ativo")
-        st.write("• **Alvo Fixo**: Define meta de lucro e limite de perda em percentual")
-        st.write("• **Tempo**: Encerra após número fixo de candles")
-        st.write("• **Média Móvel**: Sai quando preço cruza média móvel configurada")
-
-        st.markdown("### 📌 Sair por Mudança de Estado")
-        st.write("**✅ Ativado**: As operações são encerradas automaticamente quando o sinal muda (ex: Buy→Sell)")
-        st.write("**❌ Desativado**: Usa apenas o critério de saída escolhido, ignorando mudanças de sinal")
-        st.write("**💡 Recomendação**: Mantenha ativado para maior segurança, especialmente se for iniciante")
-
-        st.markdown("### 📌 Funcionalidade de Otimização")
-        st.write("**🎯 Otimização Automática de Parâmetros**")
-        st.write("O sistema oferece uma funcionalidade única de otimização automática que testa diferentes configurações para encontrar os melhores parâmetros para o ativo e período selecionados:")
-        st.write("• **Teste Automático**: O sistema testa múltiplas combinações de parâmetros automaticamente")
-        st.write("• **Comparação Detalhada**: Visualize uma tabela comparativa com todos os resultados testados")
-        st.write("• **Melhor Configuração**: Identifica automaticamente a configuração que gerou o melhor retorno total")
-        st.write("• **Múltiplas Métricas**: Avalia retorno total, retorno médio, taxa de acerto e número de operações")
-        st.info("💡 **Dica**: Use a otimização para descobrir qual critério de saída funciona melhor para cada ativo específico!")
+        st.markdown("### 📌 Observações Importantes")
+        
+        with st.expander("🔧 Parâmetros e Configurações", expanded=False):
+            st.markdown("""
+            **Parâmetros Essenciais:**
+            • Ticker (ex: PETR4.SA, BTC-USD) • Período mínimo de 30 dias • Timeframe conforme perfil • Estratégia adequada ao risco
+            
+            **Critérios de Saída:**
+            Mudança de Estado | Stop Loss | Alvo Fixo | Tempo | Média Móvel
+            
+            **Mudança de Estado:**
+            ✅ Ativado: sai automaticamente na mudança de sinal | ❌ Desativado: usa apenas critério escolhido
+            
+            **Otimização:**
+            🎯 Testa automaticamente múltiplas configurações para encontrar os melhores parâmetros
+            """)
+        
+        st.info("💡 **Dica**: Use otimização para descobrir o melhor critério de saída para cada ativo")
 
         
 
