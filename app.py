@@ -69,14 +69,14 @@ def get_historical_klines_ccxt(symbol, interval, limit=1000):
 
 
 
-def get_twelvedata_data(symbol, interval):
+def get_twelvedata_data(symbol, interval, outputsize=5000):
     """Função para coletar dados usando TwelveData API"""
     try:
         # Sua chave da Twelve Data
         API_KEY = "8745d2a910c841e4913afc40a6368dcb"
 
-        # Endpoint para pegar todos os dados possíveis (limite do plano gratuito é 5000)
-        url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&apikey={API_KEY}&outputsize=5000"
+        # Endpoint para pegar dados com quantidade configurável
+        url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&apikey={API_KEY}&outputsize={outputsize}"
 
         # Faz a requisição
         response = requests.get(url).json()
@@ -116,12 +116,13 @@ def get_twelvedata_data(symbol, interval):
         st.error(f"Erro ao buscar dados via TwelveData para {symbol}: {str(e)}")
         return pd.DataFrame()
 
-def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yahoo Finance"):
+def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yahoo Finance", **kwargs):
     """Função principal para coletar dados do mercado usando Yahoo Finance, CCXT ou TwelveData"""
     try:
         if source == "TwelveData":
             # Para TwelveData, usar diretamente a função específica
-            return get_twelvedata_data(symbol, interval)
+            outputsize = kwargs.get('outputsize', 5000)
+            return get_twelvedata_data(symbol, interval, outputsize)
 
         elif source == "CCXT (Binance)":
             try:
@@ -1657,7 +1658,16 @@ with tab3:
             start_date = default_start
             end_date = default_end
         elif data_source == "TwelveData":
-            st.info("📅 **TwelveData**: Coleta automaticamente os últimos 5000 registros disponíveis (período fixo)")
+            st.info("📅 **TwelveData**: Quantidade de registros configurável")
+            # Controle de quantidade de registros
+            outputsize = st.number_input(
+                "Quantidade de registros (500-5000):",
+                min_value=500,
+                max_value=5000,
+                value=5000,
+                step=100,
+                help="Número de registros históricos para coletar da TwelveData API"
+            )
             # Definir datas padrão para compatibilidade, mas não mostrar controles
             default_end = datetime.now().date()
             default_start = default_end - timedelta(days=365)
@@ -1810,8 +1820,11 @@ with tab3:
             progress_bar.progress(20)
 
             # Download data using appropriate API
+            kwargs = {}
+            if data_source == "TwelveData":
+                kwargs['outputsize'] = outputsize
             df = get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
-                                        end_date.strftime("%Y-%m-%d"), interval, data_source)
+                                        end_date.strftime("%Y-%m-%d"), interval, data_source, **kwargs)
 
 
             if df is None or df.empty:
