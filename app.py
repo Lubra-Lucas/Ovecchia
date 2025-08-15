@@ -1669,7 +1669,10 @@ with tab3:
     analyze_button_individual = st.button("🚀 INICIAR ANÁLISE INDIVIDUAL", type="primary", use_container_width=True)
 
     # Analysis logic (same as before but only for individual analysis)
-    if analyze_button_individual:</old_str>
+    if analyze_button_individual:
+        if not symbol:
+            st.error("Por favor entre com um ticker válido.")
+            st.stop()</old_str>
         if not symbol:
             st.error("Por favor entre com um ticker válido.")
             st.stop()
