@@ -285,7 +285,7 @@ class OvecchiaTradingBot:
             logger.error(f"Erro geral ao coletar dados CCXT para {symbol}: {str(e)}")
             return pd.DataFrame()
 
-    def get_twelve_data_data(self, symbol, start_date, end_date, interval="1d", limit=1000):
+    def get_twelve_data_data(self, symbol, start_date, end_date, interval="1d", limit=2000):
         """Função para coletar dados usando TwelveData API"""
         try:
             logger.info(f"Coletando dados para {symbol} via 12Data com intervalo {interval}")
@@ -821,7 +821,7 @@ class OvecchiaTradingBot:
                         end_date = datetime.now().date()
                         start_date = end_date - timedelta(days=365)
                         df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"),
-                                                     end_date.strftime("%Y-%m-%d"), timeframe, 1000)
+                                                     end_date.strftime("%Y-%m-%d"), timeframe, 2000)
                     else: # Yahoo
                         end_date = datetime.now().date()
                         start_date = end_date - timedelta(days=365)
@@ -922,7 +922,7 @@ class OvecchiaTradingBot:
             if data_source == "ccxt":
                 df = self.get_ccxt_data(symbol, timeframe, 1000)
             elif data_source == "twelvedata":
-                df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), timeframe, 1000)
+                df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), timeframe, 2000)
             else: # Yahoo
                 yf_interval_map = {
                     '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m',
@@ -1552,7 +1552,7 @@ def screening_auto_command(message):
 
             # Validar fonte
             if source not in ['12data', 'twelvedata', 'yahoo', 'ccxt']:
-                bot.reply_to(message, "❌ Fonte inválida. Use: 12data, yahoo ou ccxt")
+                bot.reply_to(message, "❌ Fonte inválida. Use: twelvedata , yahoo ou ccxt,")
                 return
 
             # Normalizar fonte
@@ -1590,9 +1590,9 @@ def screening_auto_command(message):
 
             # Validar timeframe baseado na fonte
             if source == '12data':
-                valid_timeframes = ['5m', '15m', '1h', '4h', '1d']
+                valid_timeframes = ['1m','5m', '15m', '1h', '4h', '1d']
             else:
-                valid_timeframes = ['15m', '1h', '4h', '1d']
+                valid_timeframes = ['5m','15m', '1h', '4h', '1d']
 
             if timeframe not in valid_timeframes:
                 bot.reply_to(message, f"❌ Timeframe inválido para {source}. Use: {', '.join(valid_timeframes)}")
