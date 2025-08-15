@@ -465,35 +465,104 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
     # === SEÇÃO 1: MÉTRICAS PRINCIPAIS ===
     st.markdown("### 📊 Métricas Principais")
     
-    col1, col2, col3, col4, col5 = st.columns(5)
+    # Métricas em formato mais compacto
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1:
-        st.metric("Total de Operações", total_trades)
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Total de Operações</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{total_trades}</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col2:
-        st.metric("Taxa de Acerto", f"{win_rate:.1f}%")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Taxa de Acerto</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{win_rate:.1f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col3:
-        return_color = "🟢" if total_return >= 0 else "🔴"
-        st.metric("Retorno Total", f"{return_color} {total_return:.2f}%")
+        return_color = "#4CAF50" if total_return >= 0 else "#f44336"
+        return_icon = "🟢" if total_return >= 0 else "🔴"
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Retorno Total</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: {return_color};">{return_icon} {total_return:.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col4:
-        st.metric("Retorno Médio", f"{avg_return:.2f}%")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Retorno Médio</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{avg_return:.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col5:
-        st.metric("Profit Factor", f"{profit_factor:.2f}" if profit_factor != float('inf') else "∞")
+        profit_factor_display = f"{profit_factor:.2f}" if profit_factor != float('inf') else "∞"
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Profit Factor</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{profit_factor_display}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col6:
+        # Calcular retorno por mudança de estado
+        mudanca_estado_total = returns_data['return_pct'].sum() if not returns_data.empty else 0
+        mudanca_color = "#4CAF50" if mudanca_estado_total >= 0 else "#f44336"
+        mudanca_icon = "🟢" if mudanca_estado_total >= 0 else "🔴"
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Mudança de Estado</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: {mudanca_color};">{mudanca_icon} {mudanca_estado_total:.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # === SEÇÃO 2: MÉTRICAS AVANÇADAS ===
     st.markdown("### 🎯 Métricas Avançadas")
     
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1:
-        st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Sharpe Ratio</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{sharpe_ratio:.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col2:
-        st.metric("Desvio Padrão", f"{std_returns:.2f}%")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Desvio Padrão</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{std_returns:.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col3:
-        st.metric("Ganho Médio", f"🟢 {avg_winning_trade:.2f}%")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Ganho Médio</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #4CAF50;">🟢 {avg_winning_trade:.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col4:
-        st.metric("Perda Média", f"🔴 {avg_losing_trade:.2f}%")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Perda Média</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #f44336;">🔴 {avg_losing_trade:.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col5:
-        st.metric("Máx. Ganhos Consecutivos", max_consecutive_wins)
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Máx. Ganhos Consecutivos</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{max_consecutive_wins}</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col6:
-        st.metric("Máx. Perdas Consecutivas", max_consecutive_losses)
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Máx. Perdas Consecutivas</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{max_consecutive_losses}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # === SEÇÃO 3: TOP 10 MELHORES E PIORES TRADES ===
     st.markdown("### 🏆 Top 10 Melhores e Piores Trades")
@@ -543,12 +612,27 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Máximo Drawdown", f"🔴 {max_drawdown:.2f}%")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Máximo Drawdown</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #f44336;">🔴 {max_drawdown:.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col2:
-        st.metric("Duração Máx. Drawdown", f"{max_drawdown_duration} trades")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Duração Máx. Drawdown</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">{max_drawdown_duration} trades</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col3:
         final_equity = equity_curve['equity'].iloc[-1]
-        st.metric("Patrimônio Final", f"R$ {final_equity:,.2f}")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Patrimônio Final</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #333;">R$ {final_equity:,.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # === SEÇÃO 5: ÚLTIMOS TRADES ===
     st.markdown("### 📋 Histórico de Trades")
@@ -602,11 +686,27 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Trades Positivos", f"{positive_trades}/{len(last_returns)}")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Trades Positivos</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #4CAF50;">{positive_trades}/{len(last_returns)}</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col2:
-        st.metric("Trades Negativos", f"{negative_trades}/{len(last_returns)}")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Trades Negativos</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #f44336;">{negative_trades}/{len(last_returns)}</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col3:
-        st.metric("Retorno Médio", f"{avg_return_visible:.2f}%")
+        avg_color = "#4CAF50" if avg_return_visible >= 0 else "#f44336"
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Retorno Médio</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: {avg_color};">{avg_return_visible:.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 def calculate_equity_curve(returns_data, initial_capital=10000):
     """Calculate equity curve from returns data"""
@@ -2467,46 +2567,6 @@ with tab3:
             # Display the chart
             st.plotly_chart(fig, use_container_width=True)
 
-            # Análise de retornos automática
-            st.markdown("---")
-            
-            # Returns Analysis Section - sempre exibida
-            st.markdown("## 📈 Análise de Retornos")
-            
-            # Basic returns summary first
-            direction_label = trading_direction.replace("Ambos (Compra e Venda)", "Ambos").replace("Apenas ", "")
-            
-            # Show basic summary for both methods
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("### 📊 Mudança de Estado")
-                if not returns_df.empty:
-                    display_returns_section(returns_df, "Mudança de Estado")
-                else:
-                    st.info("Nenhuma operação encontrada.")
-            
-            with col2:
-                if optimize_params and optimization_results:
-                    st.markdown(f"### 🎯 {exit_criteria} (Otimizado)")
-                    if best_params:
-                        if exit_criteria == "Tempo":
-                            st.success(f"🏆 Melhor: **{best_params} candles**")
-                        elif exit_criteria == "Stop Loss":
-                            st.success(f"🏆 Melhor: **{best_params}**")
-                        elif exit_criteria == "Alvo Fixo":
-                            st.success(f"🏆 Melhor: **Stop {best_params['stop']}% / Alvo {best_params['target']}%**")
-                        elif exit_criteria == "Média Móvel":
-                            st.success(f"🏆 Melhor: **MM{best_params}**")
-                else:
-                    st.markdown(f"### 🎯 {exit_criteria}")
-                
-                if not custom_returns_df.empty:
-                    display_returns_section(custom_returns_df, exit_criteria)
-                else:
-                    st.info("Nenhuma operação encontrada.")
-
-            # Advanced analysis in expandable sections
             st.markdown("---")
             
             # Section 1: Advanced metrics
