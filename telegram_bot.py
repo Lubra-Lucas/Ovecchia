@@ -184,7 +184,7 @@ class OvecchiaTradingBot:
         try:
             # Configuração mais agressiva de timeout para timeframes pequenos
             timeout_ms = 15000 if interval in ['1m', '5m', '15m', '30m'] else 30000
-            
+
             exchange = ccxt.binanceus({
                 'enableRateLimit': True,
                 'timeout': timeout_ms,
@@ -233,7 +233,7 @@ class OvecchiaTradingBot:
             # Implementar timeout manual usando threading
             import threading
             result = {'data': None, 'error': None}
-            
+
             def fetch_data():
                 try:
                     result['data'] = exchange.fetch_ohlcv(ccxt_symbol, timeframe=interval, limit=limit)
@@ -289,27 +289,148 @@ class OvecchiaTradingBot:
             logger.error(f"Erro geral ao coletar dados CCXT para {symbol}: {str(e)}")
             return pd.DataFrame()
 
+    def get_twelve_data_data(self, symbol, start_date, end_date, interval="1d", limit=1000):
+        """
+        Função para coletar dados do 12Data.
+        Assume que o símbolo está no formato adequado para 12Data (ex: BTCUSDT, EURUSD)
+        E que o timeframe está em um formato compatível (ex: 5min, 15min, 1h, 1d)
+        """
+        try:
+            logger.info(f"Coletando dados para {symbol} via 12Data com intervalo {interval}")
 
+            # Configurar API Key do 12Data
+            TWELVEDATA_API_KEY = os.environ.get('TWELVEDATA_API_KEY', "YOUR_DEFAULT_API_KEY") # Substitua com sua chave real ou use variável de ambiente
+            if TWELVEDATA_API_KEY == "YOUR_DEFAULT_API_KEY":
+                logger.warning("Chave da API do 12Data não configurada. Usando chave padrão.")
+
+            # Converter formato de símbolo se necessário (ex: BTC-USD para BTCUSD)
+            processed_symbol = symbol.replace('-', '').upper()
+
+            # Mapear timeframes do Telegram para 12Data
+            twelve_interval_map = {
+                '1m': '1min',
+                '5m': '5min',
+                '15m': '15min',
+                '30m': '30min',
+                '1h': '1h',
+                '4h': '4h',
+                '1d': '1d',
+                '1wk': '1wk'
+            }
+            twelve_interval = twelve_interval_map.get(interval.lower())
+            if not twelve_interval:
+                logger.error(f"Timeframe inválido para 12Data: {interval}")
+                return pd.DataFrame()
+
+            # Limitar o número de candles conforme a solicitação
+            # 12Data API geralmente permite especificar `from` e `to` ou `start_date`/`end_date`
+            # Para limitar a 1000 candles, precisamos calcular as datas ou ajustar a requisição
+            # Se o intervalo for grande, pode ser que `limit=1000` seja necessário, mas a API do 12Data pode limitar de outra forma.
+            # Vamos tentar usar `start_date` e `end_date` e se a resposta for menor que 1000, pode ser ok.
+            # Se for maior, teremos que ajustar a lógica para pegar os últimos 1000.
+
+            # Construir URL da API do 12Data
+            # Exemplo para dados históricos:
+            # https://api.twelvedata.com/timeandsales?symbol=AAPL&interval=15min&apikey=YOUR_API_KEY&outputsize=1000
+            # O `outputsize` controla o número de pontos de dados. '1000' é um bom começo.
+            url = f"https://api.twelvedata.com/timeandsales"
+            params = {
+                "symbol": processed_symbol,
+                "interval": twelve_interval,
+                "apikey": TWELVEDATA_API_KEY,
+                "outputsize": limit, # Usar o limite especificado
+                "start_date": start_date,
+                "end_date": end_date
+            }
+
+            response = requests.get(url, params=params)
+            response.raise_for_status() # Lança exceção para erros HTTP
+
+            data = response.json()
+
+            if data.get("status") == "error" or "code" in data: # Verifica erros específicos da API
+                logger.error(f"Erro 12Data API: {data.get('message', 'Erro desconhecido')}")
+                return pd.DataFrame()
+
+            if not data or "rows" not in data or not data["rows"]:
+                logger.warning(f"12Data: Sem dados encontrados para {symbol} no intervalo {interval}")
+                return pd.DataFrame()
+
+            # Processar os dados retornados
+            # A estrutura pode variar, mas geralmente é uma lista de dicionários
+            # Vamos assumir que 'rows' contém os dados OHLCV
+            # Verifique a documentação do 12Data para a estrutura exata
+
+            # Estrutura comum para timeandsales/candles:
+            # [{ "datetime": "YYYY-MM-DD HH:MM:SS", "price": ..., "volume": ... }, ...]
+            # Para OHLCV, esperamos algo como:
+            # [{ "datetime": "YYYY-MM-DD HH:MM:SS", "open": ..., "high": ..., "low": ..., "close": ..., "volume": ... }, ...]
+
+            # Vamos adaptar para obter OHLCV se disponível, senão apenas price/volume
+            ohlcv_data = []
+            for row in data["rows"]:
+                dt = datetime.strptime(row["datetime"], "%Y-%m-%d %H:%M:%S")
+                ohlcv_data.append({
+                    "time": dt,
+                    "open": float(row.get("open", row.get("price", 0))), # Tenta 'open', senão 'price'
+                    "high": float(row.get("high", row.get("price", 0))),
+                    "low": float(row.get("low", row.get("price", 0))),
+                    "close": float(row.get("close", row.get("price", 0))),
+                    "volume": float(row.get("volume", 0))
+                })
+
+            df = pd.DataFrame(ohlcv_data)
+
+            # Garantir que as colunas necessárias existam
+            required_columns = ['time', 'open', 'high', 'low', 'close', 'volume']
+            for col in required_columns:
+                if col not in df.columns:
+                    df[col] = 0.0 # Adiciona coluna com zero se não existir
+
+            # Ordenar por tempo
+            df = df.sort_values("time").reset_index(drop=True)
+
+            logger.info(f"Dados 12Data coletados com sucesso para {symbol}: {len(df)} registros")
+            return df
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erro de requisição ao 12Data API para {symbol}: {str(e)}")
+            return pd.DataFrame()
+        except ValueError as e:
+            logger.error(f"Erro ao processar dados do 12Data para {symbol}: {str(e)}")
+            return pd.DataFrame()
+        except Exception as e:
+            logger.error(f"Erro geral ao coletar dados 12Data para {symbol}: {str(e)}")
+            return pd.DataFrame()
 
     def get_market_data(self, symbol, start_date, end_date, interval="1d", data_source="yahoo"):
         """Função para coletar dados do mercado"""
         try:
             logger.info(f"Coletando dados para {symbol} via {data_source}")
 
-            # Detectar automaticamente se é cripto baseado no formato
-            is_crypto = any(symbol.upper().endswith(suffix) for suffix in ['USDT', '/USDT']) or \
-                       any(suffix in symbol.upper() for suffix in ['-USD', 'BTC/', 'ETH/', '/USD'])
-
+            # Mapear para fonte correta
             if data_source == "ccxt":
-                # Para CCXT, sempre tentar coletar dados independente do tipo
                 df = self.get_ccxt_data(symbol, interval, 1000)
-                if df.empty:
-                    logger.warning(f"CCXT não retornou dados para {symbol}")
-                return df
-            else:
-                # Yahoo Finance
+            elif data_source == "twelvedata":
+                 df = self.get_twelve_data_data(symbol, start_date, end_date, interval, 1000)
+            else: # Yahoo Finance
                 try:
-                    df = yf.download(symbol, start=start_date, end=end_date, interval=interval, progress=False)
+                    # Yahoo Finance interval mapping
+                    yf_interval_map = {
+                        '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m',
+                        '1h': '1h', '4h': '4h', '1d': '1d', '1wk': '1wk', '1mo': '1mo'
+                    }
+                    yf_interval = yf_interval_map.get(interval.lower())
+                    if not yf_interval:
+                        logger.info(f"Timeframe {interval} não suportado pelo Yahoo Finance. Usando '1d'.")
+                        yf_interval = '1d'
+
+                    # Se o intervalo for muito pequeno e não for 1m, 4h, etc, pode não ser suportado
+                    if interval not in ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1wk', '1mo']:
+                        logger.warning(f"Timeframe {interval} não suportado pelo Yahoo Finance. Usando '1d'.")
+                        yf_interval = '1d'
+
+                    df = yf.download(symbol, start=start_date, end=end_date, interval=yf_interval, progress=False)
 
                     if df is None or df.empty:
                         logger.warning(f"Yahoo Finance: Sem dados para {symbol}")
@@ -327,26 +448,30 @@ class OvecchiaTradingBot:
 
                     # Standardize column names
                     column_mapping = {
-                        "Datetime": "time", 
-                        "Date": "time", 
-                        "Open": "open", 
-                        "High": "high", 
-                        "Low": "low", 
+                        "Datetime": "time",
+                        "Date": "time",
+                        "Open": "open",
+                        "High": "high",
+                        "Low": "low",
                         "Close": "close",
-                        "Volume": "volume",
-                        "Adj Close": "close"  # Usar Adj Close se disponível
+                        "Adj Close": "close", # Use Adj Close if available
+                        "Volume": "volume"
                     }
                     df.rename(columns=column_mapping, inplace=True)
 
-                    # Verificar se temos as colunas necessárias
-                    required_columns = ['time', 'open', 'high', 'low', 'close']
-                    missing_columns = [col for col in required_columns if col not in df.columns]
-                    if missing_columns:
-                        logger.error(f"Colunas faltando para {symbol}: {missing_columns}")
-                        return pd.DataFrame()
+                    # Garantir que as colunas essenciais existam e estejam com tipos corretos
+                    for col in ['time', 'open', 'high', 'low', 'close', 'volume']:
+                        if col not in df.columns:
+                            df[col] = 0.0
+                        elif col == 'time':
+                            # Converter para datetime se necessário
+                            if not pd.api.types.is_datetime64_any_dtype(df['time']):
+                                df['time'] = pd.to_datetime(df['time'])
+                        else:
+                            df[col] = pd.to_numeric(df[col], errors='coerce') # Converte para numérico, erros viram NaN
 
-                    # Remover linhas com valores NaN nas colunas essenciais
-                    df = df.dropna(subset=['close'])
+                    # Remover linhas com valores NaN nas colunas essenciais após conversão
+                    df = df.dropna(subset=['close', 'open', 'high', 'low', 'volume'])
 
                     logger.info(f"Dados Yahoo coletados com sucesso para {symbol}: {len(df)} registros")
                     return df
@@ -378,7 +503,7 @@ class OvecchiaTradingBot:
     ):
         """
         Função para calcular sinais usando o modelo OVELHA V2 com Random Forest (Versão Aprimorada)
-        
+
         Nova versão com:
         - Novas features: ATR_7, stddev_20, slope_SMA_long, MACD_hist
         - Threshold dinâmico baseado na volatilidade
@@ -430,7 +555,7 @@ class OvecchiaTradingBot:
             df_work['TR']  = df_work[['tr1', 'tr2', 'tr3']].max(axis=1)
             df_work['ATR'] = df_work['TR'].rolling(window=14).mean()
 
-            # 🔹 NOVAS FEATURES
+            # 🔹NOVAS FEATURES
             # ATR_7 (volatilidade recente, mais sensível)
             df_work['ATR_7'] = df_work['TR'].rolling(window=7).mean()
 
@@ -635,7 +760,7 @@ class OvecchiaTradingBot:
         for symbol in symbols_list:
             try:
                 logger.info(f"Analisando {symbol}")
-                df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
+                df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
                                         end_date.strftime("%Y-%m-%d"), "1d")
 
                 if df.empty:
@@ -670,7 +795,7 @@ class OvecchiaTradingBot:
 
         for symbol in symbols_list:
             try:
-                df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
+                df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
                                         end_date.strftime("%Y-%m-%d"), "1d")
 
                 if df.empty:
@@ -733,10 +858,15 @@ class OvecchiaTradingBot:
 
                     if source == "ccxt":
                         df = self.get_ccxt_data(symbol, timeframe, 1000)
-                    else:
+                    elif source == "twelvedata":
                         end_date = datetime.now().date()
                         start_date = end_date - timedelta(days=365)
-                        df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
+                        df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
+                                                end_date.strftime("%Y-%m-%d"), timeframe, "twelvedata")
+                    else: # Yahoo
+                        end_date = datetime.now().date()
+                        start_date = end_date - timedelta(days=365)
+                        df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
                                                 end_date.strftime("%Y-%m-%d"), timeframe, "yahoo")
 
                     if df.empty:
@@ -832,8 +962,18 @@ class OvecchiaTradingBot:
             # Coletar dados baseado na fonte especificada
             if data_source == "ccxt":
                 df = self.get_ccxt_data(symbol, timeframe, 1000)
-            else:
-                df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"), 
+            elif data_source == "twelvedata":
+                df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), timeframe, 1000)
+            else: # Yahoo
+                yf_interval_map = {
+                    '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m',
+                    '1h': '1h', '4h': '4h', '1d': '1d', '1wk': '1wk', '1mo': '1mo'
+                }
+                yf_interval = yf_interval_map.get(timeframe.lower())
+                if not yf_interval:
+                    yf_interval = '1d' # Default para timeframe desconhecido
+
+                df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
                                         end_date.strftime("%Y-%m-%d"), timeframe, "yahoo")
 
             if df.empty:
@@ -868,8 +1008,8 @@ class OvecchiaTradingBot:
             df['Indicator'] = df['Estado'].apply(lambda x: estado_mapping.get(x, 0.5))
 
             # Criar figura com subplots
-            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), 
-                                         gridspec_kw={'height_ratios': [3, 1]}, 
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8),
+                                         gridspec_kw={'height_ratios': [3, 1]},
                                          sharex=True)
 
             # Título principal
@@ -882,7 +1022,7 @@ class OvecchiaTradingBot:
             # Plotar linha de preço com cores baseadas no estado
             for i in range(len(df) - 1):
                 color = df['Color'].iloc[i]
-                ax1.plot(df['time'].iloc[i:i+2], df['close'].iloc[i:i+2], 
+                ax1.plot(df['time'].iloc[i:i+2], df['close'].iloc[i:i+2],
                         color=color, linewidth=2)
 
             ax1.set_ylabel('Preço', fontsize=10)
@@ -964,7 +1104,7 @@ def start_command(message):
 👋 Olá, {user_name}! Sou o seu assistente de trading pessoal, pronto para fornecer análises técnicas avançadas e sinais de compra/venda.
 
 🤖 NOVIDADES:
-• 🔗 MÚLTIPLAS FONTES: Yahoo Finance + CCXT (Binance)
+• 🔗 MÚLTIPLAS FONTES: Yahoo Finance + CCXT (Binance) + 12Data
 • 🧠 MACHINE LEARNING: Modelo OVELHA V2 com Random Forest
 • 🔔 ALERTAS AUTOMÁTICOS: Monitoramento contínuo de portfólios
 
@@ -986,10 +1126,11 @@ def start_command(message):
 🔗 FONTES DE DADOS:
 • yahoo - Yahoo Finance (ações, forex, commodities)
 • ccxt - Binance via CCXT (ideal para criptomoedas)
+• twelvedata - 12Data (criptos, forex, ações - requer API Key)
 
 🚀 EXEMPLOS RÁPIDOS:
 • Análise ação: /analise yahoo balanceada PETR4.SA 1d
-• Análise cripto ML: /analise ccxt agressiva BTC/USDT 4h ovelha2
+• Análise cripto ML: /analise twelvedata agressiva BTCUSDT 4h ovelha2
 • Screening: /screening balanceada açõesBR
 • Alertas: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
 
@@ -1046,18 +1187,18 @@ def screening_command(message):
                 "PNVL3.SA", "PTBL3.SA", "RAPT4.SA", "SEER3.SA", "WIZC3.SA"
             ],
             'açõeseua': [
-                "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "BRK-B", "TSLA", 
-                "TSM", "JPM", "WMT", "LLY", "ORCL", "V", "MA", "NFLX", "XOM", "COST", 
-                "JNJ", "PLTR", "HD", "PG", "BAC", "ABBV", "KO", "CVX", "CRM", "UNH", 
-                "PM", "IBM", "MS", "GS", "LIN", "INTU", "ABT", "DIS", "AXP", "MRK", 
-                "MCD", "RTX", "CAT", "T", "NOW", "PEP", "UBER", "BKNG", "VZ", "TMO", 
-                "ISRG", "ACN", "C", "SCHW", "GEV", "BA", "BLK", "QCOM", "TXN", "AMGN", 
-                "SPGI", "ADBE", "BSX", "SYK", "ETN", "SO", "SPG", "TMUS", "NKE", "HON", 
-                "MDT", "MMM", "MO", "USB", "LMT", "UPS", "UNP", "PYPL", "TGT", "DE", 
-                "GILD", "CMCSA", "CHTR", "COP", "GE", "FDX", "DUK", "EMR", "DD", "NEE", 
-                "SBUX", "F", "GM", "OXY", "BIIB", "CVS", "CL", "ED", "GLW", "D", 
-                "PFE", "DG", "ADP", "ZTS", "BBY", "MNST", "TRV", "SLB", "ICE", "WELL", 
-                "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC", 
+                "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "BRK-B", "TSLA",
+                "TSM", "JPM", "WMT", "LLY", "ORCL", "V", "MA", "NFLX", "XOM", "COST",
+                "JNJ", "PLTR", "HD", "PG", "BAC", "ABBV", "KO", "CVX", "CRM", "UNH",
+                "PM", "IBM", "MS", "GS", "LIN", "INTU", "ABT", "DIS", "AXP", "MRK",
+                "MCD", "RTX", "CAT", "T", "NOW", "PEP", "UBER", "BKNG", "VZ", "TMO",
+                "ISRG", "ACN", "C", "SCHW", "GEV", "BA", "BLK", "QCOM", "TXN", "AMGN",
+                "SPGI", "ADBE", "BSX", "SYK", "ETN", "SO", "SPG", "TMUS", "NKE", "HON",
+                "MDT", "MMM", "MO", "USB", "LMT", "UPS", "UNP", "PYPL", "TGT", "DE",
+                "GILD", "CMCSA", "CHTR", "COP", "GE", "FDX", "DUK", "EMR", "DD", "NEE",
+                "SBUX", "F", "GM", "OXY", "BIIB", "CVS", "CL", "ED", "GLW", "D",
+                "PFE", "DG", "ADP", "ZTS", "BBY", "MNST", "TRV", "SLB", "ICE", "WELL",
+                "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC",
                 "NOC", "EXC", "SYY", "AON", "MET", "AFL", "TJX", "BMY", "HAL", "STZ"
             ],
             'criptos': [
@@ -1097,7 +1238,7 @@ def screening_command(message):
 `/screening balanceada açõesBR`
 `/screening agressiva açõesEUA`
 `/screening conservadora criptos`
-`/screening balanceada BTC-USD ETH-USD PETR4.SA`
+`/screening balanceada BTC-USD ETH-USD PETR4.SA VALE3.SA`
 
 💡 *Nota:* Você pode usar listas pré-definidas OU especificar ativos individuais
             """
@@ -1127,7 +1268,7 @@ def screening_command(message):
             symbols = predefined_lists[list_name]
             list_display_name = {
                 'açõesbr': 'Ações Brasileiras',
-                'açõeseua': 'Ações Americanas', 
+                'açõeseua': 'Ações Americanas',
                 'criptos': 'Criptomoedas',
                 'forex': 'Forex',
                 'commodities': 'Commodities'
@@ -1234,18 +1375,18 @@ def topos_fundos_command(message):
                 "PNVL3.SA", "PTBL3.SA", "RAPT4.SA", "SEER3.SA", "WIZC3.SA"
             ],
             'açõeseua': [
-                "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "BRK-B", "TSLA", 
-                "TSM", "JPM", "WMT", "LLY", "ORCL", "V", "MA", "NFLX", "XOM", "COST", 
-                "JNJ", "PLTR", "HD", "PG", "BAC", "ABBV", "KO", "CVX", "CRM", "UNH", 
-                "PM", "IBM", "MS", "GS", "LIN", "INTU", "ABT", "DIS", "AXP", "MRK", 
-                "MCD", "RTX", "CAT", "T", "NOW", "PEP", "UBER", "BKNG", "VZ", "TMO", 
-                "ISRG", "ACN", "C", "SCHW", "GEV", "BA", "BLK", "QCOM", "TXN", "AMGN", 
-                "SPGI", "ADBE", "BSX", "SYK", "ETN", "SO", "SPG", "TMUS", "NKE", "HON", 
-                "MDT", "MMM", "MO", "USB", "LMT", "UPS", "UNP", "PYPL", "TGT", "DE", 
-                "GILD", "CMCSA", "CHTR", "COP", "GE", "FDX", "DUK", "EMR", "DD", "NEE", 
-                "SBUX", "F", "GM", "OXY", "BIIB", "CVS", "CL", "ED", "GLW", "D", 
-                "PFE", "DG", "ADP", "ZTS", "BBY", "MNST", "TRV", "SLB", "ICE", "WELL", 
-                "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC", 
+                "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "BRK-B", "TSLA",
+                "TSM", "JPM", "WMT", "LLY", "ORCL", "V", "MA", "NFLX", "XOM", "COST",
+                "JNJ", "PLTR", "HD", "PG", "BAC", "ABBV", "KO", "CVX", "CRM", "UNH",
+                "PM", "IBM", "MS", "GS", "LIN", "INTU", "ABT", "DIS", "AXP", "MRK",
+                "MCD", "RTX", "CAT", "T", "NOW", "PEP", "UBER", "BKNG", "VZ", "TMO",
+                "ISRG", "ACN", "C", "SCHW", "GEV", "BA", "BLK", "QCOM", "TXN", "AMGN",
+                "SPGI", "ADBE", "BSX", "SYK", "ETN", "SO", "SPG", "TMUS", "NKE", "HON",
+                "MDT", "MMM", "MO", "USB", "LMT", "UPS", "UNP", "PYPL", "TGT", "DE",
+                "GILD", "CMCSA", "CHTR", "COP", "GE", "FDX", "DUK", "EMR", "DD", "NEE",
+                "SBUX", "F", "GM", "OXY", "BIIB", "CVS", "CL", "ED", "GLW", "D",
+                "PFE", "DG", "ADP", "ZTS", "BBY", "MNST", "TRV", "SLB", "ICE", "WELL",
+                "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC",
                 "NOC", "EXC", "SYY", "AON", "MET", "AFL", "TJX", "BMY", "HAL", "STZ"
             ],
             'criptos': [
@@ -1298,7 +1439,7 @@ def topos_fundos_command(message):
             symbols = predefined_lists[list_name]
             list_display_name = {
                 'açõesbr': 'Ações Brasileiras',
-                'açõeseua': 'Ações Americanas', 
+                'açõeseua': 'Ações Americanas',
                 'criptos': 'Criptomoedas',
                 'forex': 'Forex',
                 'commodities': 'Commodities'
@@ -1408,7 +1549,7 @@ def analise_command(message):
         if user_id in trading_bot.active_tasks:
             active_task = trading_bot.active_tasks[user_id]
             duration = datetime.now() - active_task.get('start_time', datetime.now())
-            
+
             if duration.seconds < 30:  # Menos de 30 segundos
                 bot.reply_to(message, "⏳ Já há uma análise em andamento. Aguarde ou use /pause para cancelar.")
                 return
@@ -1437,6 +1578,7 @@ def analise_command(message):
 🔗 Fontes disponíveis:
 • yahoo - Yahoo Finance (padrão)
 • ccxt - Binance via CCXT (criptomoedas)
+• twelvedata - 12Data (criptos, forex, ações)
 
 🎯 Estratégias disponíveis:
 • agressiva - Mais sinais, maior frequência
@@ -1455,12 +1597,13 @@ YYYY-MM-DD (exemplo: 2024-01-01)
 
 📈 Exemplos:
 /analise yahoo balanceada PETR4.SA 1d
-/analise ccxt agressiva BTC/USDT 4h ovelha2
+/analise twelvedata agressiva BTCUSDT 4h ovelha2
 /analise yahoo conservadora AAPL 1d ovelha 2024-06-01 2024-12-01
 
 💡 Ativos suportados:
 • Yahoo: PETR4.SA, VALE3.SA, AAPL, BTC-USD, EURUSD=X
 • CCXT: BTC/USDT, ETH/USDT, BNB/USDT
+• 12Data: BTCUSDT, EURUSD, AAPL
 
 ℹ️ Se não especificar fonte, será usado YAHOO
 ℹ️ Se não especificar modelo, será usado OVELHA clássico
@@ -1506,14 +1649,14 @@ YYYY-MM-DD (exemplo: 2024-01-01)
                     return
 
         # Validar fonte
-        if source_input not in ['yahoo', 'ccxt']:
-            bot.reply_to(message, "❌ Fonte inválida. Use: yahoo ou ccxt")
+        if source_input not in ['yahoo', 'ccxt', 'twelvedata']:
+            bot.reply_to(message, "❌ Fonte inválida. Use: yahoo, ccxt ou twelvedata")
             return
 
         # Mapear estratégias
         strategy_map = {
             'agressiva': 'Agressivo',
-            'balanceada': 'Balanceado', 
+            'balanceada': 'Balanceado',
             'conservadora': 'Conservador'
         }
 
@@ -1557,14 +1700,14 @@ YYYY-MM-DD (exemplo: 2024-01-01)
 
         # Implementar timeout para análises que podem travar
         analysis_timeout = 30 if timeframe in ['1m', '5m', '15m', '30m'] and source_input == "ccxt" else 60
-        
+
         def run_analysis():
             return trading_bot.generate_analysis_chart(symbol, strategy, timeframe, model_input, start_date, end_date, source_input)
 
         # Executar análise com timeout
         import threading
         result = {'chart_result': None, 'error': None, 'completed': False}
-        
+
         def analysis_worker():
             try:
                 result['chart_result'] = run_analysis()
@@ -1585,7 +1728,7 @@ YYYY-MM-DD (exemplo: 2024-01-01)
             if user_id in trading_bot.active_tasks:
                 del trading_bot.active_tasks[user_id]
             trading_bot.paused_users.add(user_id)
-            
+
             bot.reply_to(message, f"""⏰ **TIMEOUT - ANÁLISE CANCELADA**
 
 🚨 A análise de {symbol} no timeframe {timeframe} demorou mais que {analysis_timeout}s e foi cancelada.
@@ -1594,13 +1737,13 @@ YYYY-MM-DD (exemplo: 2024-01-01)
 🔧 **Solução:** Use /restart para limpar o bot completamente
 
 🚀 **Alternativas que funcionam:**
-• /analise ccxt agressiva BTC/USDT 4h ovelha
-• /analise yahoo balanceada BTC-USD 1d ovelha2
+• /analise ccxt agressiva BTC/USDT 4h ovelha (mais rápido)
+• /analise yahoo balanceada BTC-USD 1d ovelha2 (via Yahoo)
 • Timeframes ≥ 4h são mais estáveis""", parse_mode='Markdown')
-            
+
             logger.warning(f"Timeout na análise para {user_name}: {symbol} {timeframe}")
             return
-        
+
         # Se chegou aqui, a análise completou
         if result['error']:
             chart_result = {'success': False, 'error': result['error']}
@@ -1615,7 +1758,7 @@ YYYY-MM-DD (exemplo: 2024-01-01)
             # Enviar gráfico
             with open(chart_result['chart_path'], 'rb') as chart_file:
                 bot.send_photo(
-                    message.chat.id, 
+                    message.chat.id,
                     chart_file,
                     caption=chart_result['caption'],
                     parse_mode='HTML'
@@ -1633,7 +1776,7 @@ YYYY-MM-DD (exemplo: 2024-01-01)
         # Limpar tarefa ativa em caso de erro
         if user_id in trading_bot.active_tasks:
             del trading_bot.active_tasks[user_id]
-        
+
         logger.error(f"Erro no comando /analise: {str(e)}")
         bot.reply_to(message, "❌ Erro ao processar análise. Use /pause se o bot travou ou verifique os parâmetros.")
 
@@ -1662,22 +1805,22 @@ def restart_command(message):
 
         # Forçar restart imediato - usar os._exit para garantir que o processo seja encerrado
         logger.info("🔄 Executando restart forçado por comando do usuário...")
-        
+
         try:
             # Limpar todas as tarefas ativas
             trading_bot.active_tasks.clear()
             trading_bot.paused_users.clear()
             trading_bot.active_alerts.clear()
             trading_bot.alert_states.clear()
-            
+
             # Limpar scheduler
             schedule.clear()
-            
+
             # Parar polling se estiver ativo
             bot.stop_polling()
         except:
             pass  # Ignorar erros na limpeza
-        
+
         # Forçar saída imediata do processo
         logger.info("🛑 Forçando saída do processo para restart completo...")
         os._exit(0)  # Saída forçada - o workflow reiniciará automaticamente
@@ -1699,17 +1842,17 @@ def pause_command(message):
             task_type = task_info.get('task_type', 'desconhecida')
             start_time = task_info.get('start_time', datetime.now())
             duration = datetime.now() - start_time
-            
+
             # Verificar se a tarefa está travada há muito tempo
             is_stuck = duration.seconds > 120  # Mais de 2 minutos
-            
+
             # Adicionar usuário à lista de pausados
             trading_bot.paused_users.add(user_id)
-            
+
             # Remover tarefa ativa
             if user_id in trading_bot.active_tasks:
                 del trading_bot.active_tasks[user_id]
-            
+
             if is_stuck:
                 pause_message = f"""⏸️ **TAREFA TRAVADA CANCELADA**
 
@@ -1745,14 +1888,14 @@ def pause_command(message):
 
             bot.reply_to(message, pause_message, parse_mode='Markdown')
             logger.info(f"Tarefa pausada para {user_name}: {task_type} (duração: {duration.seconds}s)")
-            
+
         else:
             # Mesmo sem tarefa ativa, limpar possíveis estados
             trading_bot.paused_users.discard(user_id)
-            
+
             # Verificar se há tarefas ativas de outros usuários que podem estar travando o bot
             total_active_tasks = len(trading_bot.active_tasks)
-            
+
             if total_active_tasks > 0:
                 info_message = f"""⚠️ **BOT PODE ESTAR TRAVADO**
 
@@ -1808,8 +1951,9 @@ def screening_auto_command(message):
 /screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
 
 🔗 *Fontes disponíveis:*
-• ccxt - Binance via CCXT (recomendado para criptos)
+• ccxt - Binance via CCXT (criptomoedas)
 • yahoo - Yahoo Finance
+• twelvedata - 12Data
 
 📊 *Símbolos:* Lista separada por vírgulas entre colchetes
 Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
@@ -1842,8 +1986,8 @@ Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
             timeframe = args[4].lower()
 
             # Validar fonte
-            if source not in ['ccxt', 'yahoo']:
-                bot.reply_to(message, "❌ Fonte inválida. Use: ccxt ou yahoo")
+            if source not in ['ccxt', 'yahoo', 'twelvedata']:
+                bot.reply_to(message, "❌ Fonte inválida. Use: ccxt, yahoo ou twelvedata")
                 return
 
             # Extrair símbolos da lista
@@ -1865,7 +2009,7 @@ Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
             # Validar estratégia
             strategy_map = {
                 'agressiva': 'Agressivo',
-                'balanceada': 'Balanceado', 
+                'balanceada': 'Balanceado',
                 'conservadora': 'Conservador'
             }
 
@@ -1913,6 +2057,7 @@ Exemplo: [BTC/USDT,ETH/USDT,LTC/USDT,ADA/USDT,XRP/USDT]
 • Verifique se os símbolos estão corretos
 • Para CCXT: use formato BTC/USDT, ETH/USDT, etc.
 • Para Yahoo: use PETR4.SA, AAPL, BTC-USD, etc.
+• Para 12Data: use BTCUSDT, EURUSD, etc.
 • Tente um timeframe maior (4h, 1d)
 
 📝 **Exemplo correto:**
@@ -1970,6 +2115,7 @@ def stop_alerts_command(message):
     try:
         user_id = message.from_user.id
         user_name = message.from_user.first_name
+        logger.info(f"Comando /stop_alerts recebido de {user_name}")
 
         if user_id in trading_bot.active_alerts:
             del trading_bot.active_alerts[user_id]
@@ -2058,88 +2204,77 @@ def help_command(message):
 🏠 /start - Iniciar o bot
 
 📊 /analise [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
-   📝 ANÁLISE INDIVIDUAL COM GRÁFICO
-   • Gera gráfico completo do ativo escolhido
-   • Mostra sinais de compra/venda em tempo real
-   • Suporte a múltiplos timeframes e estratégias
+  📝 ANÁLISE INDIVIDUAL COM GRÁFICO
+  • Gera gráfico completo do ativo escolhido
+  • Mostra sinais de compra/venda em tempo real
+  • Suporte a múltiplos timeframes e estratégias
 
-   🔗 Fontes: yahoo (padrão), ccxt
-   🎯 Estratégias: agressiva, balanceada, conservadora
-   🤖 Modelos: ovelha (padrão), ovelha2
-   ⏰ Timeframes: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
-   📅 Datas: YYYY-MM-DD
+  🔗 Fontes: yahoo (padrão), ccxt, twelvedata
+  🎯 Estratégias: agressiva, balanceada, conservadora
+  🤖 Modelos: ovelha (padrão), ovelha2
+  ⏰ Timeframes: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+  📅 Datas: YYYY-MM-DD
 
-   Exemplo básico: /analise yahoo balanceada PETR4.SA 1d
-   Com CCXT e ML: /analise ccxt agressiva BTC/USDT 4h ovelha2
+  Exemplo básico: /analise yahoo balanceada PETR4.SA 1d
+  Com 12Data e ML: /analise twelvedata agressiva BTCUSDT 4h ovelha2
 
 🔍 /screening [estrategia] [lista/ativos]
-   📝 SCREENING PONTUAL DE MÚLTIPLOS ATIVOS
-   • Verifica mudanças de estado em vários ativos
-   • Detecta oportunidades de compra/venda
-   • Análise instantânea de listas ou ativos individuais
+  📝 SCREENING PONTUAL DE MÚLTIPLOS ATIVOS
+  • Verifica mudanças de estado em vários ativos
+  • Detecta oportunidades de compra/venda
+  • Análise instantânea de listas ou ativos individuais
 
-   Com lista: /screening balanceada açõesBR
-   Individual: /screening balanceada BTC-USD ETH-USD PETR4.SA
-   ⚠️ Configuração: Timeframe 1d fixo, 2 anos de dados
+  Com lista: /screening balanceada açõesBR
+  Individual: /screening balanceada BTC-USD ETH-USD PETR4.SA
+  ⚠️ Configuração: Timeframe 1d fixo, 2 anos de dados
 
 🔄 /screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
-   📝 ALERTAS AUTOMÁTICOS DE SCREENING
-   • Monitora até 10 símbolos automaticamente
-   • Envia alertas quando detecta mudanças de estado
-   • Funciona no intervalo de tempo escolhido
-   • Suporte a CCXT (Binance) e Yahoo Finance
+  📝 ALERTAS AUTOMÁTICOS DE SCREENING
+  • Monitora até 10 símbolos automaticamente
+  • Envia alertas quando detecta mudanças de estado
+  • Funciona no intervalo de tempo escolhido
+  • Suporte a CCXT (Binance), Yahoo, 12Data
 
-   Exemplo: /screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT] ovelha2 balanceada 4h
+  Exemplo: /screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT] ovelha2 balanceada 4h
 
-   🔗 Fontes: ccxt, yahoo
-   ⏰ Timeframes: 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d
+🔗 Fontes: ccxt, yahoo, twelvedata
+⏰ Timeframes: 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d
 
 📋 /list_alerts
-   📝 VER ALERTAS ATIVOS
-   • Mostra configuração atual dos alertas
-   • Lista símbolos monitorados
-   • Exibe estratégia, modelo e timeframe configurados
-   • Próximo horário de verificação
+  📝 VER ALERTAS ATIVOS
+  • Mostra configuração atual dos alertas
+  • Lista símbolos monitorados
+  • Exibe estratégia, modelo e timeframe configurados
 
 🛑 /stop_alerts
-   📝 PARAR ALERTAS AUTOMÁTICOS
-   • Interrompe todos os alertas configurados
-   • Para o monitoramento automático
-   • Limpa configurações de alerta
+  📝 PARAR ALERTAS AUTOMÁTICOS
+  • Interrompe todos os alertas configurados
+  • Para o monitoramento automático
 
 ⏸️ /pause
-   📝 PAUSAR TAREFA EM EXECUÇÃO
-   • Interrompe análises que estão demorando muito
-   • Libera o bot para receber novos comandos
-   • Especialmente útil para timeframes menores com CCXT
-   • Use quando o bot não responder por mais de 1 minuto
+  📝 PAUSAR TAREFA EM EXECUÇÃO
+  • Interrompe análises que estão demorando muito
+  • Libera o bot para receber novos comandos
 
 📈 /topos_fundos [lista/ativos]
-   📝 DETECÇÃO DE TOPOS E FUNDOS
-   • Identifica possíveis pontos de reversão
-   • Usa Bollinger Bands para análise
-   • Detecta oportunidades de compra e venda
-
-   Com lista: /topos_fundos criptos
-   Individual: /topos_fundos BTC-USD ETH-USD
-   ⚠️ Configuração: Timeframe 1d fixo, 2 anos de dados
+  📝 DETECÇÃO DE TOPOS E FUNDOS
+  • Identifica possíveis pontos de reversão
+  • Usa Bollinger Bands para análise
 
 📊 /status - Ver status do bot
-
-⏸️ /pause - Pausar tarefa em execução
 
 🔄 /restart - Reiniciar o bot (em caso de problemas)
 
 ❓ /help - Esta mensagem de ajuda
 
 🎯 ESTRATÉGIAS:
-• agressiva - Mais sinais, maior frequência de trading
+• agressiva - Mais sinais, maior frequência
 • balanceada - Equilibrio entre sinais e confiabilidade (recomendada)
 • conservadora - Sinais mais confiáveis, menor frequência
 
 🤖 MODELOS:
-• ovelha - Modelo clássico baseado em indicadores técnicos
-• ovelha2 - Machine Learning com Random Forest (mais avançado)
+• ovelha - Modelo clássico
+• ovelha2 - Machine Learning (mais avançado)
 
 📊 LISTAS PRÉ-DEFINIDAS:
 • açõesBR - Ações brasileiras
@@ -2149,14 +2284,14 @@ def help_command(message):
 • commodities - Commodities
 
 ⏰ TIMEFRAMES POR COMANDO:
-• /analise: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk (personalizável)
-• /screening: 1d fixo, 2 anos de dados históricos
+• /analise: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+• /screening: 1d fixo
 • /screening_auto: 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d
-• /topos_fundos: 1d fixo, 2 anos de dados históricos
+• /topos_fundos: 1d fixo
 
 💡 EXEMPLOS PRÁTICOS:
 • Análise rápida: /analise yahoo balanceada PETR4.SA 1d
-• Análise cripto ML: /analise ccxt agressiva BTC/USDT 4h ovelha2
+• Análise cripto ML: /analise twelvedata agressiva BTCUSDT 4h ovelha2
 • Screening geral: /screening balanceada açõesBR
 • Alerta de criptos: /screening_auto ccxt [BTC/USDT,ETH/USDT] ovelha2 balanceada 4h
 """
@@ -2335,7 +2470,7 @@ def run_bot():
 
     # Teste inicial de conectividade
     if not test_bot_connection():
-        logger.error("❌ Não foi possível conectar ao Telegram. Verificue o token.")
+        logger.error("❌ Não foi possível conectar ao Telegram. Verifique o token.")
         print("❌ Erro de conectividade. Bot não será iniciado.")
         return
 
@@ -2373,7 +2508,7 @@ def run_bot():
 
             # Rodar o bot com configurações otimizadas
             bot.polling(
-                none_stop=True, 
+                none_stop=True,
                 interval=1,           # Verificar mensagens a cada 1 segundo
                 timeout=20,           # Timeout de 20 segundos
                 allowed_updates=None, # Aceitar todos os tipos de update
@@ -2383,18 +2518,18 @@ def run_bot():
         except telebot.apihelper.ApiException as e:
             logger.error(f"Erro da API do Telegram: {str(e)}")
             print(f"❌ Erro da API Telegram: {str(e)}")
-            
+
             if "Unauthorized" in str(e) or "token" in str(e).lower():
                 logger.error("❌ Token inválido ou expirado!")
                 print("❌ ERRO CRÍTICO: Token do bot inválido!")
                 break
-                
+
             retry_count += 1
             if retry_count < max_retries:
                 wait_time = 10 * retry_count
                 logger.info(f"🔄 Tentando novamente em {wait_time} segundos...")
                 time.sleep(wait_time)
-            
+
         except Exception as e:
             retry_count += 1
             logger.error(f"Erro crítico no bot (tentativa {retry_count}/{max_retries}): {str(e)}")
