@@ -273,7 +273,7 @@ def calculate_ovelha_v2_signals(
         df_work['TR']  = df_work[['tr1', 'tr2', 'tr3']].max(axis=1)
         df_work['ATR'] = df_work['TR'].rolling(window=14).mean()
 
-        # 🔹NOVAS FEATURES
+        # 🔹 NOVAS FEATURES
         # ATR_7 (volatilidade recente, mais sensível)
         df_work['ATR_7'] = df_work['TR'].rolling(window=7).mean()
 
@@ -425,30 +425,30 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
     profitable_trades = len(returns_data[returns_data['return_pct'] > 0])
     losing_trades = total_trades - profitable_trades
     win_rate = (profitable_trades / total_trades * 100) if total_trades > 0 else 0
-
+    
     # Return metrics
     avg_return = returns_data['return_pct'].mean()
     total_return = returns_data['return_pct'].sum()
     avg_winning_trade = returns_data[returns_data['return_pct'] > 0]['return_pct'].mean() if profitable_trades > 0 else 0
     avg_losing_trade = returns_data[returns_data['return_pct'] < 0]['return_pct'].mean() if losing_trades > 0 else 0
-
+    
     # Risk metrics
     std_returns = returns_data['return_pct'].std()
     sharpe_ratio = (avg_return / std_returns) if std_returns != 0 else 0
     max_win = returns_data['return_pct'].max()
     max_loss = returns_data['return_pct'].min()
-
+    
     # Profit Factor
     gross_profit = returns_data[returns_data['return_pct'] > 0]['return_pct'].sum()
     gross_loss = abs(returns_data[returns_data['return_pct'] < 0]['return_pct'].sum())
     profit_factor = (gross_profit / gross_loss) if gross_loss != 0 else float('inf')
-
+    
     # Consecutive wins/losses
     consecutive_wins = 0
     consecutive_losses = 0
     max_consecutive_wins = 0
     max_consecutive_losses = 0
-
+    
     for return_pct in returns_array:
         if return_pct > 0:
             consecutive_wins += 1
@@ -464,7 +464,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
 
     # === SEÇÃO 1: MÉTRICAS PRINCIPAIS ===
     st.markdown("### 📊 Métricas Principais")
-
+    
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
         st.metric("Total de Operações", total_trades)
@@ -480,7 +480,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
 
     # === SEÇÃO 2: MÉTRICAS AVANÇADAS ===
     st.markdown("### 🎯 Métricas Avançadas")
-
+    
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1:
         st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
@@ -497,9 +497,9 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
 
     # === SEÇÃO 3: TOP 10 MELHORES E PIORES TRADES ===
     st.markdown("### 🏆 Top 10 Melhores e Piores Trades")
-
+    
     col1, col2 = st.columns(2)
-
+    
     with col1:
         st.markdown("#### 🟢 Top 10 Melhores Trades")
         best_trades = returns_data.nlargest(10, 'return_pct')[['entry_time', 'exit_time', 'signal', 'entry_price', 'exit_price', 'return_pct']].copy()
@@ -507,13 +507,13 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         best_trades['Saída'] = best_trades['exit_time'].dt.strftime('%d/%m/%Y')
         best_trades['Sinal'] = best_trades['signal']
         best_trades['Retorno (%)'] = best_trades['return_pct'].round(2)
-
+        
         st.dataframe(
             best_trades[['Entrada', 'Saída', 'Sinal', 'Retorno (%)']],
             use_container_width=True,
             hide_index=True
         )
-
+    
     with col2:
         st.markdown("#### 🔴 Top 10 Piores Trades")
         worst_trades = returns_data.nsmallest(10, 'return_pct')[['entry_time', 'exit_time', 'signal', 'entry_price', 'exit_price', 'return_pct']].copy()
@@ -521,7 +521,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         worst_trades['Saída'] = worst_trades['exit_time'].dt.strftime('%d/%m/%Y')
         worst_trades['Sinal'] = worst_trades['signal']
         worst_trades['Retorno (%)'] = worst_trades['return_pct'].round(2)
-
+        
         st.dataframe(
             worst_trades[['Entrada', 'Saída', 'Sinal', 'Retorno (%)']],
             use_container_width=True,
@@ -530,17 +530,17 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
 
     # === SEÇÃO 4: GRÁFICO DE PATRIMÔNIO ===
     st.markdown("### 💰 Curva de Patrimônio com Drawdowns")
-
+    
     # Calculate equity curve
-    equity_curve = calculate_equity_curve(returns_data, initial_capital=10000) # Assuming 10000 initial capital for illustration
-
+    equity_curve = calculate_equity_curve(returns_data)
+    
     # Create plotly chart for equity curve with drawdowns
     fig_equity = create_equity_chart(equity_curve, symbol_label, criteria_name)
     st.plotly_chart(fig_equity, use_container_width=True)
-
+    
     # Calculate and display drawdown metrics
     max_drawdown, max_drawdown_duration = calculate_drawdown_metrics(equity_curve)
-
+    
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Máximo Drawdown", f"🔴 {max_drawdown:.2f}%")
@@ -552,7 +552,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
 
     # === SEÇÃO 5: ÚLTIMOS 20 TRADES ===
     st.markdown("### 📋 Últimos 20 Trades")
-
+    
     # Get last 20 returns
     last_returns = returns_data.tail(20).copy()
     last_returns = last_returns.sort_values('exit_time', ascending=False)
@@ -565,18 +565,18 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
     display_df['Preço Entrada'] = display_df['entry_price'].round(2)
     display_df['Preço Saída'] = display_df['exit_price'].round(2)
     display_df['Retorno (%)'] = display_df['return_pct'].round(2)
-
+    
     # Color coding function
     def color_returns(val):
         if isinstance(val, (int, float)):
             color = 'color: green' if val > 0 else 'color: red' if val < 0 else 'color: gray'
             return color
         return ''
-
+    
     styled_df = display_df[['Entrada', 'Saída', 'Sinal', 'Preço Entrada', 'Preço Saída', 'Retorno (%)']].style.applymap(
         color_returns, subset=['Retorno (%)']
     )
-
+    
     st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
 def calculate_equity_curve(returns_data, initial_capital=10000):
@@ -584,7 +584,7 @@ def calculate_equity_curve(returns_data, initial_capital=10000):
     equity_data = []
     current_equity = initial_capital
     peak_equity = initial_capital
-
+    
     # Add initial point
     start_date = returns_data['entry_time'].min() if not returns_data.empty else pd.Timestamp.now()
     equity_data.append({
@@ -594,18 +594,18 @@ def calculate_equity_curve(returns_data, initial_capital=10000):
         'drawdown': 0,
         'return_pct': 0
     })
-
+    
     for _, trade in returns_data.iterrows():
         # Update equity based on trade return
         trade_return = trade['return_pct'] / 100
         current_equity = current_equity * (1 + trade_return)
-
+        
         # Update peak equity
         peak_equity = max(peak_equity, current_equity)
-
+        
         # Calculate drawdown
         drawdown = ((current_equity - peak_equity) / peak_equity) * 100
-
+        
         equity_data.append({
             'date': trade['exit_time'],
             'equity': current_equity,
@@ -613,7 +613,7 @@ def calculate_equity_curve(returns_data, initial_capital=10000):
             'drawdown': drawdown,
             'return_pct': trade['return_pct']
         })
-
+    
     return pd.DataFrame(equity_data)
 
 def create_equity_chart(equity_data, symbol_label, criteria_name):
@@ -628,7 +628,7 @@ def create_equity_chart(equity_data, symbol_label, criteria_name):
             "Drawdown (%)"
         )
     )
-
+    
     # Equity curve
     fig.add_trace(
         go.Scatter(
@@ -641,7 +641,7 @@ def create_equity_chart(equity_data, symbol_label, criteria_name):
         ),
         row=1, col=1
     )
-
+    
     # Peak equity (underwater chart reference)
     fig.add_trace(
         go.Scatter(
@@ -654,7 +654,7 @@ def create_equity_chart(equity_data, symbol_label, criteria_name):
         ),
         row=1, col=1
     )
-
+    
     # Drawdown chart
     fig.add_trace(
         go.Scatter(
@@ -669,10 +669,10 @@ def create_equity_chart(equity_data, symbol_label, criteria_name):
         ),
         row=2, col=1
     )
-
+    
     # Add zero line for drawdown
     fig.add_hline(y=0, line_dash="dash", line_color="gray", row=2, col=1)
-
+    
     # Update layout
     fig.update_layout(
         title=dict(
@@ -692,23 +692,23 @@ def create_equity_chart(equity_data, symbol_label, criteria_name):
             x=1
         )
     )
-
+    
     # Update y-axes
     fig.update_yaxes(title_text="Patrimônio (R$)", row=1, col=1)
     fig.update_yaxes(title_text="Drawdown (%)", row=2, col=1)
     fig.update_xaxes(title_text="Data", row=2, col=1)
-
+    
     return fig
 
 def calculate_drawdown_metrics(equity_data):
     """Calculate drawdown metrics"""
     max_drawdown = equity_data['drawdown'].min()
-
+    
     # Calculate duration of maximum drawdown
     max_dd_start = None
     max_dd_duration = 0
     current_dd_duration = 0
-
+    
     for i, row in equity_data.iterrows():
         if row['drawdown'] < -0.01:  # In drawdown (more than 0.01%)
             if max_dd_start is None:
@@ -719,26 +719,26 @@ def calculate_drawdown_metrics(equity_data):
                 max_dd_duration = max(max_dd_duration, current_dd_duration)
                 max_dd_start = None
                 current_dd_duration = 0
-
+    
     # Handle case where drawdown continues to the end
     if max_dd_start is not None:
         max_dd_duration = max(max_dd_duration, current_dd_duration)
-
+    
     return max_drawdown, max_dd_duration
 
 def display_investment_simulation(returns_data, price_data, symbol_label, strategy_name):
     """Display investment simulation section"""
     st.markdown("### 💰 Simulação de Investimento")
     st.markdown(f"**Estratégia:** {strategy_name}")
-
+    
     if returns_data.empty:
         st.warning("Não há dados suficientes para simulação.")
         return
-
+    
     # Get date range
     start_date = price_data['time'].min()
     end_date = price_data['time'].max()
-
+    
     # User input for initial investment
     col1, col2 = st.columns(2)
     with col1:
@@ -750,59 +750,59 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             step=1000.0,
             format="%.2f"
         )
-
+    
     with col2:
         # Show period info
         period_days = (end_date - start_date).days
         st.metric("Período da Simulação", f"{period_days} dias")
-
+    
     # Calculate simulation results
     final_capital = initial_investment
     total_return_pct = returns_data['return_pct'].sum()
     final_capital = initial_investment * (1 + total_return_pct / 100)
-
+    
     # Alternative calculation: compound returns
     compound_multiplier = 1
     for return_pct in returns_data['return_pct']:
         compound_multiplier *= (1 + return_pct / 100)
     final_capital_compound = initial_investment * compound_multiplier
-
+    
     # Buy and hold comparison
     initial_price = price_data['close'].iloc[0]
     final_price = price_data['close'].iloc[-1]
     buy_hold_return = ((final_price - initial_price) / initial_price) * 100
     buy_hold_final = initial_investment * (1 + buy_hold_return / 100)
-
+    
     # Performance metrics
     strategy_return = ((final_capital_compound - initial_investment) / initial_investment) * 100
     outperformance = strategy_return - buy_hold_return
-
+    
     # Display results
     st.markdown("#### 📊 Resultados da Simulação")
-
+    
     col1, col2, col3, col4 = st.columns(4)
-
+    
     with col1:
         st.metric(
             "Capital Final (Estratégia)",
             f"R$ {final_capital_compound:,.2f}",
             f"{strategy_return:+.2f}%"
         )
-
+    
     with col2:
         st.metric(
             "Buy & Hold",
             f"R$ {buy_hold_final:,.2f}",
             f"{buy_hold_return:+.2f}%"
         )
-
+    
     with col3:
         outperf_color = "🟢" if outperformance > 0 else "🔴"
         st.metric(
             "Outperformance",
             f"{outperf_color} {outperformance:+.2f}%"
         )
-
+    
     with col4:
         profit_loss = final_capital_compound - initial_investment
         profit_color = "🟢" if profit_loss > 0 else "🔴"
@@ -810,42 +810,42 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             "Lucro/Prejuízo",
             f"{profit_color} R$ {profit_loss:+,.2f}"
         )
-
+    
     # Additional metrics
     st.markdown("#### 📈 Métricas de Performance")
-
+    
     col1, col2, col3, col4 = st.columns(4)
-
+    
     total_trades = len(returns_data)
     winning_trades = len(returns_data[returns_data['return_pct'] > 0])
-
+    
     # Calculate annualized return
     years = period_days / 365.25
     annualized_return = ((final_capital_compound / initial_investment) ** (1/years) - 1) * 100 if years > 0 else 0
-
+    
     # Calculate maximum consecutive losses value
     equity_curve = calculate_equity_curve(returns_data, initial_investment)
     max_dd_value = equity_curve['drawdown'].min()
     max_dd_monetary = initial_investment * (abs(max_dd_value) / 100)
-
+    
     with col1:
         st.metric("Retorno Anualizado", f"{annualized_return:.2f}%")
-
+    
     with col2:
         st.metric("Total de Operações", total_trades)
-
+    
     with col3:
         win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
         st.metric("Taxa de Acerto", f"{win_rate:.1f}%")
-
+    
     with col4:
         st.metric("Máx. Perda (R$)", f"R$ {max_dd_monetary:,.2f}")
-
+    
     # Summary box
     if outperformance > 0:
         st.success(f"""
         🎉 **Excelente Performance!** 
-
+        
         A estratégia {strategy_name} superou o Buy & Hold em **{outperformance:.2f}%**, 
         transformando R$ {initial_investment:,.2f} em R$ {final_capital_compound:,.2f} 
         no período de {period_days} dias.
@@ -853,7 +853,7 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
     else:
         st.warning(f"""
         ⚠️ **Performance Inferior ao Buy & Hold**
-
+        
         A estratégia {strategy_name} teve performance {abs(outperformance):.2f}% inferior 
         ao Buy & Hold no período analisado. Considere ajustar os parâmetros ou 
         avaliar outros critérios de saída.
@@ -1327,7 +1327,7 @@ with tab2:
         st.markdown("### 📌 Comandos Disponíveis")
         st.write("**📋 Lista Completa de Comandos**")
         st.write("• **/start** - Iniciar o bot e ver mensagem de boas-vindas")
-        st.write("• **/analise** - Análise individual com gráfico")
+        st.write("• **/analise** - Análise individual com gráfico personalizado")
         st.write("• **/screening** - Screening de múltiplos ativos")
         st.write("• **/topos_fundos** - Detectar topos e fundos")
         st.write("• **/status** - Ver status do bot")
@@ -1659,20 +1659,11 @@ with tab3:
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Initialize session state
-    if 'analysis_data' not in st.session_state:
-        st.session_state.analysis_data = None
-    if 'show_returns_analysis' not in st.session_state:
-        st.session_state.show_returns_analysis = False
-
     # Analysis button
     analyze_button_individual = st.button("🚀 INICIAR ANÁLISE INDIVIDUAL", type="primary", use_container_width=True)
 
     # Analysis logic (same as before but only for individual analysis)
     if analyze_button_individual:
-        if not symbol:
-            st.error("Por favor entre com um ticker válido.")
-            st.stop()</old_str>
         if not symbol:
             st.error("Por favor entre com um ticker válido.")
             st.stop()
@@ -2213,27 +2204,12 @@ with tab3:
             progress_bar.progress(100)
             status_text.text("Análise Completa!")
 
-            # Store analysis results in session state
-            st.session_state.analysis_data = {
-                'df': df,
-                'symbol_label': symbol_label,
-                'data_source': data_source,
-                'model_type': model_type,
-                'strategy_type': strategy_type,
-                'trading_direction': trading_direction,
-                'returns_df': returns_df,
-                'custom_returns_df': custom_returns_df,
-                'exit_criteria': exit_criteria,
-                'optimization_results': optimization_results if optimize_params else None,
-                'optimize_params': optimize_params
-            }
-
             # Clear progress indicators
             progress_bar.empty()
             status_text.empty()
 
             # Display results
-            if optimize_params and optimization_results:</old_str>
+            if optimize_params and optimization_results:
                 st.success(f"✅ Análise e otimização completa para {symbol_label} ({data_source})")
 
                 # Show optimization results
@@ -2340,268 +2316,7 @@ with tab3:
 
             # Create the interactive chart
             modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
-
-            # Preparar informações de threshold e buffer para o rodapé
-            rodape_info = ""
-            if model_type == "OVELHA V2 (Machine Learning)":
-                if 'thr_used' in df.columns and 'buffer_pct' in df.columns:
-                    # Verificar se as colunas têm valores válidos
-                    if pd.notna(df['thr_used'].iloc[-1]) and pd.notna(df['buffer_pct'].iloc[-1]):
-                        thr_atual = df['thr_used'].iloc[-1] * 100  # converter para percentual
-                        buf_atual = df['buffer_pct'].iloc[-1] * 100  # converter para percentual
-                        rodape_info = f" | Thr: {thr_atual:.3f}% | Buf: {buf_atual:.3f}%"
-                    else:
-                        rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
-                else:
-                    rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
-
-            titulo_grafico = f"OVECCHIA TRADING - {symbol_label} ({data_source}) - {modelo_nome} - Timeframe: {interval.upper()}{rodape_info}"
-
-            fig = make_subplots(
-                rows=2, cols=1,
-                shared_xaxes=True,
-                vertical_spacing=0.03,
-                row_heights=[0.75, 0.25],
-                subplot_titles=("Gráfico do Preço com Sinais", "Indicador de Sinais")
-            )
-
-            # Add price line with color coding
-            for i in range(len(df) - 1):
-                fig.add_trace(go.Scatter(
-                    x=df['time'][i:i+2],
-                    y=df['close'][i:i+2],
-                    mode="lines",
-                    line=dict(color=df['Color'][i], width=2),
-                    showlegend=False,
-                    hoverinfo="skip"
-                ), row=1, col=1)
-
-            # Add invisible trace for hover info
-            fig.add_trace(go.Scatter(
-                x=df['time'],
-                y=df['close'],
-                mode='lines',
-                line=dict(color='rgba(0,0,0,0)'),name='Price',
-                hovertemplate="<b>Price:</b> %{y:.2f}<br><b>Time:</b> %{x}<extra></extra>",
-                showlegend=False
-            ), row=1, col=1)
-
-            # Add all stop loss traces
-            stop_colors = {
-                "Stop_Justo": "orange",
-                "Stop_Balanceado": "gray",
-                "Stop_Largo": "green"
-            }
-
-            for stop_type, color in stop_colors.items():
-                if stop_type in df.columns: # Check if column exists
-                    fig.add_trace(go.Scatter(
-                        x=df['time'], y=df[stop_type],
-                        mode="lines", name=stop_type.replace("_", " "),
-                        line=dict(color=color, width=2, dash="dot"),
-                        hovertemplate=f"<b>{stop_type.replace('_', ' ')}:</b> %{{y:.2f}}<extra></extra>"
-                    ), row=1, col=1)
-
-            # Add signal indicator
-            fig.add_trace(go.Scatter(
-                x=df['time'],
-                y=df['Indicator'],
-                mode="lines+markers",
-                name="Signal Indicator",
-                line=dict(color="purple", width=2),
-                marker=dict(size=4),
-                showlegend=False
-            ), row=2, col=1)
-
-            # Add legend items
-            fig.add_trace(go.Scatter(
-                x=[None], y=[None], mode='lines',
-                line=dict(color='blue', width=2),
-                name='Sinal de Compra'
-            ), row=1, col=1)
-
-            fig.add_trace(go.Scatter(
-                x=[None], y=[None], mode='lines',
-                line=dict(color='red', width=2),
-                name='Sinal de Venda'
-            ), row=1, col=1)
-
-            fig.add_trace(go.Scatter(
-                x=[None], y=[None], mode='lines',
-                line=dict(color='black', width=2),
-                name='Ficar de Fora'
-            ), row=1, col=1)
-
-            # Add reference line for signal indicator
-            fig.add_shape(
-                type="line",
-                x0=df['time'].iloc[0],
-                x1=df['time'].iloc[-1],
-                y0=0.5,
-                y1=0.5,
-                line=dict(color="black", width=1, dash="dash"),
-                xref="x", yref="y2"
-            )
-
-            # Update layout
-            fig.update_yaxes(range=[-0.1, 1.1], tickvals=[0, 0.5, 1], 
-                            ticktext=['Venda', 'Ficar de Fora', 'Compra'], row=2, col=1)
-            fig.update_xaxes(showgrid=False, row=2, col=1)
-
-            # Update layout
-            fig.update_layout(
-                title=dict(text=titulo_grafico, x=0.5, font=dict(size=18)),
-                template="plotly_white",
-                hovermode="x unified",
-                height=700
-            )
-
-            # Display the chart
-            st.plotly_chart(fig, use_container_width=True)
-
-            # Botão para análise de retornos (opcional)
-            st.markdown("---")
-
-            # Check if user wants to run returns analysis
-            if st.button("📈 GERAR ANÁLISE AVANÇADA DE RETORNOS", 
-                        type="secondary", 
-                        use_container_width=True,
-                        help="Gera análise detalhada com métricas avançadas, simulação de investimento e gráfico de patrimônio"):
-                st.session_state.show_returns_analysis = True
-
-        except Exception as e:
-            st.error(f"An error occurred during analysis: {str(e)}")
-            st.write("Please check your inputs and try again.")
-
-    # Display analysis results if available
-    if st.session_state.analysis_data is not None:
-        data = st.session_state.analysis_data
-        df = data['df']
-        symbol_label = data['symbol_label']
-        data_source = data['data_source']
-        model_type = data['model_type']
-        strategy_type = data['strategy_type']
-        trading_direction = data['trading_direction']
-        returns_df = data['returns_df']
-        custom_returns_df = data['custom_returns_df']
-        exit_criteria = data['exit_criteria']
-        optimization_results = data['optimization_results']
-        optimize_params = data['optimize_params']
-
-        # Only show the results if we just ran analysis or if returns analysis is requested
-        if not st.session_state.show_returns_analysis:
-            # Display basic results (charts, current status, etc.)
             
-            # Display optimization results if available
-            if optimize_params and optimization_results:
-                st.success(f"✅ Análise e otimização completa para {symbol_label} ({data_source})")
-
-                # Show optimization results
-                st.subheader("🎯 Resultados da Otimização")
-
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Melhor Retorno Total", f"{optimization_results['best_total_return']:.2f}%")
-                with col2:
-                    best_params = optimization_results['best_params']
-                    if exit_criteria == "Tempo":
-                        st.metric("Melhor Parâmetro", f"{best_params} candles")
-                    elif exit_criteria == "Stop Loss":
-                        st.metric("Melhor Stop", best_params)
-                    elif exit_criteria == "Alvo Fixo":
-                        st.metric("Melhor Combinação", f"Stop {best_params['stop']}% / Alvo {best_params['target']}%")
-                    elif exit_criteria == "Média Móvel":
-                        st.metric("Melhor Período MM", f"MM{best_params}")
-                with col3:
-                    st.metric("Operações", len(custom_returns_df))
-
-                # Show comparison table
-                st.subheader("📊 Comparação de Parâmetros")
-                comparison_df = pd.DataFrame(optimization_results['all_results'])
-                comparison_df = comparison_df.sort_values('total_return', ascending=False)
-
-                # Format columns
-                comparison_df['total_return'] = comparison_df['total_return'].round(2)
-                comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
-                comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
-
-                # Rename columns for better display
-                comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
-
-                # Color code the best result
-                def highlight_best(s):
-                    if s.name == 'Retorno Total (%)':
-                        is_max = s == s.max()
-                        return ['background-color: lightgreen' if v else '' for v in is_max]
-                    return ['' for _ in s]
-
-                styled_df = comparison_df.style.apply(highlight_best, axis=0)
-                st.dataframe(styled_df, use_container_width=True)
-
-                # Show summary statistics
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Melhor Retorno Total", f"{comparison_df['Retorno Total (%)'].max():.2f}%")
-                with col2:
-                    st.metric("Pior Retorno Total", f"{comparison_df['Retorno Total (%)'].min():.2f}%")
-                with col3:
-                    st.metric("Diferença", f"{comparison_df['Retorno Total (%)'].max() - comparison_df['Retorno Total (%)'].min():.2f}%")
-            else:
-                st.success(f"✅ Análise completa para {symbol_label} ({data_source})")
-
-            # Current status display with improved layout
-            modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
-
-            st.markdown(f"### 📊 Status Atual do Mercado - Modelo: {modelo_nome}")
-
-            col1, col2, col3, col4 = st.columns(4)
-
-            current_price = df['close'].iloc[-1]
-            current_signal = df['Estado'].iloc[-1]
-            current_rsi = df['RSI_14'].iloc[-1]
-            current_rsl = df['RSL_20'].iloc[-1]
-
-            with col1:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h4 style="margin: 0; color: #1f77b4;">💰 Preço Atual</h4>
-                    <h2 style="margin: 0; color: #333;">{current_price:.2f}</h2>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col2:
-                signal_class = "status-buy" if current_signal == "Buy" else "status-sell" if current_signal == "Sell" else "status-out"
-                signal_icon = "🔵" if current_signal == "Buy" else "🔴" if current_signal == "Sell" else "⚫"
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h4 style="margin: 0; color: #1f77b4;">🎯 Sinal Atual</h4>
-                    <div class="{signal_class}">{signal_icon} {current_signal}</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col3:
-                rsi_color = "#4CAF50" if current_rsi > 50 else "#f44336"
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h4 style="margin: 0; color: #1f77b4;">📈 RSI (14)</h4>
-                    <h2 style="margin: 0; color: {rsi_color};">{current_rsi:.2f}</h2>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with col4:
-                rsl_color = "#4CAF50" if current_rsl > 1 else "#f44336"
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h4 style="margin: 0; color: #1f77b4;">📊 RSL (20)</h4>
-                    <h2 style="margin: 0; color: {rsl_color};">{current_rsl:.3f}</h2>
-                </div>
-                """, unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            # Create the interactive chart
-            modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
-
             # Preparar informações de threshold e buffer para o rodapé
             rodape_info = ""
             if model_type == "OVELHA V2 (Machine Learning)":
@@ -2615,7 +2330,7 @@ with tab3:
                         rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
                 else:
                     rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
-
+            
             titulo_grafico = f"OVECCHIA TRADING - {symbol_label} ({data_source}) - {modelo_nome} - Timeframe: {interval.upper()}{rodape_info}"
 
             fig = make_subplots(
@@ -2722,122 +2437,114 @@ with tab3:
 
             # Botão para análise de retornos (opcional)
             st.markdown("---")
-
+            
             # Check if user wants to run returns analysis
-            if st.button("📈 GERAR ANÁLISE AVANÇADA DE RETORNOS", 
-                        type="secondary", 
-                        use_container_width=True,
-                        help="Gera análise detalhada com métricas avançadas, simulação de investimento e gráfico de patrimônio"):
-                st.session_state.show_returns_analysis = True
-                st.rerun()
+            run_returns_analysis = st.button("📈 GERAR ANÁLISE AVANÇADA DE RETORNOS", 
+                                            type="secondary", 
+                                            use_container_width=True,
+                                            help="Gera análise detalhada com métricas avançadas, simulação de investimento e gráfico de patrimônio")
 
-        if st.session_state.show_returns_analysis:</old_str>
-                # Returns Analysis Section
-            st.markdown("## 📈 Análise Avançada de Retornos")
-            st.markdown("Análise completa com métricas avançadas, simulação de investimento e curva de patrimônio")
+            if run_returns_analysis:
+                with st.spinner("Gerando análise avançada de retornos..."):
+                    # Returns Analysis Section
+                    st.markdown("## 📈 Análise Avançada de Retornos")
+                    st.markdown("Análise completa com métricas avançadas, simulação de investimento e curva de patrimônio")
 
-            # Create tabs for different return calculations
-            direction_label = trading_direction.replace("Ambos (Compra e Venda)", "Ambos").replace("Apenas ", "")
+                    # Create tabs for different return calculations
+                    direction_label = trading_direction.replace("Ambos (Compra e Venda)", "Ambos").replace("Apenas ", "")
 
-            if optimize_params and optimization_results:
-                tab1, tab2, tab3, tab4 = st.tabs([
-                    f"📊 Mudança de Estado - {direction_label}", 
-                    f"🎯 {exit_criteria} (Otimizado) - {direction_label}", 
-                    "📋 Comparação Detalhada",
-                    "💰 Simulação de Investimento"
-                ])
-            else:
-                tab1, tab2, tab3 = st.tabs([
-                    f"📊 Mudança de Estado - {direction_label}", 
-                    f"🎯 {exit_criteria} - {direction_label}",
-                    "💰 Simulação de Investimento"
-                ])
-
-            with tab1:
-                st.write(f"**Retornos baseados na mudança natural do estado dos sinais - {trading_direction}**")
-                if not returns_df.empty:
-                    display_advanced_returns_section(returns_df, "Mudança de Estado", df, symbol_label)
-                else:
-                    st.info(f"Nenhuma operação completa encontrada no período analisado para a direção: {trading_direction}.")
-
-            with tab2:
-                if optimize_params and optimization_results:
-                    st.write(f"**Retornos otimizados para: {exit_criteria} - {trading_direction}**")
-                    best_params = optimization_results['best_params']
-                    if best_params:
-                        if exit_criteria == "Tempo":
-                            st.success(f"🏆 Melhor configuração: **{best_params} candles**")
-                        elif exit_criteria == "Stop Loss":
-                            st.success(f"🏆 Melhor configuração: **{best_params}**")
-                        elif exit_criteria == "Alvo Fixo":
-                            st.success(f"🏆 Melhor configuração: **Stop {best_params['stop']}% / Alvo {best_params['target']}%**")
-                        elif exit_criteria == "Média Móvel":
-                            st.success(f"🏆 Melhor configuração: **MM{best_params}**")
-                else:
-                    st.write(f"**Retornos baseados no critério: {exit_criteria} - {trading_direction}**")
-
-                if not custom_returns_df.empty:
-                    display_advanced_returns_section(custom_returns_df, exit_criteria, df, symbol_label)
-                else:
-                    st.info(f"Nenhuma operação completa encontrada com este critério no período analisado para a direção: {trading_direction}.")
-
-            if optimize_params and optimization_results:
-                with tab3:
-                    st.write("**Comparação detalhada de todos os parâmetros testados**")
-
-                    # Create a more detailed comparison
-                    all_results = optimization_results['all_results']
-                    if all_results:
-                        comparison_df = pd.DataFrame(all_results)
-                        comparison_df = comparison_df.sort_values('total_return', ascending=False)
-
-                        # Format columns
-                        comparison_df['total_return'] = comparison_df['total_return'].round(2)
-                        comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
-                        comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
-
-                        # Rename columns for better display
-                        comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
-
-                        # Color code the best result
-                        def highlight_best(s):
-                            if s.name == 'Retorno Total (%)':
-                                is_max = s == s.max()
-                                return ['background-color: lightgreen' if v else '' for v in is_max]
-                            return ['' for _ in s]
-
-                        styled_df = comparison_df.style.apply(highlight_best, axis=0)
-                        st.dataframe(styled_df, use_container_width=True)
-
-                        # Show summary statistics
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Melhor Retorno Total", f"{comparison_df['Retorno Total (%)'].max():.2f}%")
-                        with col2:
-                            st.metric("Pior Retorno Total", f"{comparison_df['Retorno Total (%)'].min():.2f}%")
-                        with col3:
-                            st.metric("Diferença", f"{comparison_df['Retorno Total (%)'].max() - comparison_df['Retorno Total (%)'].min():.2f}%")
+                    if optimize_params and optimization_results:
+                        tab1, tab2, tab3, tab4 = st.tabs([
+                            f"📊 Mudança de Estado - {direction_label}", 
+                            f"🎯 {exit_criteria} (Otimizado) - {direction_label}", 
+                            "📋 Comparação Detalhada",
+                            "💰 Simulação de Investimento"
+                        ])
                     else:
-                        st.info("Nenhum resultado de otimização disponível.")
+                        tab1, tab2, tab3 = st.tabs([
+                            f"📊 Mudança de Estado - {direction_label}", 
+                            f"🎯 {exit_criteria} - {direction_label}",
+                            "💰 Simulação de Investimento"
+                        ])
 
-                with tab4:
-                    # Investment simulation for optimized strategy
-                    if not custom_returns_df.empty:
-                        display_investment_simulation(custom_returns_df, df, symbol_label, f"{exit_criteria} (Otimizado)")
-                    else:
-                        st.info("Não há dados suficientes para simulação de investimento.")
-            else:
-                with tab3:
-                    # Investment simulation for basic strategy
-                    if not returns_df.empty:
-                        display_investment_simulation(returns_df, df, symbol_label, "Mudança de Estado")
-                    else:
-                        st.info("Não há dados suficientes para simulação de investimento.")
+                    with tab1:
+                        st.write(f"**Retornos baseados na mudança natural do estado dos sinais - {trading_direction}**")
+                        if not returns_df.empty:
+                            display_advanced_returns_section(returns_df, "Mudança de Estado", df, symbol_label)
+                        else:
+                            st.info(f"Nenhuma operação completa encontrada no período analisado para a direção: {trading_direction}.")
 
-            # Button to hide returns analysis
-            if st.button("🔙 VOLTAR PARA ANÁLISE PRINCIPAL", type="secondary", use_container_width=True):
-                st.session_state.show_returns_analysis = False
-                st.rerun()</old_str>
+                    with tab2:
+                        if optimize_params and optimization_results:
+                            st.write(f"**Retornos otimizados para: {exit_criteria} - {trading_direction}**")
+                            if best_params:
+                                if exit_criteria == "Tempo":
+                                    st.success(f"🏆 Melhor configuração: **{best_params} candles**")
+                                elif exit_criteria == "Stop Loss":
+                                    st.success(f"🏆 Melhor configuração: **{best_params}**")
+                                elif exit_criteria == "Alvo Fixo":
+                                    st.success(f"🏆 Melhor configuração: **Stop {best_params['stop']}% / Alvo {best_params['target']}%**")
+                                elif exit_criteria == "Média Móvel":
+                                    st.success(f"🏆 Melhor configuração: **MM{best_params}**")
+                        else:
+                            st.write(f"**Retornos baseados no critério: {exit_criteria} - {trading_direction}**")
+
+                        if not custom_returns_df.empty:
+                            display_advanced_returns_section(custom_returns_df, exit_criteria, df, symbol_label)
+                        else:
+                            st.info(f"Nenhuma operação completa encontrada com este critério no período analisado para a direção: {trading_direction}.")
+
+                    if optimize_params and optimization_results:
+                        with tab3:
+                            st.write("**Comparação detalhada de todos os parâmetros testados**")
+
+                            # Create a more detailed comparison
+                            if all_results:
+                                comparison_df = pd.DataFrame(all_results)
+                                comparison_df = comparison_df.sort_values('total_return', ascending=False)
+
+                                # Format columns
+                                comparison_df['total_return'] = comparison_df['total_return'].round(2)
+                                comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
+                                comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
+
+                                # Rename columns for better display
+                                comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
+
+                                # Color code the best result
+                                def highlight_best(s):
+                                    if s.name == 'Retorno Total (%)':
+                                        is_max = s == s.max()
+                                        return ['background-color: lightgreen' if v else '' for v in is_max]
+                                    return ['' for _ in s]
+
+                                styled_df = comparison_df.style.apply(highlight_best, axis=0)
+                                st.dataframe(styled_df, use_container_width=True)
+
+                                # Show summary statistics
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    st.metric("Melhor Retorno Total", f"{comparison_df['Retorno Total (%)'].max():.2f}%")
+                                with col2:
+                                    st.metric("Pior Retorno Total", f"{comparison_df['Retorno Total (%)'].min():.2f}%")
+                                with col3:
+                                    st.metric("Diferença", f"{comparison_df['Retorno Total (%)'].max() - comparison_df['Retorno Total (%)'].min():.2f}%")
+                            else:
+                                st.info("Nenhum resultado de otimização disponível.")
+
+                        with tab4:
+                            # Investment simulation for optimized strategy
+                            if not custom_returns_df.empty:
+                                display_investment_simulation(custom_returns_df, df, symbol_label, f"{exit_criteria} (Otimizado)")
+                            else:
+                                st.info("Não há dados suficientes para simulação de investimento.")
+                    else:
+                        with tab3:
+                            # Investment simulation for basic strategy
+                            if not returns_df.empty:
+                                display_investment_simulation(returns_df, df, symbol_label, "Mudança de Estado")
+                            else:
+                                st.info("Não há dados suficientes para simulação de investimento.")
 
             st.markdown("---")
             # Technical analysis summary with improved layout
@@ -2895,7 +2602,10 @@ with tab3:
                             <p><strong>🔄 Buffer:</strong> Dinâmico</p>
                             <p style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Baseados na volatilidade (ATR)</p>
                         </div>
-                        """, unsafe_allow_html=True)</old_str>
+                        """, unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"An error occurred during analysis: {str(e)}")
+            st.write("Please check your inputs and try again.")
 
 with tab4:
     # Screening tab
@@ -3748,7 +3458,7 @@ with tab6:
             💰 Preço: 2,850.75<br>
             📈 🟢 Buy → 🔴 Sell
         </div>
-        </div>
+    </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
