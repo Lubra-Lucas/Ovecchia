@@ -868,7 +868,8 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             max_value=1000000.0,
             value=10000.0,
             step=1000.0,
-            format="%.2f"
+            format="%.2f",
+            key="investment_simulation_initial_value"
         )
     
     with col2:
