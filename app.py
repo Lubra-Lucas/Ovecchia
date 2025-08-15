@@ -1661,6 +1661,9 @@ with tab3:
 
     # Analysis button
     analyze_button_individual = st.button("🚀 INICIAR ANÁLISE INDIVIDUAL", type="primary", use_container_width=True)
+    
+    # Test button
+    test_button = st.button("teste")
 
     # Analysis logic (same as before but only for individual analysis)
     if analyze_button_individual:
