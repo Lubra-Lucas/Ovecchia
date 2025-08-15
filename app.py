@@ -1212,43 +1212,44 @@ with tab2:
         
         st.markdown("#### 📝 Passo 1: Configuração da Fonte de Dados")
         st.markdown("""
-        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-            <p><strong>🔹 Fonte de Dados:</strong> Selecione "Yahoo Finance" (recomendado para ações brasileiras)</p>
-            <p style="font-size: 0.9rem; color: #666;">💡 Yahoo Finance é gratuito e confiável para ações da B3, criptomoedas e ações americanas</p>
+        <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
+            <p><strong>🔹 Fonte de Dados:</strong> Selecione \"Yahoo Finance\" (recomendado para ações brasileiras) ou \"TwelveData\" para criptomoedas e outros mercados.</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">💡 Yahoo Finance é gratuito e confiável para ações da B3, criptomoedas e ações americanas. TwelveData oferece suporte aprimorado e flexibilidade de dados para criptomoedas e índices globais.</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("#### 📝 Passo 2: Inserir o Ticker Correto")
         st.markdown("""
-        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-            <p><strong>🔹 Ticker:</strong> Digite "PETR4.SA" (com ponto e SA no final)</p>
-            <p style="font-size: 0.9rem; color: #666;">⚠️ <strong>Atenção:</strong> Ações brasileiras sempre terminam em .SA (ex: VALE3.SA, ITUB4.SA)</p>
-            <p style="font-size: 0.9rem; color: #666;">📋 <strong>Outros exemplos:</strong></p>
-            <ul style="font-size: 0.9rem; color: #666;">
+        <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
+            <p><strong>🔹 Ticker:</strong> Digite \"PETR4.SA\" (com ponto e SA no final)</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">⚠️ <strong>Atenção:</strong> Ações brasileiras sempre terminam em .SA (ex: VALE3.SA, ITUB4.SA)</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">📋 <strong>Outros exemplos:</strong></p>
+            <ul style=\"font-size: 0.9rem; color: #666;\">
                 <li><strong>Criptomoedas:</strong> BTC-USD, ETH-USD (com hífen e USD)</li>
                 <li><strong>Ações americanas:</strong> AAPL, MSFT, GOOGL (apenas o código)</li>
                 <li><strong>Forex:</strong> EURUSD=X, GBPUSD=X (com =X no final)</li>
             </ul>
+            <p style=\"font-size: 0.9rem; color: #666;\">🔹 <strong>Exemplo TwelveData:</strong> BTC/USD para Bitcoin; AAPL para Apple (ações americanas).</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("#### 📝 Passo 3: Definir Período de Análise")
         st.markdown("""
-        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+        <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
             <p><strong>🔹 Data Inicial:</strong> Selecione uma data 6-12 meses atrás (ex: 01/01/2024)</p>
             <p><strong>🔹 Data Final:</strong> Mantenha a data atual</p>
-            <p style="font-size: 0.9rem; color: #666;">💡 <strong>Dica:</strong> Períodos de 6-12 meses oferecem análises mais confiáveis</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">💡 <strong>Dica:</strong> Períodos de 6-12 meses oferecem análises mais confiáveis. TwelveData permite recuperar até 5000 dados históricos para uma análise mais abrangente.</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("#### 📝 Passo 4: Escolher Timeframe")
         st.markdown("""
-        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-            <p><strong>🔹 Intervalo de Tempo:</strong> Selecione "1 day" (recomendado para iniciantes)</p>
-            <p style="font-size: 0.9rem; color: #666;">📊 <strong>Orientações por perfil:</strong></p>
-            <ul style="font-size: 0.9rem; color: #666;">
+        <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
+            <p><strong>🔹 Intervalo de Tempo:</strong> Selecione \"1 day\" (recomendado para iniciantes)</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">📊 <strong>Orientações por perfil:</strong></p>
+            <ul style=\"font-size: 0.9rem; color: #666;\">
                 <li><strong>Investidor (longo prazo):</strong> 1 day, 1 week</li>
-                <li><strong>Swing Trader (médio prazo):</strong> 4 hours, 1 day</li>
+                <li><strong>Swing Trader (médio prazo):</strong> 4 hours, 1 day (TwelveData intervalos de minutos disponíveis)</li>
                 <li><strong>Day Trader (curto prazo):</strong> 15m, 30m, 1 hour</li>
             </ul>
         </div>
@@ -1256,10 +1257,10 @@ with tab2:
 
         st.markdown("#### 📝 Passo 5: Selecionar o Modelo")
         st.markdown("""
-        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-            <p><strong>🔹 Modelo:</strong> Escolha "OVELHA (Clássico)" para começar</p>
-            <p style="font-size: 0.9rem; color: #666;">🤖 <strong>Modelos disponíveis:</strong></p>
-            <ul style="font-size: 0.9rem; color: #666;">
+        <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
+            <p><strong>🔹 Modelo:</strong> Escolha \"OVELHA (Clássico)\" para começar</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">🤖 <strong>Modelos disponíveis:</strong></p>
+            <ul style=\"font-size: 0.9rem; color: #666;\">
                 <li><strong>OVELHA (Clássico):</strong> Modelo tradicional, mais previsível</li>
                 <li><strong>OVELHA V2 (Machine Learning):</strong> Modelo avançado com IA</li>
             </ul>
@@ -1268,10 +1269,10 @@ with tab2:
 
         st.markdown("#### 📝 Passo 6: Definir Estratégia")
         st.markdown("""
-        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-            <p><strong>🔹 Estratégia:</strong> Selecione "Balanceado" (recomendado)</p>
-            <p style="font-size: 0.9rem; color: #666;">⚖️ <strong>Perfis de estratégia:</strong></p>
-            <ul style="font-size: 0.9rem; color: #666;">
+        <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
+            <p><strong>🔹 Estratégia:</strong> Selecione \"Balanceado\" (recomendado)</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">⚖️ <strong>Perfis de estratégia:</strong></p>
+            <ul style=\"font-size: 0.9rem; color: #666;\">
                 <li><strong>Balanceado:</strong> Equilíbrio ideal entre oportunidades e segurança</li>
                 <li><strong>Agressivo:</strong> Mais sinais, maior risco</li>
                 <li><strong>Conservador:</strong> Poucos sinais, maior segurança</li>
@@ -1281,19 +1282,19 @@ with tab2:
 
         st.markdown("#### 📝 Passo 7: Configurar Saída (Opcional)")
         st.markdown("""
-        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-            <p><strong>🔹 Critério de Saída:</strong> Mantenha "Mudança de Estado" (mais simples)</p>
-            <p><strong>🔹 Checkbox:</strong> Deixe marcado "Sair por mudança de estado?"</p>
-            <p style="font-size: 0.9rem; color: #666;">💡 Para o primeiro uso, mantenha as configurações padrão</p>
+        <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
+            <p><strong>🔹 Critério de Saída:</strong> Mantenha \"Mudança de Estado\" (mais simples)</p>
+            <p><strong>🔹 Checkbox:</strong> Deixe marcado \"Sair por mudança de estado?\"</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">💡 Para o primeiro uso, mantenha as configurações padrão</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("#### 📝 Passo 8: Executar Análise")
         st.markdown("""
-        <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #4CAF50;">
-            <p><strong>🚀 Clique em "INICIAR ANÁLISE INDIVIDUAL"</strong></p>
-            <p style="font-size: 0.9rem; color: #666;">⏱️ O sistema processará os dados em alguns segundos e exibirá:</p>
-            <ul style="font-size: 0.9rem; color: #666;">
+        <div style=\"background: #e8f5e8; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #4CAF50;\">
+            <p><strong>🚀 Clique em \"INICIAR ANÁLISE INDIVIDUAL\"</strong></p>
+            <p style=\"font-size: 0.9rem; color: #666;\">⏱️ O sistema processará os dados em alguns segundos e exibirá:</p>
+            <ul style=\"font-size: 0.9rem; color: #666;\">
                 <li>Status atual do mercado (Buy/Sell/Stay Out)</li>
                 <li>Gráfico interativo com sinais coloridos</li>
                 <li>Métricas de performance</li>
@@ -1304,9 +1305,9 @@ with tab2:
 
         st.markdown("#### 📝 Interpretando os Resultados")
         st.markdown("""
-        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #ffc107;">
+        <div style=\"background: #fff3cd; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #ffc107;\">
             <p><strong>📊 Como ler o gráfico:</strong></p>
-            <ul style="font-size: 0.9rem; color: #333;">
+            <ul style=\"font-size: 0.9rem; color: #333;\">
                 <li><strong>🔵 Linha Azul:</strong> Momento de compra - entre ou mantenha posição comprada</li>
                 <li><strong>🔴 Linha Vermelha:</strong> Momento de venda - saia da posição ou entre vendido</li>
                 <li><strong>⚫ Linha Preta:</strong> Fique de fora - aguarde melhor oportunidade</li>
@@ -1321,7 +1322,7 @@ with tab2:
         st.markdown("### 📌 Parâmetros Essenciais")
         st.write("Para realizar a análise individual, você deverá configurar os seguintes parâmetros:")
         st.write("• **Nome do Ativo 💹**: Insira o código do ativo que deseja analisar (ex.: PETR4.SA, BTC-USD, AAPL).")
-        st.write("• **Intervalo de Data 📅**: Escolha o período inicial e final da análise. Recomendamos intervalos superiores a 30 dias para maior precisão nos sinais. Atente-se às restrições históricas fornecidas pelo Yahoo Finance.")
+        st.write("• **Intervalo de Data 📅**: Escolha o período inicial e final da análise. O Yahoo Finance permite definir datas específicas, mas possui restrições para dados intradiários. Já o TwelveData oferece a possibilidade de recuperar até 5000 dados anteriores, o que é útil para análises intradiárias mais longas. Recomendamos intervalos superiores a 30 dias para maior precisão nos sinais.")
         st.write("• **Intervalo de Tempo ⏱️**: Selecione a periodicidade desejada, como 1 minuto, 15 minutos, 1 hora, ou 1 dia, de acordo com seu perfil operacional.")
         st.write("• **Estratégia de Sinais 📈**: Selecione entre Agressiva, Balanceada ou Conservadora para ajustar o sistema ao seu apetite por risco.")
         st.write("• **Direção da Operação 🎯**: Escolha entre operar em ambas direções (comprado e vendido), somente comprado ou somente vendido.")
