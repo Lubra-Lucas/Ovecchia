@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 import warnings
 from sklearn.ensemble import RandomForestClassifier
 import requests
-import ccxt
 import logging # Import logging module
 
 # Configure basic logging
@@ -16,56 +15,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# Function to pull historical data using CCXT
-def get_historical_klines_ccxt(symbol, interval, limit=1000):
-    """
-    Puxa dados históricos de candles usando CCXT da Binance.
-    """
-    try:
-        # Configuração da exchange
-        exchange = ccxt.binanceus({'enableRateLimit': True})
 
-        # Converter símbolo para formato CCXT
-        # Aceitar formatos: BTC-USD, BTCUSD, BTC/USDT, etc.
-        symbol_upper = symbol.upper()
-
-        # Remover caracteres especiais e normalizar
-        if '-USD' in symbol_upper:
-            base = symbol_upper.replace('-USD', '')
-            ccxt_symbol = f"{base}/USDT"
-        elif 'USD' in symbol_upper and not symbol_upper.endswith('T'):
-            # Para casos como BTCUSD
-            base = symbol_upper.replace('USD', '')
-            ccxt_symbol = f"{base}/USDT"
-        elif '/' in symbol_upper:
-            # Já está no formato correto
-            ccxt_symbol = symbol_upper
-        else:
-            # Assumir que é uma base e adicionar /USDT
-            ccxt_symbol = f"{symbol_upper}/USDT"
-
-        # Coletar dados OHLCV
-        ohlcv = exchange.fetch_ohlcv(ccxt_symbol, timeframe=interval, limit=limit)
-
-        if not ohlcv:
-            return pd.DataFrame()
-
-        # Criar DataFrame
-        df = pd.DataFrame(ohlcv, columns=['time', 'open', 'high', 'low', 'close', 'volume'])
-
-        # Converter timestamp para datetime
-        df['time'] = pd.to_datetime(df['time'], unit='ms')
-
-        # Garantir que os tipos numéricos estão corretos
-        df[["open", "high", "low", "close", "volume"]] = df[["open", "high", "low", "close", "volume"]].astype(float)
-
-        # Ordenar por tempo
-        df = df.sort_values("time")
-
-        return df
-
-    except Exception as e:
-        raise Exception(f"Erro ao buscar dados via CCXT para {symbol}: {e}")
 
 
 
@@ -123,36 +73,6 @@ def get_market_data(symbol, start_date_str, end_date_str, interval, source="Yaho
             # Para TwelveData, usar diretamente a função específica
             outputsize = kwargs.get('outputsize', 5000)
             return get_twelvedata_data(symbol, interval, outputsize)
-
-        elif source == "CCXT (Binance)":
-            try:
-                # Mapear intervalos para CCXT
-                ccxt_interval_map = {
-                    "1m": "1m", "3m": "3m", "5m": "5m", "15m": "15m", "30m": "30m",
-                    "1h": "1h", "2h": "2h", "4h": "4h", "6h": "6h", "8h": "8h", "12h": "12h",
-                    "1d": "1d", "3d": "3d", "1w": "1w", "1M": "1M"
-                }
-
-                if interval in ccxt_interval_map:
-                    ccxt_interval = ccxt_interval_map[interval]
-                else:
-                    st.warning(f"Intervalo {interval} não suportado pelo CCXT. Usando '1d'.")
-                    ccxt_interval = "1d"
-
-                # Usar sempre 1000 candles (máximo recomendado)
-                df = get_historical_klines_ccxt(symbol, ccxt_interval, 1000)
-
-                # Adicionar informação sobre o período real baseado no timeframe
-                if not df.empty:
-                    start_time = df['time'].iloc[0]
-                    end_time = df['time'].iloc[-1]
-                    st.info(f"📅 CCXT coletou {len(df)} candles de {start_time.strftime('%Y-%m-%d %H:%M')} até {end_time.strftime('%Y-%m-%d %H:%M')}")
-
-                return df
-
-            except Exception as e:
-                st.error(f"Erro ao buscar dados via CCXT para {symbol}: {e}")
-                return pd.DataFrame()
 
         else: # Default to Yahoo Finance
             df = yf.download(symbol, start=start_date_str, end=end_date_str, interval=interval)
@@ -1666,9 +1586,9 @@ with tab3:
         # Source selection for data
         data_source = st.selectbox(
             "Fonte de Dados",
-            ["Yahoo Finance", "CCXT (Binance)", "TwelveData"],
+            ["Yahoo Finance", "TwelveData"],
             index=0,
-            help="Selecione a fonte dos dados de mercado. CCXT é recomendado para criptomoedas, TwelveData oferece dados de alta qualidade para forex e ações."
+            help="Selecione a fonte dos dados de mercado. TwelveData oferece dados de alta qualidade para forex e ações."
         )
 
         if data_source == "TwelveData":
@@ -1686,14 +1606,7 @@ with tab3:
 
         st.markdown("#### 📅 Intervalo de Data")
 
-        if data_source == "CCXT (Binance)":
-            st.info("📅 **CCXT**: Usa automaticamente os últimos 1000 candles (período fixo)")
-            # Definir datas padrão para compatibilidade, mas não mostrar controles
-            default_end = datetime.now().date()
-            default_start = default_end - timedelta(days=365)
-            start_date = default_start
-            end_date = default_end
-        elif data_source == "TwelveData":
+        if data_source == "TwelveData":
             st.info("📅 **TwelveData**: Quantidade de registros configurável")
             # Controle de quantidade de registros
             outputsize = st.number_input(
@@ -2730,45 +2643,7 @@ with tab4:
                                    "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD",
                                    "TRX-USD", "LINK-USD", "MATIC-USD", "LTC-USD", "BCH-USD",
                                    "FIL-USD", "APT-USD", "ARB-USD", "NEAR-USD", "VET-USD"],
-            "Binance US (CCXT)": [
-                "ZRX/USDT", "1INCH/USDT", "AAVE/USDT", "ADX/USDT", "AIXBT/USDT",
-                "ACH/USDT", "ALGO/USDT", "TLM/USDT", "ALPINE/USDT", "FORTH/USDT",
-                "ANIME/USDT", "ANKR/USDT", "APE/USDT", "API3/USDT", "APT/USDT",
-                "ARB/USDT", "ASTR/USDT", "AUDIO/USDT", "AVAX/USDT", "AXL/USDT",
-                "AXS/USDT", "BNT/USDT", "BAND/USDT", "BAT/USDT", "BICO/USDT",
-                "BTC/USDT", "BCH/USDT", "BLUR/USDT", "BNB/USDT", "BONK/USDT",
-                "BOSON/USDT", "BTRST/USDT", "BRETT/USDT", "ADA/USDT", "CTSI/USDT",
-                "CELR/USDT", "CELO/USDT", "LINK/USDT", "CHZ/USDT", "COMP/USDT",
-                "ATOM/USDT", "COTI/USDT", "CRV/USDT", "DAI/USDT", "D/USDT",
-                "DASH/USDT", "MANA/USDT", "DIA/USDT", "DGB/USDT", "DOGE/USDT",
-                "WIF/USDT", "XEC/USDT", "EIGEN/USDT", "ENJ/USDT", "EOS/USDT",
-                "ENA/USDT", "ETH/USDT", "ETC/USDT", "ENS/USDT", "FARTCOIN/USDT",
-                "PORTO/USDT", "FET/USDT", "FIL/USDT", "NEIRO/USDT", "FLOKI/USDT",
-                "FLOW/USDT", "FLUX/USDT", "FORT/USDT", "G/USDT", "GALA/USDT",
-                "JAM/USDT", "GTC/USDT", "GLM/USDT", "ONE/USDT", "HBAR/USDT",
-                "ZEN/USDT", "HYPE/USDT", "ICX/USDT", "RLC/USDT", "ILV/USDT",
-                "IMX/USDT", "ICP/USDT", "IOST/USDT", "IOTA/USDT", "IOTX/USDT",
-                "JTO/USDT", "JUP/USDT", "KDA/USDT", "KAITO/USDT", "KAVA/USDT",
-                "KSM/USDT", "KNC/USDT", "LAZIO/USDT", "LOKA/USDT", "LDO/USDT",
-                "LSK/USDT", "LTC/USDT", "LPT/USDT", "LOOM/USDT", "LRC/USDT",
-                "LTO/USDT", "MKR/USDT", "POND/USDT", "MASK/USDT", "ME/USDT",
-                "METIS/USDT", "1000MOG/USDT", "MOODENG/USDT", "EGLD/USDT", "ALICE/USDT",
-                "XNO/USDT", "NEAR/USDT", "NEO/USDT", "NMR/USDT", "ROSE/USDT",
-                "OCEAN/USDT", "ONDO/USDT", "ONG/USDT", "ONT/USDT", "OP/USDT",
-                "ORBS/USDT", "ORCA/USDT", "OXT/USDT", "OGN/USDT", "TRAC/USDT",
-                "PAXG/USDT", "PEPE/USDT", "PNUT/USDT", "DOT/USDT", "POL/USDT",
-                "POLYX/USDT", "POPCAT/USDT", "PROM/USDT", "PENGU/USDT", "QTUM/USDT",
-                "QNT/USDT", "RAD/USDT", "RVN/USDT", "REEF/USDT", "1000REKT/USDT",
-                "RENDER/USDT", "REQ/USDT", "SANTOS/USDT", "SHIB/USDT", "SKL/USDT",
-                "SLP/USDT", "SOL/USDT", "LAYER/USDT", "S/USDT", "SPX/USDT",
-                "STG/USDT", "XLM/USDT", "STMX/USDT", "STORJ/USDT", "DATA/USDT",
-                "SUI/USDT", "RARE/USDT", "SUSHI/USDT", "SNX/USDT", "SYS/USDT",
-                "XTZ/USDT", "GRT/USDT", "SAND/USDT", "TFUEL/USDT", "THETA/USDT",
-                "T/USDT", "TOSHI/USDT", "MAGIC/USDT", "TRUMP/USDT", "TURBO/USDT",
-                "UNI/USDT", "USDC/USDT", "VET/USDT", "VTHO/USDT", "VIRTUAL/USDT",
-                "VOXEL/USDT", "WAXP/USDT", "WLD/USDT", "WBTC/USDT", "XDC/USDT",
-                "XRP/USDT", "YFI/USDT", "ZEC/USDT", "ZIL/USDT"
-            ],
+            
             "Ações Brasileiras": [
                 "ABEV3.SA", "ALPA4.SA", "AMER3.SA", "ARZZ3.SA", "ASAI3.SA",
                 "AZUL4.SA", "B3SA3.SA", "BBAS3.SA", "BBDC3.SA", "BBDC4.SA",
@@ -2844,41 +2719,17 @@ with tab4:
         start_date_screening = default_start_screening
         end_date_screening = default_end_screening
 
-        # Check if Binance US list is selected for flexible timeframe
-        is_binance_us_selected = selected_preset == "Binance US (CCXT)"
-
-        if is_binance_us_selected:
-            st.info("📅 **Período:** Automaticamente definido baseado no timeframe selecionado")
-
-            # Timeframe selection for Binance US
-            st.markdown("#### ⏱️ Intervalo de Tempo")
-            interval_options_binance = {
-                "5 minutes": "5m",
-                "15 minutes": "15m", 
-                "60 minutes": "60m",
-                "1 hour": "1h",
-                "4 hours": "4h",
-                "1 day": "1d"
-            }
-            interval_display_screening = st.selectbox(
-                "Intervalo", 
-                list(interval_options_binance.keys()), 
-                index=5,  # Default to 1d
-                key="interval_binance_screening"
-            )
-            interval_screening = interval_options_binance[interval_display_screening]
-        else:
-            st.info("📅 **Período fixo:** 2 anos de dados históricos")
-            st.info("⏰ **Timeframe fixo:** 1 dia")
-            # Fixed interval: 1 day
-            interval_screening = "1d"
+        st.info("📅 **Período fixo:** 2 anos de dados históricos")
+        st.info("⏰ **Timeframe fixo:** 1 dia")
+        # Fixed interval: 1 day
+        interval_screening = "1d"
 
         # Source selection for data
         data_source_screening = st.selectbox(
             "Fonte de Dados",
-            ["Yahoo Finance", "CCXT (Binance)"],
+            ["Yahoo Finance", "TwelveData"],
             index=0,
-            help="Selecione a fonte dos dados de mercado para o screening. CCXT é recomendado para criptomoedas.",
+            help="Selecione a fonte dos dados de mercado para o screening. TwelveData oferece dados de alta qualidade para forex e ações.",
             key="source_screening"
         )
 
@@ -3237,9 +3088,9 @@ with tab5:
         # Source selection for data
         data_source_bb = st.selectbox(
             "Fonte de Dados",
-            ["Yahoo Finance", "CCXT (Binance)"],
+            ["Yahoo Finance", "TwelveData"],
             index=0,
-            help="Selecione a fonte dos dados de mercado para a detecção de topos e fundos. CCXT é recomendado para criptomoedas.",
+            help="Selecione a fonte dos dados de mercado para a detecção de topos e fundos. TwelveData oferece dados de alta qualidade para forex e ações.",
             key="source_bb"
         )
 

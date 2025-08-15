@@ -231,7 +231,7 @@ class OvecchiaTradingBot:
         self.paused_users = set()  # Usuários que pausaram operações
         self.processing_users = set()  # Usuários sendo processados atualmente
         self.user_locks = {}  # Locks individuais por usuário
-    
+
     def get_user_lock(self, user_id):
         """Obtém ou cria um lock para o usuário específico"""
         if user_id not in self.user_locks:
@@ -967,7 +967,7 @@ class OvecchiaTradingBot:
             from matplotlib.patches import Rectangle
             import tempfile
             import os
-            
+
             # Usar figura thread-safe
             plt.ioff()  # Desligar modo interativo
 
@@ -1091,12 +1091,12 @@ class OvecchiaTradingBot:
             chart_path = os.path.join(temp_dir, chart_filename)
 
             plt.savefig(chart_path, dpi=150, bbox_inches='tight', facecolor='white')
-            
+
             # Cleanup completo para evitar memory leaks
             plt.cla()  # Limpar eixos
             plt.clf()  # Limpar figura
             plt.close('all')  # Fechar todas as figuras
-            
+
             # Forçar garbage collection
             import gc
             gc.collect()
@@ -1130,22 +1130,22 @@ trading_bot = OvecchiaTradingBot()
 def screening_command(message):
     user_id = message.from_user.id
     user_name = message.from_user.first_name or "Usuário"
-    
+
     # Obter lock do usuário
     user_lock = trading_bot.get_user_lock(user_id)
-    
+
     if not user_lock.acquire(blocking=False):
         safe_bot_reply(message, "⏳ Você já tem uma operação em andamento. Aguarde terminar.")
         return
-    
+
     try:
         logger.info(f"Comando /screening recebido de {user_name} (ID: {user_id})")
-        
+
         # Verificar se usuário já está processando
         if user_id in trading_bot.processing_users:
             safe_bot_reply(message, "⏳ Processando comando anterior. Aguarde.")
             return
-            
+
         # Marcar usuário como processando
         trading_bot.processing_users.add(user_id)
 
@@ -1346,22 +1346,22 @@ def screening_command(message):
 def analise_command(message):
     user_id = message.from_user.id
     user_name = message.from_user.first_name or "Usuário"
-    
+
     # Obter lock do usuário para evitar processamento simultâneo
     user_lock = trading_bot.get_user_lock(user_id)
-    
+
     if not user_lock.acquire(blocking=False):
         safe_bot_reply(message, "⏳ Você já tem uma operação em andamento. Aguarde terminar ou use /restart para limpar.")
         return
-    
+
     try:
         logger.info(f"Comando /analise recebido de {user_name} (ID: {user_id})")
-        
+
         # Verificar se usuário já está processando
         if user_id in trading_bot.processing_users:
             safe_bot_reply(message, "⏳ Processando comando anterior. Aguarde ou use /restart.")
             return
-            
+
         # Marcar usuário como processando
         trading_bot.processing_users.add(user_id)
 
@@ -1402,7 +1402,6 @@ def analise_command(message):
 
                             🔗 Fontes disponíveis:
                             • yahoo - Yahoo Finance (padrão)
-                            • ccxt - Binance via CCXT (criptomoedas)
                             • twelvedata - 12Data (criptos, forex, ações)
 
                             🎯 Estratégias disponíveis:
@@ -1427,7 +1426,6 @@ def analise_command(message):
 
                             💡 Ativos suportados:
                             • Yahoo: PETR4.SA, VALE3.SA, AAPL, BTC-USD, EURUSD=X
-                            • CCXT: BTC/USDT, ETH/USDT, BNB/USDT
                             • 12Data: BTCUSDT, EURUSD, AAPL
 
                             ℹ️ Se não especificar fonte, será usado YAHOO
@@ -1474,8 +1472,8 @@ def analise_command(message):
                     return
 
         # Validar fonte
-        if source_input not in ['yahoo', 'ccxt', 'twelvedata']:
-            safe_bot_reply(message, "❌ Fonte inválida. Use: yahoo, ccxt ou twelvedata")
+        if source_input not in ['yahoo', 'twelvedata']:
+            safe_bot_reply(message, "❌ Fonte inválida. Use: yahoo ou twelvedata")
             return
 
         # Mapear estratégias
@@ -1508,8 +1506,8 @@ def analise_command(message):
 
         # Aviso sobre tempo de processamento para timeframes menores
         warning_msg = ""
-        if timeframe in ['1m', '5m', '15m', '30m'] and source_input == "ccxt":
-            warning_msg = "\n⚠️ ATENÇÃO: Timeframes pequenos podem travar o bot! Recomendo usar 4h ou superior."
+        if timeframe in ['1m', '5m', '15m', '30m'] and source_input == "ccxt": # CCXT não é mais uma fonte válida
+            warning_msg = "\n⚠️ ATENÇÃO: Timeframes pequenos com CCXT frequentemente travam o bot! Recomendo usar 4h ou superior."
 
         if start_date and end_date:
             safe_bot_reply(message, f"🔄 Analisando {symbol} ({source_input}) de {start_date} até {end_date} com modelo {model_display} e estratégia {strategy_input} no timeframe {timeframe}...{warning_msg}")
@@ -1525,7 +1523,7 @@ def analise_command(message):
             return
 
         # Implementar timeout para análises que podem travar
-        analysis_timeout = 30 if timeframe in ['1m', '5m', '15m', '30m'] and source_input == "ccxt" else 60
+        analysis_timeout = 30 if timeframe in ['1m', '5m', '15m', '30m'] and source_input == "ccxt" else 60 # CCXT não é mais uma fonte válida
 
         def run_analysis():
             return trading_bot.generate_analysis_chart(symbol, strategy, timeframe, model_input, start_date, end_date, source_input)
@@ -1636,12 +1634,10 @@ def screening_auto_command(message):
                             🔗 *Fontes disponíveis:*
                             • 12data - 12Data API (recomendado)
                             • yahoo - Yahoo Finance
-                            • ccxt - Binance via CCXT
 
                             📊 *Símbolos:* Lista separada por vírgulas entre colchetes
                             • Para 12Data: [BTC/USD,ETH/USD,LTC/USD]
                             • Para Yahoo: [BTC-USD,ETH-USD,PETR4.SA]
-                            • Para CCXT: [BTC/USDT,ETH/USDT,LTC/USDT]
 
                             🤖 *Modelos:*
                             • ovelha - Modelo clássico
@@ -1662,7 +1658,6 @@ def screening_auto_command(message):
                             📈 *Exemplos:*
                             `/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] ovelha2 balanceada 4h`
                             `/screening_auto yahoo [BTC-USD,ETH-USD,PETR4.SA] ovelha balanceada 1d`
-                            `/screening_auto ccxt [BTC/USDT,ETH/USDT,LTC/USDT] ovelha2 agressiva 4h`
 
                             💡 *Nota:* O bot enviará alertas no intervalo escolhido
                                         """
@@ -1677,13 +1672,9 @@ def screening_auto_command(message):
             timeframe = args[4].lower()
 
             # Validar fonte
-            if source not in ['12data', 'twelvedata', 'yahoo', 'ccxt']:
-                safe_bot_reply(message, "❌ Fonte inválida. Use: twelvedata , yahoo ou ccxt,")
+            if source not in ['12data', 'yahoo']:
+                safe_bot_reply(message, "❌ Fonte inválida. Use: 12data ou yahoo")
                 return
-
-            # Normalizar fonte
-            if source in ['12data', 'twelvedata']:
-                source = '12data'
 
             # Extrair símbolos da lista
             if not symbols_str.startswith('[') or not symbols_str.endswith(']'):
@@ -1716,9 +1707,9 @@ def screening_auto_command(message):
 
             # Validar timeframe baseado na fonte
             if source == '12data':
-                valid_timeframes = ['1m','5m', '15m', '1h', '4h', '1d']
-            else:
-                valid_timeframes = ['5m','15m', '1h', '4h', '1d']
+                valid_timeframes = ['5m', '15m', '1h', '4h', '1d']
+            else: # Yahoo
+                valid_timeframes = ['5m','15m', '1h', '4h', '1d'] # Yahoo suporta 5m, mas não 1m
 
             if timeframe not in valid_timeframes:
                 safe_bot_reply(message, f"❌ Timeframe inválido para {source}. Use: {', '.join(valid_timeframes)}")
@@ -1746,7 +1737,6 @@ def screening_auto_command(message):
                 format_examples = {
                     '12data': 'BTC/USD, ETH/USD, AAPL',
                     'yahoo': 'BTC-USD, ETH-USD, PETR4.SA, AAPL',
-                    'ccxt': 'BTC/USDT, ETH/USDT, LTC/USDT'
                 }
 
                 error_message = f"""❌ **ERRO AO CONFIGURAR ALERTA**
@@ -1909,7 +1899,7 @@ def pause_command(message):
         # Pausar usuário
         trading_bot.paused_users.add(user_id)
         trading_bot.processing_users.discard(user_id)
-        
+
         # Limpar tarefas ativas
         if user_id in trading_bot.active_tasks:
             del trading_bot.active_tasks[user_id]
@@ -1965,14 +1955,14 @@ def help_command(message):
                           • Mostra sinais de compra/venda em tempo real
                           • Suporte a múltiplos timeframes e estratégias
 
-                          🔗 Fontes: yahoo (padrão), ccxt, twelvedata
+                          🔗 Fontes: yahoo (padrão), 12data
                           🎯 Estratégias: agressiva, balanceada, conservadora
                           🤖 Modelos: ovelha (padrão), ovelha2
                           ⏰ Timeframes: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
                           📅 Datas: YYYY-MM-DD
 
                           Exemplo básico: /analise yahoo balanceada PETR4.SA 1d
-                          Com 12Data e ML: /analise twelvedata agressiva BTCUSDT 4h ovelha2
+                          Com 12Data e ML: /analise 12data agressiva BTCUSDT 4h ovelha2
 
                         🔍 /screening [estrategia] [lista/ativos]
                           📝 SCREENING PONTUAL DE MÚLTIPLOS ATIVOS
@@ -1991,10 +1981,9 @@ def help_command(message):
                           • Funciona no intervalo de tempo escolhido
                           • Suporte a múltiplas fontes de dados
 
-                          🔗 Fontes: 12data, yahoo, ccxt
+                          🔗 Fontes: 12data, yahoo
                           📊 Símbolos 12Data: [BTC/USD,ETH/USD,LTC/USD]
                           📊 Símbolos Yahoo: [BTC-USD,ETH-USD,PETR4.SA]
-                          📊 Símbolos CCXT: [BTC/USDT,ETH/USDT,LTC/USDT]
 
                         ⏰ Timeframes: 5m (só 12Data), 15m, 1h, 4h, 1d
 
@@ -2046,13 +2035,12 @@ def help_command(message):
 
                         💡 EXEMPLOS PRÁTICOS:
                         • Análise rápida: /analise yahoo balanceada PETR4.SA 1d
-                        • Análise cripto ML: /analise twelvedata agressiva BTCUSDT 4h ovelha2
+                        • Análise cripto ML: /analise 12data agressiva BTCUSDT 4h ovelha2
                         • Screening geral: /screening balanceada açõesBR
                         • Alerta 12Data: /screening_auto [BTCUSDT,ETHUSDT] ovelha2 balanceada 4h
 
                         📝 FORMATOS DE SÍMBOLOS:
                         • Yahoo: PETR4.SA, AAPL, BTC-USD, EURUSD=X
-                        • CCXT: BTC/USDT, ETH/USDT, LTC/USDT
                         • 12Data: BTCUSDT, ETHUSDT, EURUSD, AAPL
 
                         🔔 NOTA SOBRE 12DATA:
