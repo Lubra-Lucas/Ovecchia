@@ -859,17 +859,20 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
     start_date = price_data['time'].min()
     end_date = price_data['time'].max()
     
-    # User input for initial investment
+    # User input for initial investment with auto-recompute
     col1, col2 = st.columns(2)
     with col1:
+        # Use a unique key that doesn't conflict with other inputs
+        sim_key = f"investment_sim_{symbol_label}_{strategy_name}_{hash(str(returns_data.iloc[0]['entry_time']) if not returns_data.empty else 'empty')}"
         initial_investment = st.number_input(
-            "Investimento Inicial (R$):",
+            "💰 Investimento Inicial (R$):",
             min_value=100.0,
-            max_value=1000000.0,
+            max_value=10000000.0,
             value=10000.0,
-            step=1000.0,
+            step=500.0,
             format="%.2f",
-            key="investment_simulation_main"
+            key=sim_key,
+            help="Digite o valor do investimento inicial para calcular automaticamente os resultados"
         )
     
     with col2:
