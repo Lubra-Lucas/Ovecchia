@@ -1092,7 +1092,7 @@ st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING - MODELO QUANT</h1>', 
 st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Análise Técnica e Sinais de Trading</p>', unsafe_allow_html=True)
 
 # Create main navigation tabs
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["🏠 Home", "📖 Guia de Utilização", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "📊 Detecção de Topos e Fundos", "🤖 Bot Telegram", "ℹ️ Sobre"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏠 Home", "📖 Guia de Utilização", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "🤖 Bot Telegram", "ℹ️ Sobre"])
 
 with tab1:
     # Home page content
@@ -1109,13 +1109,14 @@ with tab1:
         st.markdown("### 📊 Análise Individual")
         st.markdown("""
         <div class="metric-card">
-            <p><strong>🎯 Análise Detalhada de um Ativo</strong><br>
-            Configure parâmetros específicos, critérios de saída personalizados e otimização de estratégias para um ativo individual.</p>
+            <p><strong>🤖 Análise Alimentada por Machine Learning</strong><br>
+            Nosso modelo proprietário OVELHA V2 utiliza algoritmos avançados de Machine Learning para detectar estados de mercado em tempo real (Buy, Sell, Stay Out).</p>
             <ul>
-                <li>Gráficos interativos com sinais</li>
-                <li>Múltiplos critérios de saída</li>
-                <li>Otimização automática de parâmetros</li>
-                <li>Análise de retornos detalhada</li>
+                <li>🔥 <strong>Dados em Tempo Real:</strong> Criptomoedas com histórico de até 5.000 candles</li>
+                <li>⚡ <strong>Múltiplos Timeframes:</strong> 1m, 5m, 15m, 30m, 1h, 4h, 1d para máxima flexibilidade</li>
+                <li>📈 <strong>Ações Brasileiras (B3):</strong> Dados consolidados ideais para análises de médio e longo prazo</li>
+                <li>🎯 <strong>Sinais Inteligentes:</strong> Estados de mercado detectados automaticamente</li>
+                <li>📊 <strong>Interface Intuitiva:</strong> Gráficos interativos com sinais claros e precisos</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1135,33 +1136,21 @@ with tab1:
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("### 📊 Detecção de Topos e Fundos")
-    st.markdown("""
-    <div class="metric-card">
-        <p><strong>🎯 Métricas Matemáticas para identificação de extremos</strong><br>
-        Detecte automaticamente possíveis topos e fundos usando variáveis matemáticas r.</p>
-        <ul>
-            <li>Detecção de fundos (oportunidades de compra)</li>
-            <li>Detecção de topos (oportunidades de venda)</li>
-            <li>Configuração personalizável de sensibilidade</li>
-            <li>Análise em múltiplos timeframes</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
+    
 
-    st.markdown("### 🤖 Bot Telegram -Atualizações Recentes")
+    st.markdown("### 🤖 Bot Telegram - Sistema Inteligente de Alertas")
     st.markdown("""
     <div class="metric-card" style="border-left: 4px solid #25D366;">
-        <p><strong>🚀 Novas Funcionalidades do Bot @Ovecchia_bot</strong></p>
+        <p><strong>🚀 Bot @Ovecchia_bot - Análise Automatizada</strong></p>
         <ul>
-            <li><strong>📊 Análise Individual com Gráficos:</strong> Comando /analise agora gera gráficos personalizados</li>
-            <li><strong>📅 Datas Personalizadas:</strong> Especifique período de análise com formato YYYY-MM-DD</li>
-            <li><strong>⏰ Múltiplos Timeframes:</strong> Suporte completo para 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk</li>
-            <li><strong>🎯 Estratégias Aprimoradas:</strong> Análise agressiva, balanceada e conservadora</li>
-            <li><strong>📈 Gráficos Automáticos:</strong> Visualização profissional enviada como imagem</li>
+            <li><strong>📊 Análise Individual:</strong> Análise completa de ativos selecionados pelo usuário com gráficos profissionais</li>
+            <li><strong>🔔 Screening Automático:</strong> Configure listas de ativos e receba alertas automáticos a cada 5 minutos</li>
+            <li><strong>⚡ Alertas em Tempo Real:</strong> Notificações instantâneas quando houver mudança de estado (Buy/Sell/Stay Out)</li>
+            <li><strong>🎯 Modelo OVELHA V2:</strong> Powered by Machine Learning para máxima precisão</li>
+            <li><strong>📈 Múltiplos Timeframes:</strong> Suporte completo para 1m, 5m, 15m, 30m, 1h, 4h, 1d</li>
         </ul>
-        <p style="margin-top: 1rem; font-size: 0.9rem; color: #25D366;"><strong>💡 Exemplo:</strong> 
-        <code>/analise balanceada PETR4.SA 1d 2024-01-01 2024-06-01</code></p>
+        <p style="margin-top: 1rem; font-size: 0.9rem; color: #25D366;"><strong>💡 Exemplo de Screening Automático:</strong> 
+        <code>/screening_auto 12data [BTC/USD,ETH/USD] ovelha2 balanceada 5m</code></p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1208,7 +1197,7 @@ with tab2:
     guide_tab1, guide_tab2, guide_tab3, guide_tab4, guide_tab5 = st.tabs([
         "📊 Análise Individual", 
         "🔍 Screening Multi-Ativos", 
-        "📊 Topos e Fundos", 
+        "🤖 Estados de Mercado OVELHA V2", 
         "🤖 Bot Telegram",
         "⚙️ Parâmetros Gerais"
     ])
@@ -1217,13 +1206,24 @@ with tab2:
         st.markdown("## 📊 Guia de Utilização - Análise Individual do Ativo")
 
         st.markdown("### 📌 O que é a Análise Individual?")
-        st.info("A Análise Individual é uma funcionalidade avançada que auxilia o usuário a identificar pontos ideais de compra e venda de um determinado ativo financeiro. Utilizando métricas matemáticas e técnicas avançadas de análise técnica, o sistema consegue captar movimentos claros de tendência, facilitando tomadas de decisão mais seguras e assertivas.")
+        st.info("A Análise Individual utiliza nosso modelo proprietário OVELHA V2, baseado em Machine Learning, para detectar automaticamente estados de mercado em tempo real. O sistema identifica três estados principais: **Buy** (compra), **Sell** (venda) e **Stay Out** (ficar fora do mercado), proporcionando sinais claros e precisos para suas operações.")
 
-        st.markdown("### 📌 Como funciona?")
-        st.write("O sistema opera baseado em três estratégias diferentes, adaptadas para diferentes perfis de investidores:")
-        st.write("• **Agressiva 🔥**: gera mais sinais, oferecendo mais oportunidades, porém com maior risco associado.")
-        st.write("• **Balanceada ⚖️**: equilíbrio entre frequência de sinais e confiabilidade.")
-        st.write("• **Conservadora 🛡️**: menos sinais, mas com alta confiabilidade, reduzindo a exposição ao risco.")
+        st.markdown("### 📌 Estados de Mercado - Modelo OVELHA V2")
+        st.write("Nosso algoritmo de Machine Learning identifica três estados fundamentais:")
+        st.write("• **🔵 Buy (Compra)**: Modelo detecta condições favoráveis para posições de compra")
+        st.write("• **🔴 Sell (Venda)**: Algoritmo identifica oportunidades para posições de venda")
+        st.write("• **⚫ Stay Out**: Sistema recomenda aguardar melhores condições de entrada")
+
+        st.markdown("### 📌 Estratégias e Timeframes")
+        st.write("O sistema oferece três perfis de análise adaptados para diferentes estilos de trading:")
+        st.write("• **Agressiva 🔥**: Mais sinais, ideal para trading de alta frequência")
+        st.write("• **Balanceada ⚖️**: Equilíbrio entre oportunidades e confiabilidade (recomendada)")
+        st.write("• **Conservadora 🛡️**: Sinais mais seletivos, foco em alta probabilidade")
+
+        st.markdown("### 📌 Cobertura de Dados")
+        st.write("**🪙 Criptomoedas**: Dados em tempo real com suporte completo a todos os timeframes (1m até 1d)")
+        st.write("**📈 Ações Brasileiras (B3)**: Dados consolidados de fontes profissionais, ideais para análises de médio e longo prazo")
+        st.write("**📊 Histórico**: Até 5.000 candles por ativo, garantindo análises robustas e precisas")
 
         st.write("Por exemplo, imagine que você deseja investir em PETR4.SA (Petrobras). É fundamental saber exatamente o momento certo para entrar ou sair desse ativo, protegendo seu patrimônio e maximizando lucros. Os melhores momentos são claramente exibidos no gráfico de preços com sinais coloridos:")
         st.write("• **Linha Azul 🔵**: indica ao usuário para se manter em posição comprada (apostando na alta).")
@@ -1334,68 +1334,55 @@ with tab2:
         st.write("**📊 Análise Complementar**: Use a análise individual para estudar ativos identificados no screening")
 
     with guide_tab3:
-        st.markdown("## 📊 Guia de Utilização - Detecção de Topos e Fundos")
+        st.markdown("## 🤖 Guia de Utilização - Estados de Mercado OVELHA V2")
 
-        st.markdown("### 📌 O que são Detecções Quantitativas de Topos e Fundos?")
-        st.info("A Detecção Quantitativa de Topos e Fundos é uma funcionalidade especializada que utiliza métricas matemáticas e quantitativas para identificar potenciais pontos de reversão de preço. Este método aplica rigor analítico para capturar momentos em que o comportamento do mercado está anômalo em relação às suas oscilações esperadas.")
+        st.markdown("### 📌 O que são os Estados de Mercado?")
+        st.info("Nosso modelo proprietário OVELHA V2 utiliza algoritmos avançados de Machine Learning para detectar automaticamente três estados fundamentais do mercado: **Buy**, **Sell** e **Stay Out**. Estes estados são calculados em tempo real, oferecendo sinais claros e objetivos para suas operações.")
 
-        st.markdown("### 📌 Como Funciona?")
-        st.write("O sistema se baseia em métricas quantitativas:")
-        st.write("• **📊 Análise de Desvios**: Utilização de desvios padrões para detectar anomalias")
-        st.write("• **🟢 Detecção de Excesso de Venda**: Identificado quando métricas cruzam limites inferiores")
-        st.write("• **🔴 Detecção de Excesso de Compra**: Observado quando métricas ultrapassam limites superiores")
-        st.write("• **📏 Medição da Desvio**: Calcula a magnitude do desvio em relação à média esperada")
+        st.markdown("### 📌 Como Funciona o Modelo OVELHA V2?")
+        st.write("O sistema utiliza técnicas avançadas de inteligência artificial:")
+        st.write("• **🧠 Machine Learning**: Algoritmos proprietários treinados com dados históricos extensivos")
+        st.write("• **⚡ Processamento em Tempo Real**: Análise contínua de múltiplas variáveis de mercado")
+        st.write("• **🎯 Estados Claros**: Três sinais objetivos sem ambiguidade (Buy/Sell/Stay Out)")
+        st.write("• **📊 Adaptação Dinâmica**: Modelo se ajusta às condições atuais do mercado")
 
-        st.markdown("### 📌 Sinais Gerados")
-        st.write("**🟢 Possível Fundo (Oportunidade de Compra)**")
-        st.write("Quando as variáveis do ativo indicam excesso de venda:")
-        st.write("• O ativo encontra-se subvalorizado em relação à média")
-        st.write("• Potencial de elevação dos preços a partir do estado atual")
-        st.write("• Oportunidade para apostas compradas")
-        st.write("• Maior desvio = maior potencial de correção")
+        st.markdown("### 📌 Estados Disponíveis")
+        st.write("**🔵 BUY (Compra)**")
+        st.write("• Condições de mercado favoráveis para entrada em posição de compra")
+        st.write("• Modelo detecta momentum positivo e sinais de continuação de alta")
+        st.write("• Recomendação para abertura ou manutenção de posições longas")
 
-        st.write("**🔴 Possível Topo (Oportunidade de Venda)**")
-        st.write("Quando há sinais de excesso de compra:")
-        st.write("• O ativo é considerado supervalorizado")
-        st.write("• Potencial de queda dos preços a partir do estado atual")
-        st.write("• Oportunidade de ações de venda ou desligamento de posições compradas")
-        st.write("• Maior desvio = maior potencial de correção")
+        st.write("**🔴 SELL (Venda)**")
+        st.write("• Condições indicam oportunidade para posições de venda")
+        st.write("• Algoritmo identifica sinais de pressão vendedora ou reversão de tendência")
+        st.write("• Sugestão para fechamento de posições longas ou entrada em posições curtas")
 
-        st.markdown("### 📌 Configurações Disponíveis")
-        st.write("• **📋 Listas de Ativos**: Mesmas opções do screening (Criptos, Ações BR/US, Forex, Commodities)")
-        st.write("• **📅 Período de Análise**: Configure o intervalo de datas desejado")
-        st.write("• **⏱️ Timeframe**: Recomendado usar 1h, 4h, 1d ou 1wk para melhor precisão")
-        st.write("• **🎯 Sensibilidade**: Sistema usa parâmetros fixos otimizados para detectar anomalias")
+        st.write("**⚫ STAY OUT (Ficar Fora)**")
+        st.write("• Mercado sem direção clara ou em consolidação")
+        st.write("• Momento ideal para aguardar melhores condições de entrada")
+        st.write("• Preservação de capital em períodos de incerteza")
 
-        st.markdown("### 📌 Interpretando o Desvio")
-        st.write("**📏 Análise do Desvio Padrão**")
-        st.write("A magnitude do desvio indica a força do sinal:")
-        st.write("• **0% - 1%**: Sinal fraco, correção menos provável")
-        st.write("• **1% - 3%**: Sinal moderado, probabilidade de correção")
-        st.write("• **3% - 5%**: Sinal forte, correção mais provável")
-        st.write("• **Acima de 5%**: Sinal muito forte, alta probabilidade de correção")
-        st.info("💡 **Regra Geral**: Quanto maior o desvio, maior a probabilidade de correção, mas também maior o risco.")
+        st.markdown("### 📌 Timeframes e Cobertura de Dados")
+        st.write("**⏰ Timeframes Disponíveis:**")
+        st.write("• **Alta Frequência**: 1m, 5m, 15m, 30m (ideal para day trading)")
+        st.write("• **Média Frequência**: 1h, 4h (swing trading)")
+        st.write("• **Longo Prazo**: 1d, 1wk (position trading)")
 
-        st.markdown("### 📌 Estratégias de Uso")
-        st.write("**📈 Para Operações de Compra (Excesso de Venda)**")
-        st.write("• Espere até que métricas indiquem que o ativo está em território de venda excessiva")
-        st.write("• Utilize uma abordagem de entrada gradual em diferentes pontos de preço")
-        st.write("• Implementar stop loss abaixo do preço mais baixo detectado")
-        st.write("• Objetivo: Retorno à média esperada de comportamento")
+        st.write("**📊 Cobertura por Tipo de Ativo:**")
+        st.write("• **Criptomoedas**: Dados em tempo real para todos os timeframes com histórico de até 5.000 candles")
+        st.write("• **Ações Brasileiras (B3)**: Dados consolidados de provedores profissionais, otimizados para timeframes maiores")
+        st.write("• **Atualização Contínua**: Dados atualizados automaticamente de múltiplas fontes confiáveis")
 
-        st.write("**📉 Para Operações de Venda (Excesso de Compra)**")
-        st.write("• Aguarde até que o ativo esteja em território de compra excessiva")
-        st.write("• Recomenda-se encerrar posições longas")
-        st.write("• Opte por vendas curtas se o mercado permitir")
-        st.write("• Objetivo: Retorno à média esperada de comportamento")
+        st.markdown("### 📌 Estratégias de Aplicação")
+        st.write("**🔥 Estratégia Agressiva**: Mais sinais, adequada para traders experientes e mercados com tendência clara")
+        st.write("**⚖️ Estratégia Balanceada**: Equilíbrio ideal entre frequência e confiabilidade (recomendada)")  
+        st.write("**🛡️ Estratégia Conservadora**: Sinais seletivos e de alta probabilidade, ideal para preservação de capital")
 
-        st.markdown("### 📌 Limitações e Cuidados")
-        st.warning("**⚠️ Considerações Importantes**")
-        st.write("• **Fortes Tendências**: Em mercados com tendências marcantes, o ativo pode permanecer desviado da média por períodos prolongados")
-        st.write("• **Confirmação**: Importante validar sinais com indicadores adicionais")
-        st.write("• **Gestão de Risco**: Sempre utilize stop loss, mesmo em sinais 'muito fortes'")
-        st.write("• **Volatilidade**: Em mercados voláteis, sinais podem ser menos confiáveis")
-        st.write("• **Volume**: Verificar volume de negociações para suporte adicional aos sinais")
+        st.markdown("### 📌 Vantagens do Sistema")
+        st.write("• **Objetividade**: Sinais claros sem interpretação subjetiva")
+        st.write("• **Velocidade**: Processamento em tempo real para não perder oportunidades")
+        st.write("• **Adaptabilidade**: Modelo se ajusta a diferentes condições de mercado")
+        st.write("• **Simplicidade**: Interface intuitiva para traders de todos os níveis")
 
     with guide_tab4:
         st.markdown("## 🤖 Guia de Utilização - Bot Telegram")
@@ -1413,11 +1400,10 @@ with tab2:
         st.markdown("### 📌 Comandos Disponíveis")
         st.write("**📋 Lista Completa de Comandos**")
         st.write("• **/start** - Iniciar o bot e ver mensagem de boas-vindas")
-        st.write("• **/analise** - Análise individual com gráfico personalizado")
-        st.write("• **/screening** - Screening de múltiplos ativos")
-        st.write("• **/topos_fundos** - Detectar topos e fundos")
-        st.write("• **/status** - Ver status do bot")
-        st.write("• **/restart** - Reiniciar o bot (em caso de problemas)")
+        st.write("• **/analise** - Análise individual de ativos com gráfico personalizado")
+        st.write("• **/screening_auto** - Configurar alertas automáticos (monitoramento a cada 5 minutos)")
+        st.write("• **/list_alerts** - Ver alertas ativos configurados")
+        st.write("• **/stop_alerts** - Parar todos os alertas automáticos")
         st.write("• **/help** - Ajuda detalhada com todos os comandos")
 
         st.markdown("### 📌 Comando /analise - Análise Individual")
@@ -1438,27 +1424,22 @@ with tab2:
 
         st.success("**📈 Resultado**: O bot gerará um gráfico personalizado e enviará como imagem junto com análise detalhada")
 
-        st.markdown("### 📌 Comando /screening - Múltiplos Ativos")
+        st.markdown("### 📌 Comando /screening_auto - Alertas Automáticos")
+        st.write("**🔔 Sistema de Monitoramento Inteligente**")
+        st.write("Configure uma lista de ativos e receba alertas automáticos a cada 5 minutos quando houver mudança de estado.")
+        
         st.write("**🔍 Sintaxe**")
-        st.code("/screening [estrategia] [ativo1] [ativo2] [ativo3] ...")
+        st.code("/screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]")
 
         st.write("**💡 Exemplos**")
-        st.code("/screening balanceada BTC-USD ETH-USD")
-        st.code("/screening agressiva PETR4.SA VALE3.SA ITUB4.SA")
-        st.code("/screening conservadora AAPL GOOGL")
+        st.code("/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] ovelha2 balanceada 5m")
+        st.code("/screening_auto yahoo [BTC-USD,PETR4.SA,VALE3.SA] ovelha balanceada 1h")
 
-        st.success("**📊 Resultado**: Lista mudanças de estado recentes nos ativos especificados")
-
-        st.markdown("### 📌 Comando /topos_fundos - Extremos")
-        st.write("**📊 Sintaxe**")
-        st.code("/topos_fundos [ativo1] [ativo2] [ativo3] ...")
-
-        st.write("**💡 Exemplos**")
-        st.code("/topos_fundos PETR4.SA VALE3.SA")
-        st.code("/topos_fundos BTC-USD ETH-USD BNB-USD")
-        st.code("/topos_fundos AAPL GOOGL")
-
-        st.success("**📈 Resultado**: Identifica possíveis topos e fundos usando Bandas de Bollinger")
+        st.success("**🚨 Resultado**: Alertas automáticos em tempo real sobre mudanças de estado nos ativos monitorados")
+        
+        st.write("**⚙️ Comandos de Gerenciamento**")
+        st.write("• **/list_alerts** - Ver configuração atual dos alertas")
+        st.write("• **/stop_alerts** - Parar monitoramento automático")
 
         st.markdown("### 📌 Recursos Especiais do Bot")
         st.write("**🎯 Funcionalidades Exclusivas**")
@@ -2987,311 +2968,9 @@ with tab4:
             st.error(f"An error occurred during screening: {str(e)}")
             st.write("Please check your inputs and try again.")
 
+
+
 with tab5:
-    # Bollinger Bands Detection tab
-    st.markdown("## 📊 Detecção de Topos e Fundos")
-    st.markdown("Identifique oportunidades de compra e venda baseadas em métricas matemáticas")
-
-    # Parameters section
-    col1, col2 = st.columns([1, 1])
-
-    with col1:
-        st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
-        st.markdown("#### 💹 Lista de Ativos")
-
-        # Predefined lists for Bollinger Bands screening
-        preset_lists_bb = {
-            "Criptomoedas Top": ["BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD", "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD"],
-            "Ações Brasileiras": [
-                "ABEV3.SA", "ALPA4.SA", "AMER3.SA", "ARZZ3.SA", "ASAI3.SA",
-                "AZUL4.SA", "B3SA3.SA", "BBAS3.SA", "BBDC3.SA", "BBDC4.SA",
-                "BBSE3.SA", "BEEF3.SA", "BPAC11.SA", "BPAN4.SA", "BRAP4.SA",
-                "BRFS3.SA", "BRKM5.SA", "CASH3.SA", "CCRO3.SA", "CIEL3.SA",
-                "CMIG4.SA", "CMIN3.SA", "COGN3.SA", "CPFE3.SA", "CPLE6.SA",
-                "CRFB3.SA", "CSAN3.SA", "CSMG3.SA", "CSNA3.SA", "CVCB3.SA",
-                "CYRE3.SA", "DXCO3.SA", "EGIE3.SA", "ELET3.SA", "ELET6.SA",
-                "EMBR3.SA", "ENBR3.SA", "ENEV3.SA", "ENGI11.SA", "EQTL3.SA",
-                "EZTC3.SA", "FLRY3.SA", "GGBR4.SA", "GOAU4.SA", "GOLL4.SA",
-                "HAPV3.SA", "HYPE3.SA", "IGTI11.SA", "IRBR3.SA", "ITSA4.SA",
-                "ITUB4.SA", "JBSS3.SA", "KLBN11.SA", "LREN3.SA", "LWSA3.SA",
-                "MGLU3.SA", "MOVI3.SA", "MRFG3.SA", "MRVE3.SA", "MULT3.SA",
-                "NTCO3.SA", "PCAR3.SA", "PETR3.SA", "PETR4.SA", "PETZ3.SA",
-                "POSI3.SA", "PRIO3.SA", "QUAL3.SA", "RADL3.SA", "RAIL3.SA",
-                "RAIZ4.SA", "RDOR3.SA", "RENT3.SA", "SANB11.SA", "SBSP3.SA",
-                "SLCE3.SA", "SMTO3.SA", "SOMA3.SA", "SUZB3.SA", "TAEE11.SA",
-                "TIMS3.SA", "TOTS3.SA", "TRPL4.SA", "UGPA3.SA", "USIM5.SA",
-                "VALE3.SA", "VAMO3.SA", "VBBR3.SA", "VIIA3.SA", "VIVT3.SA",
-                "WEGE3.SA", "YDUQ3.SA", "ALSO3.SA", "SEQL3.SA", "SIMH3.SA",
-                "TTEN3.SA", "VIVA3.SA", "WEST3.SA", "OIBR4.SA", "CMIG3.SA",
-                "AESB3.SA", "NEOE3.SA", "CAML3.SA", "POMO4.SA", "GRND3.SA",
-                "ODPV3.SA", "ENAT3.SA", "LOGG3.SA", "MDIA3.SA", "RECV3.SA",
-                "SAPR11.SA", "SAPR4.SA", "SBFG3.SA", "TEND3.SA", "TFCO4.SA",
-                "HBOR3.SA", "HBSA3.SA", "SHOW3.SA", "ESPA3.SA", "ROMI3.SA",
-                "JHSF3.SA", "GUAR3.SA", "KEPL3.SA", "JSLG3.SA", "PGMN3.SA",
-                "PNVL3.SA", "PTBL3.SA", "RAPT4.SA", "SEER3.SA", "WIZC3.SA"
-            ],
-            "Ações Americanas": [
-                "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "BRK-B", "TSLA", 
-                "TSM", "JPM", "WMT", "LLY", "ORCL", "V", "MA", "NFLX", "XOM", "COST", 
-                "JNJ", "PLTR", "HD", "PG", "BAC", "ABBV", "KO", "CVX", "CRM", "UNH", 
-                "PM", "IBM", "MS", "GS", "LIN", "INTU", "ABT", "DIS", "AXP", "MRK", 
-                "MCD", "RTX", "CAT", "T", "NOW", "PEP", "UBER", "BKNG", "VZ", "TMO", 
-                "ISRG", "ACN", "C", "SCHW", "GEV", "BA", "BLK", "QCOM", "TXN", "AMGN", 
-                "SPGI", "ADBE", "BSX", "SYK", "ETN", "SO", "SPG", "TMUS", "NKE", "HON", 
-                "MDT", "MMM", "MO", "USB", "LMT", "UPS", "UNP", "PYPL", "TGT", "DE", 
-                "GILD", "CMCSA", "CHTR", "COP", "GE", "FDX", "DUK", "EMR", "DD", "NEE", 
-                "SBUX", "F", "GM", "OXY", "BIIB", "CVS", "CL", "ED", "GLW", "D", 
-                "PFE", "DG", "ADP", "ZTS", "BBY", "MNST", "TRV", "SLB", "ICE", "WELL", 
-                "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC", 
-                "NOC", "EXC", "SYY", "AON", "MET", "AFL", "TJX", "BMY", "HAL", "STZ"
-            ],
-            "Forex Principais": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X"],
-            "Commodities": ["GC=F", "SI=F", "CL=F", "NG=F", "HG=F"]
-        }
-
-        selected_preset_bb = st.selectbox(
-            "Lista:",
-            ["Customizada"] + list(preset_lists_bb.keys()),
-            key="preset_bb"
-        )
-
-        if selected_preset_bb != "Customizada":
-            symbols_list_bb = preset_lists_bb[selected_preset_bb]
-            st.info(f"{len(symbols_list_bb)} ativos selecionados")
-        else:
-            symbols_input_bb = st.text_area(
-                "Tickers (um por linha):",
-                value="BTC-USD\nETH-USD\nPETR4.SA\nAAPL",
-                height=100,
-                key="symbols_bb"
-            )
-            symbols_list_bb = [s.strip() for s in symbols_input_bb.split('\n') if s.strip()]
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col2:
-        st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
-        st.markdown("#### 📅 Configurações de Análise")
-
-        # Fixed period: 2 years
-        default_end_bb = datetime.now().date()
-        default_start_bb = default_end_bb - timedelta(days=730)  # 2 years
-
-        start_date_bb = default_start_bb
-        end_date_bb = default_end_bb
-
-        st.info("📅 **Período fixo:** 2 anos de dados históricos")
-        st.info("⏰ **Timeframe fixo:** 1 dia")
-
-        # Fixed interval: 1 day
-        interval_bb = "1d"
-
-        # Source selection for data
-        data_source_bb = st.selectbox(
-            "Fonte de Dados",
-            ["Yahoo Finance", "TwelveData"],
-            index=0,
-            help="Selecione a fonte dos dados de mercado para a detecção de topos e fundos. TwelveData oferece dados de alta qualidade para forex e ações.",
-            key="source_bb"
-        )
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # Analysis button
-    analyze_button_bb = st.button("🚀 INICIAR DETECÇÃO DE TOPOS E FUNDOS", type="primary", use_container_width=True, key="analyze_bb")
-
-    # Analysis logic for Bollinger Bands
-    if analyze_button_bb:
-        if not symbols_list_bb:
-            st.error("Por favor selecione pelo menos um ativo para análise.")
-            st.stop()
-
-        # Progress indicator
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-
-        try:
-            bb_results = []
-            total_symbols = len(symbols_list_bb)
-
-            for idx, current_symbol in enumerate(symbols_list_bb):
-                status_text.text(f"Analisando {current_symbol} ({idx+1}/{total_symbols})...")
-                progress_bar.progress(int((idx / total_symbols) * 100))
-
-                try:
-                    # Download data
-                    df_temp = get_market_data(current_symbol, start_date_bb.strftime("%Y-%m-%d"), 
-                                                end_date_bb.strftime("%Y-%m-%d"), interval_bb, data_source_bb)
-
-                    if df_temp is None or df_temp.empty:
-                        bb_results.append({
-                            'symbol': current_symbol,
-                            'status': 'Erro - Sem dados',
-                            'signal': 'N/A',
-                            'current_price': 'N/A',
-                            'banda_superior': 'N/A',
-                            'banda_inferior': 'N/A',
-                            'sma': 'N/A',
-                            'distance_pct': 'N/A'
-                        })
-                        continue
-
-                    # Calculate Bollinger Bands with fixed parameters
-                    bb_period = 20
-                    bb_std = 2.0
-                    min_distance_pct = 0.0
-
-                    sma = df_temp['close'].rolling(window=bb_period).mean()
-                    std = df_temp['close'].rolling(window=bb_period).std()
-                    banda_superior = sma + (bb_std * std)
-                    banda_inferior = sma - (bb_std * std)
-
-                    # Get current values
-                    current_price = df_temp['close'].iloc[-1]
-                    current_banda_superior = banda_superior.iloc[-1]
-                    current_banda_inferior = banda_inferior.iloc[-1]
-                    current_sma = sma.iloc[-1]
-
-                    # Determine signal
-                    signal = 'Neutro'
-                    distance_pct = 0
-
-                    # Check if price is below lower band (potential bottom/buy signal)
-                    if current_price < current_banda_inferior:
-                        distance_pct = ((current_banda_inferior - current_price) / current_price) * 100
-                        signal = 'Possível Fundo (Compra)'
-
-                    # Check if price is above upper band (potential top/sell signal)
-                    elif current_price > current_banda_superior:
-                        distance_pct = ((current_price - current_banda_superior) / current_price) * 100
-                        signal = 'Possível Topo (Venda)'
-
-                    bb_results.append({
-                        'symbol': current_symbol,
-                        'status': 'Sucesso',
-                        'signal': signal,
-                        'current_price': current_price,
-                        'banda_superior': current_banda_superior,
-                        'banda_inferior': current_banda_inferior,
-                        'sma': current_sma,
-                        'distance_pct': distance_pct
-                    })
-
-                except Exception as e:
-                    bb_results.append({
-                        'symbol': current_symbol,
-                        'status': f'Erro: {str(e)[:50]}...',
-                        'signal': 'N/A',
-                        'current_price': 'N/A',
-                        'banda_superior': 'N/A',
-                        'banda_inferior': 'N/A',
-                        'sma': 'N/A',
-                        'distance_pct': 'N/A'
-                    })
-
-            progress_bar.progress(100)
-            status_text.text("Detecção Completa!")
-
-            # Display results
-            st.success(f"✅ Análise de Topos e Fundos completa para {len(symbols_list_bb)} ativos ({data_source_bb})")
-
-            # Use all results
-            signal_results = bb_results
-            # Display buying opportunities (potential bottoms) with a note on distance
-            buy_opportunities = [r for r in signal_results if 'Compra' in r['signal']]
-            if buy_opportunities:
-                st.subheader(f"🟢 {len(buy_opportunities)} Oportunidade(s) de Compra Detectada(s)")
-
-                for result in buy_opportunities:
-                    col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
-
-                    with col1:
-                        st.write(f"**{result['symbol']}**")
-                    with col2:
-                        st.write(f"Preço: {result['current_price']:.2f}")
-                    with col3:
-                        st.write(f"Distância: {result['distance_pct']:.2f}%")
-                    with col4:
-                        col4.empty()
-                    with col5:
-                        st.success("🟢 COMPRA")
-
-                    st.markdown("---")
-
-                st.info("ℹ️ Nota: Quanto maior a distância do ativo, maior a possibilidade de reversão.")
-
-            # Display selling opportunities (potential tops) with a note on distance
-            sell_opportunities = [r for r in signal_results if 'Venda' in r['signal']]
-            if sell_opportunities:
-                st.subheader(f"🔴 {len(sell_opportunities)} Oportunidade(s) de Venda Detectada(s)")
-
-                for result in sell_opportunities:
-                    col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
-
-                    with col1:
-                        st.write(f"**{result['symbol']}**")
-                    with col2:
-                        st.write(f"Preço: {result['current_price']:.2f}")
-                    with col3:
-                        st.write(f"Distância: {result['distance_pct']:.2f}%")
-                    with col4:
-                        col4.empty()
-                    with col5:
-                        st.error("🔴 VENDA")
-
-                    st.markdown("---")
-
-                st.info("ℹ️ Nota: Quanto maior a distância do ativo, maior a possibilidade de reversão.")
-
-            if not buy_opportunities and not sell_opportunities:
-                st.info("ℹ️ Nenhuma oportunidade de compra ou venda detectada no período analisado.")
-
-            # Summary metrics
-            st.subheader("📊 Resumo da Análise")
-            col1, col2, col3, col4 = st.columns(4)
-
-            with col1:
-                total_assets = len(bb_results)
-                st.metric("Total de Ativos", total_assets)
-
-            with col2:
-                successful_analysis = len([r for r in bb_results if r['status'] == 'Sucesso'])
-                st.metric("Análises Bem-sucedidas", successful_analysis)
-
-            with col3:
-                st.metric("Oportunidades de Compra", len(buy_opportunities))
-
-            with col4:
-                st.metric("Oportunidades de Venda", len(sell_opportunities))
-
-            # Full results table
-            st.subheader("📋 Resultados Detalhados")
-
-            # Create summary dataframe with only essential columns
-            summary_df = pd.DataFrame(bb_results)
-
-            # Select only required columns
-            essential_columns = ['symbol', 'status', 'signal']
-            summary_df_display = summary_df[essential_columns].copy()
-
-            # Rename columns for better display
-            display_columns = {
-                'symbol': 'Ativo',
-                'status': 'Status',
-                'signal': 'Sinal'
-            }
-
-            summary_df_display = summary_df_display.rename(columns=display_columns)
-            st.dataframe(summary_df_display, use_container_width=True)
-
-            # Clear progress indicators
-            progress_bar.empty()
-            status_text.empty()
-
-        except Exception as e:
-            st.error(f"Erro durante a análise: {str(e)}")
-            st.write("Por favor verifique os parâmetros e tente novamente.")
-
-with tab6:
     # Telegram Bot tab
     st.markdown("## 🤖 Bot de Alertas do Telegram")
     st.markdown("Manual de Instruções e Informações do Bot")
@@ -3462,7 +3141,7 @@ with tab6:
     </div>
     """, unsafe_allow_html=True)
 
-with tab7:
+with tab6:
     # About tab
     st.markdown("## ℹ️ Sobre o Sistema OVECCHIA TRADING")
 
