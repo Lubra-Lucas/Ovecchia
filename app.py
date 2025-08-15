@@ -1128,10 +1128,11 @@ with tab1:
             <p><strong>📈 Monitore Múltiplos Ativos Simultaneamente</strong><br>
             Identifique rapidamente mudanças de estado em uma lista de ativos para detectar oportunidades de trading.</p>
             <ul>
-                <li>Listas pré-definidas de ativos</li>
-                <li>Detecção de mudanças de estado</li>
-                <li>Alertas de sinais em tempo real</li>
-                <li>Resumo executivo por categoria</li>
+                <li><strong>Yahoo Finance:</strong> Timeframe fixo diário com 2 anos de dados</li>
+                <li><strong>TwelveData:</strong> Timeframes flexíveis (1m a 1d) com 2000 registros</li>
+                <li><strong>Modelo OVELHA V2:</strong> Disponível com TwelveData para maior precisão</li>
+                <li><strong>Listas Pré-definidas:</strong> Criptos, ações BR/EUA, forex, commodities</li>
+                <li><strong>Detecção Inteligente:</strong> Alertas automáticos de mudanças de estado</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1364,8 +1365,10 @@ with tab2:
 
         st.markdown("### 📌 Configurações do Screening")
         st.write("Parâmetros principais para configurar o screening:")
-        st.write("• **📅 Período de Análise**: Defina o intervalo de datas para análise (padrão: últimos 30 dias)")
-        st.write("• **⏱️ Timeframe**: Escolha o intervalo temporal (recomendado: 1 dia para screening)")
+        st.write("• **📊 Fonte de Dados**: Yahoo Finance (timeframe fixo) ou TwelveData (timeframes flexíveis)")
+        st.write("• **⏱️ Timeframe**: Yahoo Finance usa 1 dia fixo | TwelveData permite 1m, 5m, 15m, 1h, 4h, 1d")
+        st.write("• **📅 Dados**: Yahoo Finance coleta 2 anos | TwelveData coleta últimos 2000 registros")
+        st.write("• **🤖 Modelo**: OVELHA clássico (ambas fontes) | OVELHA V2 ML (apenas TwelveData)")
         st.write("• **📈 Estratégia**: Selecione entre Agressiva, Balanceada ou Conservadora")
 
         st.markdown("### 📌 Interpretando os Resultados")
@@ -2694,43 +2697,78 @@ with tab4:
 
     with col2:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
-        st.markdown("#### 📅 Configurações de Análise")
-
-        # Fixed period: 2 years
-        default_end_screening = datetime.now().date()
-        default_start_screening = default_end_screening - timedelta(days=730)  # 2 years
-
-        start_date_screening = default_start_screening
-        end_date_screening = default_end_screening
-
-        st.info("📅 **Período fixo:** 2 anos de dados históricos")
-        st.info("⏰ **Timeframe fixo:** 1 dia")
-        # Fixed interval: 1 day
-        interval_screening = "1d"
+        st.markdown("#### 📊 Fonte de Dados e Configurações")
 
         # Source selection for data
         data_source_screening = st.selectbox(
             "Fonte de Dados",
             ["Yahoo Finance", "TwelveData"],
             index=0,
-            help="Selecione a fonte dos dados de mercado para o screening. TwelveData oferece dados de alta qualidade para forex e ações.",
+            help="Selecione a fonte dos dados de mercado para o screening. TwelveData oferece maior flexibilidade de timeframes.",
             key="source_screening"
         )
 
+        # Configurações baseadas na fonte selecionada
+        if data_source_screening == "Yahoo Finance":
+            st.info("📅 **Yahoo Finance:** 2 anos de dados históricos")
+            st.info("⏰ **Timeframe:** 1 dia (fixo)")
+            interval_screening = "1d"
+            outputsize_screening = None
+            
+            # Fixed period: 2 years for Yahoo Finance
+            default_end_screening = datetime.now().date()
+            default_start_screening = default_end_screening - timedelta(days=730)
+            start_date_screening = default_start_screening
+            end_date_screening = default_end_screening
+            
+        else:  # TwelveData
+            st.info("📅 **TwelveData:** Últimos 2000 registros")
+            st.markdown("#### ⏱️ Timeframe")
+            
+            # Intervalos específicos para TwelveData no screening
+            interval_options_screening = {
+                "1 minuto": "1min", 
+                "5 minutos": "5min", 
+                "15 minutos": "15min", 
+                "1 hora": "1h", 
+                "4 horas": "4h",
+                "1 dia": "1day"
+            }
+            interval_display_screening = st.selectbox(
+                "Selecione o Timeframe:", 
+                list(interval_options_screening.keys()), 
+                index=5,  # Default para 1 dia
+                key="interval_screening"
+            )
+            interval_screening = interval_options_screening[interval_display_screening]
+            outputsize_screening = 2000
+            
+            # Para TwelveData, não usamos datas específicas
+            start_date_screening = None
+            end_date_screening = None
 
         # Strategy selection
         st.markdown("#### 🤖 Modelo de Sinais")
-        model_type_screening = st.selectbox(
-            "Escolha o Modelo:",
-            ["OVELHA (Clássico)", "OVELHA V2 (Machine Learning)"],
-            index=0,
-            help="OVELHA: Modelo clássico baseado em indicadores técnicos | OVELHA V2: Modelo avançado com Random Forest",
-            key="model_screening"
-        )
-
-        # Buffer fixo para OVELHA V2 no screening
-        if model_type_screening == "OVELHA V2 (Machine Learning)":
-            st.info("🔧 **Buffer fixo:** 0.15% para médias móveis (otimizado para screening)")
+        
+        if data_source_screening == "Yahoo Finance":
+            model_type_screening = st.selectbox(
+                "Modelo:",
+                ["OVELHA (Clássico)"],
+                index=0,
+                help="Yahoo Finance utiliza o modelo OVELHA clássico",
+                key="model_screening"
+            )
+        else:  # TwelveData
+            model_type_screening = st.selectbox(
+                "Modelo:",
+                ["OVELHA (Clássico)", "OVELHA V2 (Machine Learning)"],
+                index=1,  # Default para OVELHA V2
+                help="TwelveData suporta ambos os modelos. OVELHA V2 recomendado para melhor performance.",
+                key="model_screening"
+            )
+            
+            if model_type_screening == "OVELHA V2 (Machine Learning)":
+                st.info("🧠 **OVELHA V2:** Modelo com Machine Learning e buffer adaptativo automático")
 
         st.markdown("#### 📈 Estratégia de Sinais")
         st.markdown("""
@@ -2789,8 +2827,13 @@ with tab4:
 
                 try:
                     # Download data using appropriate API
-                    df_temp = get_market_data(current_symbol, start_date_screening.strftime("%Y-%m-%d"), 
-                                                end_date_screening.strftime("%Y-%m-%d"), interval_screening, data_source_screening)
+                    kwargs = {}
+                    if data_source_screening == "TwelveData":
+                        kwargs['outputsize'] = outputsize_screening
+                        df_temp = get_market_data(current_symbol, None, None, interval_screening, data_source_screening, **kwargs)
+                    else:
+                        df_temp = get_market_data(current_symbol, start_date_screening.strftime("%Y-%m-%d"), 
+                                                    end_date_screening.strftime("%Y-%m-%d"), interval_screening, data_source_screening)
 
                     if df_temp is None or df_temp.empty:
                         screening_results.append({
@@ -2901,7 +2944,15 @@ with tab4:
 
             # Display screening results
             modelo_nome_screening = "OVELHA V2" if model_type_screening == "OVELHA V2 (Machine Learning)" else "OVELHA"
-            st.success(f"✅ Screening completo para {len(symbols_list)} ativos - Modelo: {modelo_nome_screening} ({data_source_screening}) - Timeframe: {interval_screening.upper()}")
+            
+            if data_source_screening == "TwelveData":
+                dados_info = f"últimos {outputsize_screening} registros"
+                timeframe_display = interval_display_screening
+            else:
+                dados_info = "2 anos de dados históricos"
+                timeframe_display = "1 dia"
+                
+            st.success(f"✅ Screening completo para {len(symbols_list)} ativos - Modelo: {modelo_nome_screening} ({data_source_screening}) - Timeframe: {timeframe_display} - Dados: {dados_info}")
 
             # Filter and display assets with state changes
             state_changes = [r for r in screening_results if r['state_change']]
