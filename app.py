@@ -1088,8 +1088,8 @@ st.markdown("""
 </style>""", unsafe_allow_html=True)
 
 # Main title with custom styling
-st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING - MODELO QUANT</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Análise Técnica e Sinais de Investimentos </p>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING</h1>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Sinais de Investimento </p>', unsafe_allow_html=True)
 
 # Create main navigation tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏠 Home", "📖 Guia de Utilização", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "🤖 Bot Telegram", "ℹ️ Sobre"])
@@ -1098,7 +1098,7 @@ with tab1:
     # Home page content
     st.markdown("""
     <div style="background: linear-gradient(90deg, #e3f2fd, #f3e5f5); padding: 2rem; border-radius: 15px; text-align: center; margin-bottom: 2rem;">
-        <h2 style="color: #1976d2; margin-bottom: 1rem;">🚀 Bem-vindo ao Sistema de Trading Quant!</h2>
+        <h2 style="color: #1976d2; margin-bottom: 1rem;">🚀 Bem-vindo ao Ovecchia Trading!</h2>
         <p style="font-size: 1.2rem; color: #666;">Escolha uma das abas acima para começar sua análise profissional</p>
     </div>
     """, unsafe_allow_html=True)
@@ -1208,7 +1208,7 @@ with tab2:
 
         st.markdown("### 📌 O que é a Análise Individual?")
         st.info("""
-        A **Análise Individual** é o núcleo inteligente do sistema **OVECCHIA TRADING**.  
+        A **Análise Individual** é a principal funcionalidade do sistema **OVECCHIA TRADING**.  
         Com ela, você pode investigar a fundo qualquer ativo — seja ação, criptomoeda, forex ou índice — e descobrir com precisão os melhores pontos de **entrada** e **saída** do mercado.  
 
         Impulsionada pelos modelos proprietários **OVELHA** e **OVELHA V2**, a ferramenta identifica automaticamente três estados de mercado: **Buy** (compra), **Sell** (venda) e **Stay Out** (ficar de fora).  
@@ -1843,12 +1843,12 @@ with tab3:
             )
             # Definir datas padrão para compatibilidade, mas não mostrar controles
             default_end = datetime.now().date()
-            default_start = default_end - timedelta(days=365)
+            default_start = default_end - timedelta(days=1095)
             start_date = default_start
             end_date = default_end
         else:
             default_end = datetime.now().date()
-            default_start = default_end - timedelta(days=365)
+            default_start = default_end - timedelta(days=1095)
 
             col_date1, col_date2 = st.columns(2)
             with col_date1:
