@@ -1776,18 +1776,57 @@ with tab3:
             help="Selecione a fonte dos dados de mercado. TwelveData oferece dados de alta qualidade para forex e ações."
         )
 
+        # Listas de ativos por fonte de dados
         if data_source == "TwelveData":
-            symbol = st.text_input(
-                "Ticker",
-                value="EUR/USD",
-                help="Exemplos TwelveData: EUR/USD, GBP/USD, AAPL, MSFT, BTC/USD, ETH/USD"
-            ).strip()
+            ticker_options = [
+                # Criptomoedas - formato TwelveData
+                "BTC/USD", "ETH/USD", "BNB/USD", "ADA/USD", "XRP/USD", "SOL/USD", "DOT/USD", "DOGE/USD", "AVAX/USD", "SHIB/USD",
+                "TRX/USD", "LINK/USD", "MATIC/USD", "LTC/USD", "BCH/USD", "FIL/USD", "APT/USD", "ARB/USD", "NEAR/USD", "VET/USD",
+                # Ações americanas
+                "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "TSLA", "META", "NVDA", "NFLX", "CRM", "ORCL", "ADBE", "PYPL", "INTC", "AMD",
+                "BABA", "TSM", "ASML", "SAP", "V", "MA", "JPM", "BAC", "WFC", "GS", "MS", "C", "AXP", "BLK", "SCHW",
+                # Forex - formato TwelveData
+                "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD", "USD/CAD", "NZD/USD", "EUR/GBP", "EUR/JPY", "GBP/JPY",
+                # Commodities e Índices
+                "XAU/USD", "XAG/USD", "WTI/USD", "BRENT/USD", "NG/USD"
+            ]
+            default_value = "EUR/USD"
+            help_text = "Digite ou selecione o ticker. Exemplos: EUR/USD, BTC/USD, AAPL, MSFT"
         else:
-            symbol = st.text_input(
-                "Ticker",
-                value="BTC-USD",
-                help="Examples: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
-            ).strip()
+            ticker_options = [
+                # Criptomoedas - formato Yahoo Finance
+                "BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD", "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD",
+                "TRX-USD", "LINK-USD", "MATIC-USD", "LTC-USD", "BCH-USD", "FIL-USD", "APT-USD", "ARB-USD", "NEAR-USD", "VET-USD",
+                # Ações brasileiras
+                "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "ABEV3.SA", "BBAS3.SA", "WEGE3.SA", "MGLU3.SA", "LREN3.SA", "GGBR4.SA",
+                "USIM5.SA", "CSNA3.SA", "GOAU4.SA", "BRAP4.SA", "KLBN11.SA", "SUZB3.SA", "CYRE3.SA", "MRVE3.SA", "EQTL3.SA", "MULT3.SA",
+                "RAIL3.SA", "AZUL4.SA", "GOLL4.SA", "B3SA3.SA", "RENT3.SA", "FLRY3.SA", "RDOR3.SA", "HAPV3.SA", "BRFS3.SA", "JBSS3.SA",
+                # Ações americanas
+                "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "TSLA", "META", "NVDA", "NFLX", "CRM", "ORCL", "ADBE", "PYPL", "INTC", "AMD",
+                "BABA", "TSM", "ASML", "SAP", "V", "MA", "JPM", "BAC", "WFC", "GS", "MS", "C", "AXP", "BLK", "SCHW",
+                # Forex - formato Yahoo Finance
+                "EURUSD=X", "GBPUSD=X", "USDJPY=X", "USDCHF=X", "AUDUSD=X", "USDCAD=X", "NZDUSD=X", "EURGBP=X", "EURJPY=X", "GBPJPY=X",
+                # Commodities - formato Yahoo Finance
+                "GC=F", "SI=F", "CL=F", "NG=F", "HG=F", "ZC=F", "ZS=F", "KE=F", "CC=F", "KC=F"
+            ]
+            default_value = "BTC-USD"
+            help_text = "Digite ou selecione o ticker. Exemplos: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
+
+        # Implementar autosugestão com selectbox pesquisável
+        symbol = st.selectbox(
+            "Ticker",
+            options=[""] + sorted(ticker_options),  # Lista vazia no início + opções ordenadas
+            index=None,
+            placeholder=f"Digite para buscar... (ex: {default_value})",
+            help=help_text
+        )
+
+        # Se nenhum ticker foi selecionado, usar o valor padrão
+        if not symbol:
+            symbol = default_value
+            st.info(f"💡 Usando ticker padrão: **{symbol}**")
+        
+        symbol = symbol.strip()
 
         st.markdown("#### 📅 Intervalo de Data")
 
