@@ -1817,31 +1817,17 @@ with tab3:
             default_value = "BTC-USD"
             help_text = "Digite ou selecione o ticker. Exemplos: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
 
-        # Campo de entrada com sugestões dinâmicas
-        symbol = st.text_input(
+        # Implementar autosugestão com selectbox pesquisável
+        symbol = st.selectbox(
             "Ticker",
-            value="",
-            placeholder=f"Digite o ticker (ex: {default_value})",
+            options=[""] + sorted(ticker_options),  # Lista vazia no início + opções ordenadas
+            index=None,
+            placeholder=f"Digite para buscar... (ex: {default_value})",
             help=help_text
         )
-        
-        # Mostrar sugestões baseadas no que foi digitado
-        if symbol and len(symbol) >= 1:
-            # Filtrar opções que contêm o texto digitado
-            matching_options = [opt for opt in ticker_options if symbol.upper() in opt.upper()]
-            if matching_options:
-                # Mostrar até 10 sugestões mais relevantes
-                top_matches = sorted(matching_options, key=lambda x: (
-                    0 if x.upper().startswith(symbol.upper()) else 1,  # Priorizar que começam com o texto
-                    len(x),  # Depois priorizar os mais curtos
-                    x.upper()  # Depois ordem alfabética
-                ))[:10]
-                
-                suggestion_text = " | ".join(top_matches)
-                st.info(f"💡 **Sugestões:** {suggestion_text}")
 
-        # Se nenhum ticker foi inserido, usar o valor padrão
-        if not symbol.strip():
+        # Se nenhum ticker foi selecionado, usar o valor padrão
+        if not symbol:
             symbol = default_value
             st.info(f"💡 Usando ticker padrão: **{symbol}**")
         
