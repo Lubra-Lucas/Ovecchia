@@ -48,6 +48,11 @@ def get_twelvedata_data(symbol, interval, outputsize=5000):
         df['datetime'] = pd.to_datetime(df['datetime'])
         df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
 
+        # Ajustar timezone: TwelveData vem em UTC, converter para São Paulo (UTC-3)
+        df['datetime'] = df['datetime'].dt.tz_localize('UTC').dt.tz_convert('America/Sao_Paulo')
+        # Remover informação de timezone para compatibilidade
+        df['datetime'] = df['datetime'].dt.tz_localize(None)
+
         # Ordena do mais antigo para o mais recente
         df = df.sort_values(by='datetime').reset_index(drop=True)
 
@@ -58,7 +63,7 @@ def get_twelvedata_data(symbol, interval, outputsize=5000):
         if not df.empty:
             start_time = df['time'].iloc[0]
             end_time = df['time'].iloc[-1]
-            st.info(f"📅 TwelveData coletou {len(df)} registros de {start_time.strftime('%Y-%m-%d %H:%M')} até {end_time.strftime('%Y-%m-%d %H:%M')}")
+            st.info(f"📅 TwelveData coletou {len(df)} registros de {start_time.strftime('%Y-%m-%d %H:%M')} até {end_time.strftime('%Y-%m-%d %H:%M')} (Horário de São Paulo)")
 
         return df
 

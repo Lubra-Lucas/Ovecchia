@@ -401,6 +401,11 @@ class OvecchiaTradingBot:
             df['datetime'] = pd.to_datetime(df['datetime'])
             df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
 
+            # Ajustar timezone: TwelveData vem em UTC, converter para São Paulo (UTC-3)
+            df['datetime'] = df['datetime'].dt.tz_localize('UTC').dt.tz_convert('America/Sao_Paulo')
+            # Remover informação de timezone para compatibilidade
+            df['datetime'] = df['datetime'].dt.tz_localize(None)
+
             # Adicionar coluna volume se não existir
             if 'volume' not in df.columns:
                 df['volume'] = 0.0
