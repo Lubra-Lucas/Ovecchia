@@ -1817,17 +1817,32 @@ with tab3:
             default_value = "BTC-USD"
             help_text = "Digite ou selecione o ticker. Exemplos: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
 
-        # Implementar autosugestão com selectbox pesquisável
-        symbol = st.selectbox(
-            "Ticker",
-            options=[""] + sorted(ticker_options),  # Lista vazia no início + opções ordenadas
-            index=None,
-            placeholder=f"Digite para buscar... (ex: {default_value})",
-            help=help_text
-        )
+        # Campo de entrada de texto para ticker com sugestões
+        col_ticker1, col_ticker2 = st.columns([3, 1])
+        
+        with col_ticker1:
+            symbol = st.text_input(
+                "Ticker",
+                value="",
+                placeholder=f"Digite o ticker (ex: {default_value})",
+                help=help_text
+            )
+        
+        with col_ticker2:
+            # Selectbox com sugestões mais comuns para facilitar
+            suggestion = st.selectbox(
+                "Sugestões:",
+                [""] + sorted(ticker_options[:20]),  # Primeiros 20 da lista
+                index=0,
+                help="Clique para usar uma sugestão"
+            )
+            
+            # Se uma sugestão foi selecionada, usar ela
+            if suggestion:
+                symbol = suggestion
 
-        # Se nenhum ticker foi selecionado, usar o valor padrão
-        if not symbol:
+        # Se nenhum ticker foi inserido, usar o valor padrão
+        if not symbol.strip():
             symbol = default_value
             st.info(f"💡 Usando ticker padrão: **{symbol}**")
         
