@@ -1089,7 +1089,7 @@ st.markdown("""
 
 # Main title with custom styling
 st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING - MODELO QUANT</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Análise Técnica e Sinais de Trading</p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Análise Técnica e Sinais de Investimentos </p>', unsafe_allow_html=True)
 
 # Create main navigation tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏠 Home", "📖 Guia de Utilização", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "🤖 Bot Telegram", "ℹ️ Sobre"])
@@ -1109,14 +1109,14 @@ with tab1:
         st.markdown("### 📊 Análise Individual")
         st.markdown("""
         <div class="metric-card">
-            <p><strong>🤖 Análise Alimentada por Machine Learning</strong><br>
-            Nosso modelo proprietário OVELHA V2 utiliza algoritmos avançados de Machine Learning para detectar estados de mercado em tempo real (Buy, Sell, Stay Out).</p>
+            <p><strong>🤖 Potencialize seus investimentos com Machine Learning</strong><br>
+            Descubra oportunidades únicas no mercado com o modelo proprietário <strong>OVELHA V2</strong>, que utiliza Inteligência Artificial de última geração para identificar, em tempo real, os sinais mais importantes: <strong>Compra (Buy)</strong>, <strong>Venda (Sell)</strong> e <strong>Ficar de Fora (Stay Out)</strong>.</p>
             <ul>
-                <li>🔥 <strong>Dados em Tempo Real:</strong> Criptomoedas com histórico de até 5.000 candles</li>
-                <li>⚡ <strong>Múltiplos Timeframes:</strong> 1m, 5m, 15m, 30m, 1h, 4h, 1d para máxima flexibilidade</li>
-                <li>📈 <strong>Ações Brasileiras (B3):</strong> Dados consolidados ideais para análises de médio e longo prazo</li>
-                <li>🎯 <strong>Sinais Inteligentes:</strong> Estados de mercado detectados automaticamente</li>
-                <li>📊 <strong>Interface Intuitiva:</strong> Gráficos interativos com sinais claros e precisos</li>
+                <li>🔥 <strong>Dados em Tempo Real:</strong> Criptomoedas, Forex, Metais, Ações e Índices, com histórico de até 5.000 candles</li>
+                <li>⚡ <strong>Múltiplos Timeframes:</strong> 1m, 5m, 15m, 30m, 1h, 4h, 1d — flexibilidade total para qualquer estratégia</li>
+                <li>📈 <strong>Ações Brasileiras (B3):</strong> Informações consolidadas para análises de médio e longo prazo</li>
+                <li>🎯 <strong>Sinais Inteligentes:</strong> Detectados automaticamente com precisão e clareza</li>
+                <li>📊 <strong>Interface Intuitiva:</strong> Gráficos interativos, objetivos e fáceis de interpretar</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1147,7 +1147,7 @@ with tab1:
             <li><strong>📊 Análise Individual:</strong> Análise completa de ativos selecionados pelo usuário com gráficos profissionais</li>
             <li><strong>🔔 Screening Automático:</strong> Configure listas de ativos e receba alertas automáticos a cada 5 minutos</li>
             <li><strong>⚡ Alertas em Tempo Real:</strong> Notificações instantâneas quando houver mudança de estado (Buy/Sell/Stay Out)</li>
-            <li><strong>🎯 Modelo OVELHA V2:</strong> Powered by Machine Learning para máxima precisão</li>
+            <li><strong>🎯 Modelo OVELHA V2:</strong> Utilize Machine Learning para máxima precisão</li>
             <li><strong>📈 Múltiplos Timeframes:</strong> Suporte completo para 1m, 5m, 15m, 30m, 1h, 4h, 1d</li>
         </ul>
         <p style="margin-top: 1rem; font-size: 0.9rem; color: #25D366;"><strong>💡 Exemplo de Screening Automático:</strong> 
@@ -1206,18 +1206,29 @@ with tab2:
         st.markdown("## 📊 Guia de Utilização - Análise Individual do Ativo")
 
         st.markdown("### 📌 O que é a Análise Individual?")
-        st.info("A **Análise Individual** é o coração do sistema OVECCHIA TRADING. Esta ferramenta permite analisar detalhadamente um ativo específico (ação, criptomoeda, forex, etc.) para identificar os melhores momentos de entrada e saída do mercado. Utilizando modelos proprietários (OVELHA e OVELHA V2), o sistema detecta automaticamente três estados de mercado: **Buy** (compra), **Sell** (venda) e **Stay Out** (ficar fora), oferecendo sinais claros para suas operações.")
+        st.info("""
+        A **Análise Individual** é o núcleo inteligente do sistema **OVECCHIA TRADING**.  
+        Com ela, você pode investigar a fundo qualquer ativo — seja ação, criptomoeda, forex ou índice — e descobrir com precisão os melhores pontos de **entrada** e **saída** do mercado.  
+
+        Impulsionada pelos modelos proprietários **OVELHA** e **OVELHA V2**, a ferramenta identifica automaticamente três estados de mercado: **Buy** (compra), **Sell** (venda) e **Stay Out** (ficar de fora).  
+        O resultado? **Sinais claros, confiáveis e em tempo real**, ajudando você a tomar decisões mais inteligentes e estratégicas em suas operações.
+        """)
 
         st.markdown("### 🎯 Como Utilizar - Exemplo Prático")
         st.markdown("**Vamos fazer uma análise passo a passo da Petrobras (PETR4.SA):**")
         
         st.markdown("#### 📝 Passo 1: Configuração da Fonte de Dados")
         st.markdown("""
-        <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
-            <p><strong>🔹 Fonte de Dados:</strong> Selecione \"Yahoo Finance\" (recomendado para ações brasileiras) ou \"TwelveData\" para criptomoedas,forex,metais e índices globais.</p>
-            <p style=\"font-size: 0.9rem; color: #666;\">💡 Yahoo Finance é gratuito e confiável para ações da B3, criptomoedas e ações americanas. TwelveData oferece suporte aprimorado e flexibilidade de dados para criptomoedas e índices globais.</p>
+        <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <p><strong>🔹 Fonte de Dados:</strong> Escolha a base ideal para a sua análise:</p>
+            <ul>
+                <li><strong>📈 Yahoo Finance:</strong> Recomendado para ações brasileiras (B3). Simples, gratuito e confiável.</li>
+                <li><strong>🌍 TwelveData:</strong> Indicado para qualquer outro tipo de ativo — ações internacionais, criptomoedas, forex, metais e índices globais.</li>
+            </ul>
+            <p style="font-size: 0.9rem; color: #666;">💡 Dica: utilize <strong>Yahoo Finance</strong> para explorar papéis da B3. Para todo o restante, como criptomoedas ou ações de outros países, opte pelo <strong>TwelveData</strong> para maior flexibilidade e cobertura de mercado.</p>
         </div>
         """, unsafe_allow_html=True)
+        
 
         st.markdown("#### 📝 Passo 2: Inserir o Ticker Correto")
         st.markdown("""
@@ -1226,7 +1237,7 @@ with tab2:
             <p style=\"font-size: 0.9rem; color: #666;\">⚠️ <strong>Atenção:</strong> No Yahoo Finance, as ações brasileiras sempre terminam em .SA (ex: VALE3.SA, ITUB4.SA). Se estiver utilizando o TwelveData não é necessário S.A </p>
             <p style=\"font-size: 0.9rem; color: #666;\">📋 <strong>Outros exemplos:</strong></p>
             <ul style=\"font-size: 0.9rem; color: #666;\">
-                <li><strong>Criptomoedas:</strong> BTC-USD, ETH-USD (com hífen e USD)</li>
+                <li><strong> Criptomoedas:</strong> BTC-USD, ETH-USD (com hífen e USD)</li>
                 <li><strong>Ações americanas:</strong> AAPL, MSFT, GOOGL (apenas o código)</li>
                 <li><strong>Forex:</strong> EURUSD=X, GBPUSD=X (com =X no final)</li>
             </ul>
@@ -1239,7 +1250,7 @@ with tab2:
         <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
             <p><strong>🔹 Data Inicial:</strong> Selecione uma data 6-12 meses atrás (ex: 01/01/2024)</p>
             <p><strong>🔹 Data Final:</strong> Mantenha a data atual</p>
-            <p style=\"font-size: 0.9rem; color: #666;\">💡 <strong>Dica:</strong> Períodos de 6-12 meses oferecem análises mais confiáveis. TwelveData permite recuperar até 5000 dados históricos para uma análise mais abrangente.</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">💡 <strong>Dica:</strong> Períodos de 6-12 meses oferecem análises mais confiáveis. TwelveData permite recuperar até 5000 registros históricos para uma análise mais abrangente.Recomenda-se utilizar na média 2.500 registros</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1259,11 +1270,11 @@ with tab2:
         st.markdown("#### 📝 Passo 5: Selecionar o Modelo")
         st.markdown("""
         <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
-            <p><strong>🔹 Modelo:</strong> Escolha \"OVELHA (Clássico)\" para começar</p>
+            <p><strong>🔹 Modelo:</strong> Escolha \"OVELHA V2(Machine Learning)\" para começar</p>
             <p style=\"font-size: 0.9rem; color: #666;\">🤖 <strong>Modelos disponíveis:</strong></p>
             <ul style=\"font-size: 0.9rem; color: #666;\">
                 <li><strong>OVELHA (Clássico):</strong> Modelo tradicional, mais previsível</li>
-                <li><strong>OVELHA V2 (Machine Learning):</strong> Modelo avançado com IA</li>
+                <li><strong>OVELHA V2 (Machine Learning):</strong> Modelo avançado com IA. </li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1314,7 +1325,7 @@ with tab2:
                 <li><strong>⚫ Linha Preta:</strong> Fique de fora - aguarde melhor oportunidade</li>
             </ul>
             <p><strong>🎯 Status Atual:</strong> Mostra o sinal no momento mais recente</p>
-            <p><strong>💰 Simulação:</strong> Demonstra performance histórica da estratégia</p>
+            <p><strong>💰 Métricas :</strong> Demonstra performance histórica da estratégia</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1594,15 +1605,15 @@ with tab3:
         st.markdown("#### 📅 Intervalo de Data")
 
         if data_source == "TwelveData":
-            st.info("📅 **TwelveData**: Quantidade de registros configurável")
+            st.info("📅 **TwelveData**: Quantidade de dados configurável")
             # Controle de quantidade de registros
             outputsize = st.number_input(
-                "Quantidade de registros (500-5000):",
-                min_value=500,
+                "Dados Históricos (1500-5000):",
+                min_value=1500,
                 max_value=5000,
                 value=5000,
                 step=100,
-                help="Número de registros históricos para coletar da TwelveData API"
+                help="Número de dados anteriores para coletar da TwelveData API"
             )
             # Definir datas padrão para compatibilidade, mas não mostrar controles
             default_end = datetime.now().date()
@@ -1652,7 +1663,7 @@ with tab3:
             "Escolha o Modelo:",
             ["OVELHA (Clássico)", "OVELHA V2 (Machine Learning)"],
             index=0,
-            help="OVELHA: Modelo clássico baseado em indicadores técnicos | OVELHA V2: Modelo avançado com Random Forest"
+            help="OVELHA: Modelo clássico baseado em indicadores técnicos | OVELHA V2: Modelo avançado de machine learning"
         )
 
         # Buffer fixo para OVELHA V2
@@ -1806,7 +1817,7 @@ with tab3:
                 df_with_signals = calculate_ovelha_v2_signals(df, strategy_type=strategy_type, sma_short=sma_short, sma_long=sma_long, use_dynamic_threshold=True, vol_factor=0.5)
                 if df_with_signals is not None:
                     df = df_with_signals
-                    st.info(f"✅ Modelo OVELHA V2 (Random Forest) aplicado com sucesso!")
+                    st.info(f"✅ Modelo OVELHA V2 aplicado com sucesso!")
                 else:
                     # Fallback para modelo clássico se houver erro
                     model_type = "OVELHA (Clássico)"
@@ -2626,12 +2637,12 @@ with tab4:
 
         # Predefined lists
         preset_lists = {
-            "Criptomoedas": ["BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD",
+            "Criptomoedas Yahoo Finance": ["BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD",
                                    "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD",
                                    "TRX-USD", "LINK-USD", "MATIC-USD", "LTC-USD", "BCH-USD",
                                    "FIL-USD", "APT-USD", "ARB-USD", "NEAR-USD", "VET-USD"],
             
-            "Ações Brasileiras": [
+            "Ações Brasileiras Yahoo Finance": [
                 "ABEV3.SA", "ALPA4.SA", "AMER3.SA", "ARZZ3.SA", "ASAI3.SA",
                 "AZUL4.SA", "B3SA3.SA", "BBAS3.SA", "BBDC3.SA", "BBDC4.SA",
                 "BBSE3.SA", "BEEF3.SA", "BPAC11.SA", "BPAN4.SA", "BRAP4.SA",
@@ -2674,8 +2685,8 @@ with tab4:
                 "EL", "FOXA", "FOX", "KR", "PSX", "ADM", "APD", "EQIX", "CMS", "WFC", 
                 "NOC", "EXC", "SYY", "AON", "MET", "AFL", "TJX", "BMY", "HAL", "STZ"
             ],
-            "Pares de Forex": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"],
-            "Commodities": ["GC=F", "SI=F", "CL=F", "NG=F", "HG=F", "ZC=F", "ZS=F", "KE=F", "CC=F", "KC=F"]
+            "Pares de Forex Yahoo Finance": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"],
+            "Commodities Yahoo Finance": ["GC=F", "SI=F", "CL=F", "NG=F", "HG=F", "ZC=F", "ZS=F", "KE=F", "CC=F", "KC=F"]
         }
 
         selected_preset = st.selectbox(
