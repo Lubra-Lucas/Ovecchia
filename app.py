@@ -1776,128 +1776,18 @@ with tab3:
             help="Selecione a fonte dos dados de mercado. TwelveData oferece dados de alta qualidade para forex e ações."
         )
 
-        # Listas de ativos por fonte de dados
-        assets_yahoo_finance = {
-            # Criptomoedas
-            "BTC-USD": "Bitcoin", "ETH-USD": "Ethereum", "BNB-USD": "Binance Coin", "ADA-USD": "Cardano", 
-            "XRP-USD": "Ripple", "SOL-USD": "Solana", "DOT-USD": "Polkadot", "DOGE-USD": "Dogecoin",
-            "AVAX-USD": "Avalanche", "SHIB-USD": "Shiba Inu", "TRX-USD": "TRON", "LINK-USD": "Chainlink",
-            "MATIC-USD": "Polygon", "LTC-USD": "Litecoin", "BCH-USD": "Bitcoin Cash", "FIL-USD": "Filecoin",
-            "APT-USD": "Aptos", "ARB-USD": "Arbitrum", "NEAR-USD": "NEAR Protocol", "VET-USD": "VeChain",
-            
-            # Ações Brasileiras
-            "PETR4.SA": "Petrobras PN", "VALE3.SA": "Vale ON", "ITUB4.SA": "Itaú Unibanco PN", "BBDC4.SA": "Bradesco PN",
-            "ABEV3.SA": "Ambev ON", "BBAS3.SA": "Banco do Brasil ON", "WEGE3.SA": "WEG ON", "RENT3.SA": "Localiza ON",
-            "B3SA3.SA": "B3 ON", "MGLU3.SA": "Magazine Luiza ON", "SUZB3.SA": "Suzano ON", "JBSS3.SA": "JBS ON",
-            "LREN3.SA": "Lojas Renner ON", "RDOR3.SA": "Rede D'Or ON", "RAIL3.SA": "Rumo ON", "VBBR3.SA": "Vibra ON",
-            "CCRO3.SA": "CCR ON", "ELET3.SA": "Eletrobras ON", "CMIG4.SA": "Cemig PN", "CSAN3.SA": "Cosan ON",
-            "GGBR4.SA": "Gerdau PN", "USIM5.SA": "Usiminas PNA", "CSNA3.SA": "CSN ON", "GOAU4.SA": "Gerdau Met PN",
-            "ENBR3.SA": "EDP Brasil ON", "SBSP3.SA": "Sabesp ON", "CPLE6.SA": "Copel PNB", "TAEE11.SA": "Taesa UNT",
-            "FLRY3.SA": "Fleury ON", "RRRP3.SA": "3R Petroleum ON", "KLBN11.SA": "Klabin UNT", "BEEF3.SA": "Minerva ON",
-            "BRFS3.SA": "BRF ON", "MRFG3.SA": "Marfrig ON", "QUAL3.SA": "Qualicorp ON", "HAPV3.SA": "Hapvida ON",
-            "NTCO3.SA": "Natura ON", "PCAR3.SA": "P&B CARMO ON", "RADL3.SA": "Raia Drogasil ON", "COGN3.SA": "Cogna ON",
-            "YDUQ3.SA": "YDUQ ON", "MULT3.SA": "Multiplan ON", "BRML3.SA": "BR Malls ON", "IGTI11.SA": "Iguatemi UNT",
-            
-            # Ações Americanas
-            "AAPL": "Apple Inc", "MSFT": "Microsoft Corp", "GOOGL": "Alphabet Inc", "AMZN": "Amazon.com Inc",
-            "TSLA": "Tesla Inc", "META": "Meta Platforms", "NVDA": "NVIDIA Corp", "BRK-B": "Berkshire Hathaway",
-            "UNH": "UnitedHealth Group", "JNJ": "Johnson & Johnson", "V": "Visa Inc", "WMT": "Walmart Inc",
-            "JPM": "JPMorgan Chase", "MA": "Mastercard Inc", "PG": "Procter & Gamble", "HD": "Home Depot",
-            "CVX": "Chevron Corp", "LLY": "Eli Lilly", "ABBV": "AbbVie Inc", "AVGO": "Broadcom Inc",
-            "KO": "Coca-Cola Co", "MRK": "Merck & Co", "PEP": "PepsiCo Inc", "COST": "Costco Wholesale",
-            "TMO": "Thermo Fisher", "ACN": "Accenture plc", "ADBE": "Adobe Inc", "DHR": "Danaher Corp",
-            "VZ": "Verizon Communications", "NFLX": "Netflix Inc", "CRM": "Salesforce Inc", "TXN": "Texas Instruments",
-            "CMCSA": "Comcast Corp", "ABT": "Abbott Laboratories", "ORCL": "Oracle Corp", "NKE": "Nike Inc",
-            "QCOM": "QUALCOMM Inc", "DIS": "Walt Disney Co", "XOM": "Exxon Mobil", "INTC": "Intel Corp",
-            "AMD": "Advanced Micro Devices", "COP": "ConocoPhillips", "IBM": "IBM Corp", "BA": "Boeing Co",
-            
-            # Forex
-            "EURUSD=X": "Euro/Dólar", "GBPUSD=X": "Libra/Dólar", "USDJPY=X": "Dólar/Iene", "AUDUSD=X": "Dólar Australiano/Dólar",
-            "USDCAD=X": "Dólar/Dólar Canadense", "USDCHF=X": "Dólar/Franco Suíço", "NZDUSD=X": "Dólar Neozelandês/Dólar",
-            "EURGBP=X": "Euro/Libra", "EURJPY=X": "Euro/Iene", "GBPJPY=X": "Libra/Iene",
-            
-            # Commodities
-            "GC=F": "Ouro", "SI=F": "Prata", "CL=F": "Petróleo Crude", "NG=F": "Gás Natural",
-            "HG=F": "Cobre", "ZC=F": "Milho", "ZS=F": "Soja", "KC=F": "Café", "CC=F": "Cacau"
-        }
-        
-        assets_twelvedata = {
-            # Criptomoedas (formato TwelveData)
-            "BTC/USD": "Bitcoin", "ETH/USD": "Ethereum", "BNB/USD": "Binance Coin", "ADA/USD": "Cardano",
-            "XRP/USD": "Ripple", "SOL/USD": "Solana", "DOT/USD": "Polkadot", "DOGE/USD": "Dogecoin",
-            "AVAX/USD": "Avalanche", "SHIB/USD": "Shiba Inu", "TRX/USD": "TRON", "LINK/USD": "Chainlink",
-            "MATIC/USD": "Polygon", "LTC/USD": "Litecoin", "BCH/USD": "Bitcoin Cash", "FIL/USD": "Filecoin",
-            
-            # Ações Brasileiras (mesmo formato)
-            "PETR4.SA": "Petrobras PN", "VALE3.SA": "Vale ON", "ITUB4.SA": "Itaú Unibanco PN", "BBDC4.SA": "Bradesco PN",
-            "ABEV3.SA": "Ambev ON", "BBAS3.SA": "Banco do Brasil ON", "WEGE3.SA": "WEG ON", "RENT3.SA": "Localiza ON",
-            "B3SA3.SA": "B3 ON", "MGLU3.SA": "Magazine Luiza ON", "SUZB3.SA": "Suzano ON", "JBSS3.SA": "JBS ON",
-            "LREN3.SA": "Lojas Renner ON", "RDOR3.SA": "Rede D'Or ON", "RAIL3.SA": "Rumo ON", "VBBR3.SA": "Vibra ON",
-            
-            # Ações Americanas (mesmo formato)
-            "AAPL": "Apple Inc", "MSFT": "Microsoft Corp", "GOOGL": "Alphabet Inc", "AMZN": "Amazon.com Inc",
-            "TSLA": "Tesla Inc", "META": "Meta Platforms", "NVDA": "NVIDIA Corp", "BRK-B": "Berkshire Hathaway",
-            "UNH": "UnitedHealth Group", "JNJ": "Johnson & Johnson", "V": "Visa Inc", "WMT": "Walmart Inc",
-            "JPM": "JPMorgan Chase", "MA": "Mastercard Inc", "PG": "Procter & Gamble", "HD": "Home Depot",
-            
-            # Forex (formato TwelveData)
-            "EUR/USD": "Euro/Dólar", "GBP/USD": "Libra/Dólar", "USD/JPY": "Dólar/Iene", "AUD/USD": "Dólar Australiano/Dólar",
-            "USD/CAD": "Dólar/Dólar Canadense", "USD/CHF": "Dólar/Franco Suíço", "NZD/USD": "Dólar Neozelandês/Dólar",
-            "EUR/GBP": "Euro/Libra", "EUR/JPY": "Euro/Iene", "GBP/JPY": "Libra/Iene"
-        }
-        
-        # Selecionar lista baseada na fonte de dados
-        available_assets = assets_twelvedata if data_source == "TwelveData" else assets_yahoo_finance
-        
-        # Função para filtrar ativos baseado no input do usuário
-        def filter_assets(query):
-            if not query:
-                return []
-            query = query.upper()
-            matches = []
-            for ticker, name in available_assets.items():
-                if query in ticker.upper() or query in name.upper():
-                    matches.append(f"{ticker} - {name}")
-            return sorted(matches)[:10]  # Limitar a 10 resultados
-        
-        # Campo de busca inteligente
         if data_source == "TwelveData":
-            default_value = "EUR/USD"
-            help_text = "Digite para buscar (ex: BTC, EUR, AAPL, PETR4)"
+            symbol = st.text_input(
+                "Ticker",
+                value="EUR/USD",
+                help="Exemplos TwelveData: EUR/USD, GBP/USD, AAPL, MSFT, BTC/USD, ETH/USD"
+            ).strip()
         else:
-            default_value = "BTC-USD"
-            help_text = "Digite para buscar (ex: BTC, PETR4, AAPL, EURUSD)"
-        
-        # Input com busca
-        search_query = st.text_input(
-            "🔍 Buscar Ativo",
-            value=default_value,
-            help=help_text,
-            placeholder="Digite para buscar ativos..."
-        )
-        
-        # Mostrar sugestões quando o usuário está digitando
-        if search_query and len(search_query) >= 1:
-            matches = filter_assets(search_query)
-            if matches and search_query.upper() not in [m.split(' - ')[0].upper() for m in matches]:
-                st.markdown("##### 💡 Sugestões:")
-                selected_asset = st.selectbox(
-                    "Selecione um ativo:",
-                    [""] + matches,
-                    index=0,
-                    key="asset_suggestions"
-                )
-                
-                if selected_asset:
-                    # Extrair apenas o ticker da seleção
-                    symbol = selected_asset.split(' - ')[0]
-                    st.success(f"✅ Ativo selecionado: **{symbol}**")
-                else:
-                    symbol = search_query.strip()
-            else:
-                symbol = search_query.strip()
-        else:
-            symbol = search_query.strip()
+            symbol = st.text_input(
+                "Ticker",
+                value="BTC-USD",
+                help="Examples: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
+            ).strip()
 
         st.markdown("#### 📅 Intervalo de Data")
 
