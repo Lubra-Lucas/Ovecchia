@@ -1785,7 +1785,7 @@ with tab3:
         if data_source == "TwelveData":
             ticker_options = [
                 # Criptomoedas - formato TwelveData
-                "BTC/USD", "ETH/USD", "BNB/USD", "ADA/USD", "XRP/USD", "SOL/USD", "DOT/USD", "DOGE/USD", "AVAX/USD", "SHIB/USD",
+                "BTC/USD", "ETH/USD", "BNB/USD", "ADA/USD", "XRP/USD", "SOL/USD", "DOT/USD", "DOGE/USD", "AVAX/USD", "SHIB/USD","BCH/XRP",
                 "TRX/USD", "LINK/USD", "MATIC/USD", "LTC/USD", "BCH/USD", "FIL/USD", "APT/USD", "ARB/USD", "NEAR/USD", "VET/USD",
                 # Ações americanas
                 "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "TSLA", "META", "NVDA", "NFLX", "CRM", "ORCL", "ADBE", "PYPL", "INTC", "AMD",
