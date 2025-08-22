@@ -48,9 +48,15 @@ def get_twelvedata_data(symbol, interval, outputsize=5000):
         df['datetime'] = pd.to_datetime(df['datetime'])
         df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
 
-        # Ajustar timezone: TwelveData vem em UTC, converter para São Paulo (UTC-3)
-        df['datetime'] = df['datetime'].dt.tz_localize('UTC').dt.tz_convert('America/Sao_Paulo')
-        # Remover informação de timezone para compatibilidade
+        # Ajustar timezone: TwelveData vem em UTC, converter para São Paulo
+        # Primeiro, assumir que os dados estão em UTC
+        if df['datetime'].dt.tz is None:
+            df['datetime'] = df['datetime'].dt.tz_localize('UTC')
+        
+        # Converter para timezone de São Paulo
+        df['datetime'] = df['datetime'].dt.tz_convert('America/Sao_Paulo')
+        
+        # Remover informação de timezone para compatibilidade, mantendo o horário local
         df['datetime'] = df['datetime'].dt.tz_localize(None)
 
         # Ordena do mais antigo para o mais recente
@@ -2760,7 +2766,12 @@ with tab3:
                 title=dict(text=titulo_grafico, x=0.5, font=dict(size=18)),
                 template="plotly_white",
                 hovermode="x unified",
-                height=700
+                height=700,
+                xaxis=dict(
+                    type='date',
+                    tickformat='%d/%m/%Y %H:%M',
+                    title='Data/Hora (São Paulo)'
+                )
             )
 
             # Display the chart
