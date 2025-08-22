@@ -1809,8 +1809,8 @@ with tab3:
                 "EUR/AUD","EUR/CHF","AUD/JPY","GBP/CHF","CHF/JPY","NZD/JPY","USD/SGD","USD/HKD","AUD/NZD","CAD/JPY"
 
                 # Commodities — 20 relevantes, com símbolos comuns usados por TwelveData ou mercados futuros
-                "XAU/USD","XAG/USD","XPT/USD","XPD/USD","COPPER/USD","WTI/USD","BRENT/USD","NG/USD","COFFEE/USD","CORN/USD",
-                "WHEAT/USD","SOYBEAN/USD","SUGAR/USD","COCOA/USD","COTTON/USD","LIVE_CATTLE/USD","LEAN_HOGS/USD","LUMBER/USD","OATS/USD","FCOJ/USD"
+                ,"XAG/USD","XPT/USD","XPD/USD","COPPER/USD","WTI/USD","BRENT/USD","NG/USD","COFFEE/USD","CORN/USD",
+                "WHEAT/USD","SOYBEAN/USD","SUGAR/USD","COCOA/USD","COTTON/USD","LIVE_CATTLE/USD","LEAN_HOGS/USD","XAU/USD","OATS/USD","FCOJ/USD"
             ]
             default_value = "EUR/USD"
             help_text = "Digite ou selecione o ticker. Exemplos: EUR/USD, BTC/USD, AAPL, MSFT"
