@@ -1785,34 +1785,75 @@ with tab3:
         if data_source == "TwelveData":
             ticker_options = [
                 # Criptomoedas - formato TwelveData
-                "BTC/USD", "ETH/USD", "BNB/USD", "ADA/USD", "XRP/USD", "SOL/USD", "DOT/USD", "DOGE/USD", "AVAX/USD", "SHIB/USD","BCH/XRP",
-                "TRX/USD", "LINK/USD", "MATIC/USD", "LTC/USD", "BCH/USD", "FIL/USD", "APT/USD", "ARB/USD", "NEAR/USD", "VET/USD",
-                # Ações americanas
-                "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "TSLA", "META", "NVDA", "NFLX", "CRM", "ORCL", "ADBE", "PYPL", "INTC", "AMD",
-                "BABA", "TSM", "ASML", "SAP", "V", "MA", "JPM", "BAC", "WFC", "GS", "MS", "C", "AXP", "BLK", "SCHW",
-                # Forex - formato TwelveData
-                "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD", "USD/CAD", "NZD/USD", "EUR/GBP", "EUR/JPY", "GBP/JPY",
-                # Commodities e Índices
-                "XAU/USD", "XAG/USD", "WTI/USD", "BRENT/USD", "NG/USD"
+                # Criptomoedas — Top 100 por capitalização (formato SYMBOL/USD)
+                "BTC/USD","ETH/USD","USDT/USD","BNB/USD","XRP/USD","DOGE/USD","ADA/USD","SOL/USD","MATIC/USD","DOT/USD",
+                "TRX/USD","AVAX/USD","SHIB/USD","WBTC/USD","LTC/USD","LINK/USD","UNI/USD","ATOM/USD","XLM/USD","ETC/USD",
+                "FIL/USD","NEAR/USD","ICP/USD","ALGO/USD","VET/USD","FTM/USD","SAND/USD","MANA/USD","EGLD/USD","HBAR/USD",
+                "XTZ/USD","THETA/USD","AAVE/USD","EGLD/USD","CHZ/USD","AERO/USD","AXS/USD","KSM/USD","KNC/USD","RUNE/USD","GRT/USD",
+                "ZEC/USD","XMR/USD","EOS/USD","FTT/USD","SNX/USD","AMP/USD","CAKE/USD","QTUM/USD","BTG/USD","DASH/USD",
+                "USDC/USD","USTC/USD","HBAR/USD","HBAR/USD","MIOTA/USD","NEO/USD","ENJ/USD","GMT/USD","QNT/USD","CAKE/USD",
+                "PEPE/USD","CRO/USD","CHZ/USD","MKR/USD","UST/USD","STX/USD","CSPR/USD","ANKR/USD","XEC/USD","KAVA/USD",
+                "FLOW/USD","NEXO/USD","GALA/USD","WAVES/USD","CELO/USD","AR/USD","LDO/USD","1INCH/USD","CRV/USD","BAT/USD",
+                "YFI/USD","RAY/USD","IMX/USD","HNT/USD","XDC/USD","FTM/USD","RSR/USD","KLAY/USD","THOR/USD","DCR/USD",
+                "MINA/USD","GLM/USD","BNT/USD","RVN/USD","LRC/USD","ICX/USD","DIA/USD","ZEN/USD","OCEAN/USD","AMP/USD"
+
+                # Ações Americanas — Top 100 (S&P 100 symbols)
+                "AAPL","MSFT","GOOGL","GOOG","AMZN","TSLA","NVDA","META","JPM","JNJ","V","MA","PG","UNH","HD","BAC","DIS","ADBE",
+                "CMCSA","XOM","KO","PFE","NFLX","CSCO","PEP","CVX","T","ABBV","CRM","MRK","ABT","ACN","AVGO","C","QCOM","LLY",
+                "ORCL","INTC","TMO","NEE","MDT","MCD","LOW","HON","UNP","TXN","LIN","LMT","SBUX","AMD","BLK","GILD","UPS","MS",
+                "RTX","SCHW","SPG","AMGN","AXP","WFC","BK","MMM","CAT","MO","ADP","PM","CL","CVS","COP","SO","MET","GE","IBM",
+                "DUKE","COST","PLTR","NOW","PEP","CSX","F","GD","MDLZ","DE","HAIN","ENPH","SYY","CI","LU","SHW","FDX","EL","SYK","ZTS","TJX","FOXA","DAL","PNC","USB","ALL","BDX","ICE","GIS"
+
+                # Forex — Top 20 pares de moedas mais negociados
+                "EUR/USD","EUR/USD","USD/JPY","GBP/USD","USD/CHF","AUD/USD","USD/CAD","NZD/USD","EUR/GBP","EUR/JPY","GBP/JPY",
+                "EUR/AUD","EUR/CHF","AUD/JPY","GBP/CHF","CHF/JPY","NZD/JPY","USD/SGD","USD/HKD","AUD/NZD","CAD/JPY"
+
+                # Commodities — 20 relevantes, com símbolos comuns usados por TwelveData ou mercados futuros
+                "XAU/USD","XAG/USD","XPT/USD","XPD/USD","COPPER/USD","WTI/USD","BRENT/USD","NG/USD","COFFEE/USD","CORN/USD",
+                "WHEAT/USD","SOYBEAN/USD","SUGAR/USD","COCOA/USD","COTTON/USD","LIVE_CATTLE/USD","LEAN_HOGS/USD","LUMBER/USD","OATS/USD","FCOJ/USD"
             ]
             default_value = "EUR/USD"
             help_text = "Digite ou selecione o ticker. Exemplos: EUR/USD, BTC/USD, AAPL, MSFT"
         else:
             ticker_options = [
                 # Criptomoedas - formato Yahoo Finance
-                "BTC-USD", "ETH-USD", "BNB-USD", "ADA-USD", "XRP-USD", "SOL-USD", "DOT-USD", "DOGE-USD", "AVAX-USD", "SHIB-USD",
-                "TRX-USD", "LINK-USD", "MATIC-USD", "LTC-USD", "BCH-USD", "FIL-USD", "APT-USD", "ARB-USD", "NEAR-USD", "VET-USD",
-                # Ações brasileiras
-                "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "ABEV3.SA", "BBAS3.SA", "WEGE3.SA", "MGLU3.SA", "LREN3.SA", "GGBR4.SA",
-                "USIM5.SA", "CSNA3.SA", "GOAU4.SA", "BRAP4.SA", "KLBN11.SA", "SUZB3.SA", "CYRE3.SA", "MRVE3.SA", "EQTL3.SA", "MULT3.SA",
-                "RAIL3.SA", "AZUL4.SA", "GOLL4.SA", "B3SA3.SA", "RENT3.SA", "FLRY3.SA", "RDOR3.SA", "HAPV3.SA", "BRFS3.SA", "JBSS3.SA",
-                # Ações americanas
-                "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "TSLA", "META", "NVDA", "NFLX", "CRM", "ORCL", "ADBE", "PYPL", "INTC", "AMD",
-                "BABA", "TSM", "ASML", "SAP", "V", "MA", "JPM", "BAC", "WFC", "GS", "MS", "C", "AXP", "BLK", "SCHW",
+                "BTC-USD","ETH-USD","USDT-USD","BNB-USD","XRP-USD","DOGE-USD","ADA-USD","SOL-USD","MATIC-USD","DOT-USD",
+                "TRX-USD","AVAX-USD","SHIB-USD","LTC-USD","LINK-USD","UNI-USD","ATOM-USD","XLM-USD","ETC-USD","FIL-USD",
+                "NEAR-USD","ICP-USD","ALGO-USD","VET-USD","FTM-USD","SAND-USD","MANA-USD","HBAR-USD","XTZ-USD","THETA-USD",
+                "AAVE-USD","CHZ-USD","AXS-USD","KSM-USD","RUNE-USD","GRT-USD","ZEC-USD","XMR-USD","EOS-USD","SNX-USD",
+                "CAKE-USD","QTUM-USD","DASH-USD","MIOTA-USD","NEO-USD","ENJ-USD","GMT-USD","QNT-USD","FLOW-USD","STX-USD",
+                "CSPR-USD","ANKR-USD","XEC-USD","KAVA-USD","GALA-USD","WAVES-USD","CELO-USD","AR-USD","LDO-USD","1INCH-USD",
+                "CRV-USD","BAT-USD","YFI-USD","IMX-USD","HNT-USD","XDC-USD","RSR-USD","KLAY-USD","MINA-USD","BNT-USD",
+                "RVN-USD","LRC-USD","ICX-USD","ZEN-USD","OCEAN-USD","DYDX-USD","GMX-USD","APE-USD","OP-USD","SUI-USD",
+                "PEPE-USD","BONK-USD","JTO-USD","PYTH-USD","TIA-USD","SEI-USD","INJ-USD","ASTR-USD","MASK-USD","RNDR-USD",
+                "FLOKI-USD","NEXO-USD","ONT-USD","GLM-USD","STORJ-USD","ILV-USD","SKL-USD","BAL-USD","RLC-USD","TRAC-USD",
+
+                # Ações brasileiras - principais 100 do IBOVESPA (formato .SA no Yahoo Finance)
+                "ABEV3.SA","ALOS3.SA","AMER3.SA","ASAI3.SA","AZUL4.SA","B3SA3.SA","BBAS3.SA","BBDC3.SA","BBDC4.SA","BBSE3.SA",
+                "BEEF3.SA","BPAC11.SA","BRAP4.SA","BRFS3.SA","BRKM5.SA","BRML3.SA","CASH3.SA","CCRO3.SA","CIEL3.SA","CMIN3.SA",
+                "CMIG4.SA","COGN3.SA","CPFE3.SA","CPLE6.SA","CRFB3.SA","CSAN3.SA","CSNA3.SA","CVCB3.SA","CYRE3.SA","DXCO3.SA",
+                "ELET3.SA","ELET6.SA","EMBR3.SA","ENGI11.SA","ENEV3.SA","EQTL3.SA","EZTC3.SA","GGBR4.SA","GOAU4.SA","GOLL4.SA",
+                "HAPV3.SA","HYPE3.SA","IGTI11.SA","IRBR3.SA","ITSA4.SA","ITUB4.SA","JBSS3.SA","KLBN11.SA","LREN3.SA","LWSA3.SA",
+                "MGLU3.SA","MRFG3.SA","MRVE3.SA","MULT3.SA","NTCO3.SA","PETR3.SA","PETR4.SA","PRIO3.SA","RADL3.SA","RAIL3.SA",
+                "RDOR3.SA","RENT3.SA","RRRP3.SA","SANB11.SA","SBSP3.SA","SLCE3.SA","SMTO3.SA","SUZB3.SA","TAEE11.SA","TIMS3.SA",
+                "TOTS3.SA","UGPA3.SA","^BVSP","USIM5.SA","VALE3.SA","VBBR3.SA","VIIA3.SA","VIVT3.SA","WEGE3.SA","YDUQ3.SA","APER3.SA",
+                "ARZZ3.SA","BMOB3.SA","CAML3.SA","CURY3.SA","DASA3.SA","DMVF3.SA","FESA4.SA","LOGG3.SA","MDIA3.SA","MEAL3.SA",
+                "MOVI3.SA","OFSA3.SA","PARD3.SA","PGMN3.SA","PSSA3.SA","RAPT4.SA","SEQL3.SA","SHOW3.SA","SOMA3.SA","TEND3.SA",
+
+                # Ações americanas (S&P 100)
+                "AAPL","MSFT","GOOGL","GOOG","AMZN","TSLA","NVDA","META","JPM","JNJ","V","MA","PG","UNH","HD","BAC","DIS","ADBE",
+                "CMCSA","XOM","KO","PFE","NFLX","CSCO","PEP","CVX","T","ABBV","CRM","MRK","ABT","ACN","AVGO","C","QCOM","LLY",
+                "ORCL","INTC","TMO","NEE","MDT","MCD","LOW","HON","UNP","TXN","LIN","LMT","SBUX","AMD","BLK","GILD","UPS","MS",
+                "RTX","SCHW","SPG","AMGN","AXP","WFC","BK","MMM","CAT","MO","ADP","PM","CL","CVS","COP","SO","MET","GE","IBM",
+                "DUK","COST","PLTR","NOW","CSX","F","GD","MDLZ","DE","SYK","ZTS","TJX","PNC","USB","ALL","BDX","ICE","GIS","EL",
+
                 # Forex - formato Yahoo Finance
-                "EURUSD=X", "GBPUSD=X", "USDJPY=X", "USDCHF=X", "AUDUSD=X", "USDCAD=X", "NZDUSD=X", "EURGBP=X", "EURJPY=X", "GBPJPY=X",
-                # Commodities - formato Yahoo Finance
-                "GC=F", "SI=F", "CL=F", "NG=F", "HG=F", "ZC=F", "ZS=F", "KE=F", "CC=F", "KC=F"
+                "EURUSD=X","USDJPY=X","GBPUSD=X","USDCHF=X","AUDUSD=X","USDCAD=X","NZDUSD=X","EURGBP=X","EURJPY=X","GBPJPY=X",
+                "EURAUD=X","EURCHF=X","AUDJPY=X","GBPCHF=X","CHFJPY=X","NZDJPY=X","USDSGD=X","USDHKD=X","AUDNZD=X","CADJPY=X",
+
+                # Commodities - formato Yahoo Finance (Futures)
+                "GC=F","SI=F","CL=F","NG=F","HG=F","PL=F","PA=F","ZC=F","ZW=F","ZS=F",
+                "KC=F","CC=F","SB=F","CT=F","LE=F","HE=F","LBS=F","OJ=F","ZR=F","BO=F"
             ]
             default_value = "BTC-USD"
             help_text = "Digite ou selecione o ticker. Exemplos: BTC-USD, PETR4.SA, AAPL, EURUSD=X"
