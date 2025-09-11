@@ -18,5 +18,3 @@
         Get-Content 'C:\app\Ovecchia\logs\web_stderr.log' -Tail 50
         Get-Content 'C:\app\Ovecchia\logs\bot_stderr.log' -Tail 50
       }"
-
-            Get-Content "C:\app\Ovecchia\logs\bot_stderr.log" -Tail 50
