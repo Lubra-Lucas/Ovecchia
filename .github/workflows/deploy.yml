@@ -8,10 +8,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Deploy to EC2 via SSH
+      - name: SSH into EC2 and deploy (PowerShell)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -20,9 +19,27 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
           script: |
-            cd /d C:\app\Ovecchia
-            "C:\Program Files\Git\cmd\git.exe" fetch --all
-            "C:\Program Files\Git\cmd\git.exe" reset --hard origin/main
-            C:\app\Ovecchia\.venv\Scripts\pip.exe install -r C:\app\Ovecchia\requirements.txt
-            C:\nssm-2.24\win64\nssm.exe restart OvecchiaWeb
-            C:\nssm-2.24\win64\nssm.exe restart OvecchiaBot
+            Write-Host "User:" (whoami)
+            $ErrorActionPreference = "Stop"
+
+            Set-Location "C:\app\Ovecchia"
+
+            # Diagnóstico: ver estado atual e remotos
+            & "C:\Program Files\Git\cmd\git.exe" remote -v
+            & "C:\Program Files\Git\cmd\git.exe" rev-parse HEAD
+            & "C:\Program Files\Git\cmd\git.exe" fetch --all --prune
+            & "C:\Program Files\Git\cmd\git.exe" ls-remote origin -h refs/heads/main
+
+            # Sincroniza com a main do GitHub
+            & "C:\Program Files\Git\cmd\git.exe" reset --hard origin/main
+
+            # (opcional) dependências
+            & "C:\app\Ovecchia\.venv\Scripts\pip.exe" install -r "C:\app\Ovecchia\requirements.txt"
+
+            # Reinicia serviços (use caminho completo do NSSM)
+            & "C:\nssm-2.24\win64\nssm.exe" restart OvecchiaWeb
+            & "C:\nssm-2.24\win64\nssm.exe" restart OvecchiaBot
+
+            # Logs finais para conferência
+            Get-Content "C:\app\Ovecchia\logs\web_stderr.log" -Tail 50
+            Get-Content "C:\app\Ovecchia\logs\bot_stderr.log" -Tail 50
