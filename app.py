@@ -9,7 +9,6 @@ import warnings
 from sklearn.ensemble import RandomForestClassifier
 import requests
 import logging # Import logging module
-import os # Import os module for environment variables
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO)
@@ -24,10 +23,7 @@ def get_twelvedata_data(symbol, interval, outputsize=5000):
     """Função para coletar dados usando TwelveData API"""
     try:
         # Sua chave da Twelve Data
-        API_KEY = os.getenv("TWELVEDATA_API_KEY")
-        if not API_KEY:
-            st.error("Chave da API TwelveData não configurada")
-            return pd.DataFrame()
+        API_KEY = "8745d2a910c841e4913afc40a6368dcb"
 
         # Endpoint para pegar dados com quantidade configurável
         url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&apikey={API_KEY}&outputsize={outputsize}"
@@ -67,7 +63,7 @@ def get_twelvedata_data(symbol, interval, outputsize=5000):
         if not df.empty:
             start_time = df['time'].iloc[0]
             end_time = df['time'].iloc[-1]
-            st.info(f"TwelveData coletou {len(df)} registros de {start_time.strftime('%Y-%m-%d %H:%M')} até {end_time.strftime('%Y-%m-%d %H:%M')} (Horário de São Paulo)")
+            st.info(f"📅 TwelveData coletou {len(df)} registros de {start_time.strftime('%Y-%m-%d %H:%M')} até {end_time.strftime('%Y-%m-%d %H:%M')} (Horário de São Paulo)")
 
         return df
 
@@ -188,9 +184,7 @@ def calculate_ovelha_v2_signals(
         loss = np.where(delta < 0, -delta, 0.0)
         avg_gain = pd.Series(gain).rolling(window=14, min_periods=14).mean()
         avg_loss = pd.Series(loss).rolling(window=14, min_periods=14).mean()
-        # Safely replace zeros in avg_loss to avoid division by zero
-        avg_loss_clean = pd.Series(avg_loss).where(avg_loss != 0, np.nan)
-        rs = avg_gain / avg_loss_clean
+        rs = avg_gain / avg_loss.replace(0, np.nan)
         df_work['RSI_14'] = 100 - (100 / (1 + rs))
         df_work['RSI_14'] = df_work['RSI_14'].bfill()
 
@@ -265,7 +259,7 @@ def calculate_ovelha_v2_signals(
 
         # Verificar se temos dados suficientes para treinar
         if len(X) < 200:
-            st.warning("Dados insuficientes para treinar o modelo OVELHA V2. Usando modelo clássico.")
+            st.warning("⚠️ Dados insuficientes para treinar o modelo OVELHA V2. Usando modelo clássico.")
             return None
 
         rf = RandomForestClassifier(
@@ -340,10 +334,10 @@ def display_returns_section(returns_data, criteria_name):
         with col3:
             st.metric("Taxa de Acerto", f"{win_rate:.1f}%")
         with col4:
-            # Remove unused return_color variable
-            st.metric("Retorno Total", f"{total_return:.2f}%")
+            return_color = "🟢" if total_return >= 0 else "🔴"
+            st.metric("Retorno Total", f"{return_color} {total_return:.2f}%")
 
-        st.info("**Dica**: Use o botão 'GERAR ANÁLISE AVANÇADA DE RETORNOS' para ver métricas detalhadas, simulação de investimento e gráfico de patrimônio.")
+        st.info("💡 **Dica**: Use o botão 'GERAR ANÁLISE AVANÇADA DE RETORNOS' para ver métricas detalhadas, simulação de investimento e gráfico de patrimônio.")
 
 def display_advanced_returns_section(returns_data, criteria_name, price_data, symbol_label):
     """Advanced function to display comprehensive returns analysis"""
@@ -395,7 +389,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
             consecutive_losses = 0
 
     # === SEÇÃO 1: MÉTRICAS PRINCIPAIS ===
-    st.markdown("### Métricas Principais")
+    st.markdown("### 📊 Métricas Principais")
 
     # Métricas em formato mais compacto
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -415,11 +409,11 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         """, unsafe_allow_html=True)
     with col3:
         return_color = "#4CAF50" if total_return >= 0 else "#f44336"
-        return_color = "#4CAF50" if total_return >= 0 else "#f44336"
+        return_icon = "🟢" if total_return >= 0 else "🔴"
         st.markdown(f"""
         <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
             <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Retorno Total</div>
-            <div style="font-size: 1.1rem; font-weight: bold; color: {return_color};">{total_return:.2f}%</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: {return_color};">{return_icon} {total_return:.2f}%</div>
         </div>
         """, unsafe_allow_html=True)
     with col4:
@@ -440,7 +434,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
 
 
     # === SEÇÃO 2: MÉTRICAS AVANÇADAS ===
-    st.markdown("### Métricas Avançadas")
+    st.markdown("### 🎯 Métricas Avançadas")
 
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1:
@@ -461,14 +455,14 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         st.markdown(f"""
         <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
             <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Ganho Médio</div>
-            <div style="font-size: 1.1rem; font-weight: bold; color: #4CAF50;">{avg_winning_trade:.2f}%</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #4CAF50;">🟢 {avg_winning_trade:.2f}%</div>
         </div>
         """, unsafe_allow_html=True)
     with col4:
         st.markdown(f"""
         <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
             <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Perda Média</div>
-            <div style="font-size: 1.1rem; font-weight: bold; color: #f44336;">{avg_losing_trade:.2f}%</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #f44336;">🔴 {avg_losing_trade:.2f}%</div>
         </div>
         """, unsafe_allow_html=True)
     with col5:
@@ -487,12 +481,12 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         """, unsafe_allow_html=True)
 
     # === SEÇÃO 3: TOP 10 MELHORES E PIORES TRADES ===
-    st.markdown("### Top 10 Melhores e Piores Trades")
+    st.markdown("### 🏆 Top 10 Melhores e Piores Trades")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("#### Top 10 Melhores Trades")
+        st.markdown("#### 🟢 Top 10 Melhores Trades")
         best_trades = returns_data.nlargest(10, 'return_pct')[['entry_time', 'exit_time', 'signal', 'entry_price', 'exit_price', 'return_pct']].copy()
         best_trades['Entrada'] = best_trades['entry_time'].dt.strftime('%d/%m/%Y')
         best_trades['Saída'] = best_trades['exit_time'].dt.strftime('%d/%m/%Y')
@@ -506,7 +500,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         )
 
     with col2:
-        st.markdown("#### Top 10 Piores Trades")
+        st.markdown("#### 🔴 Top 10 Piores Trades")
         worst_trades = returns_data.nsmallest(10, 'return_pct')[['entry_time', 'exit_time', 'signal', 'entry_price', 'exit_price', 'return_pct']].copy()
         worst_trades['Entrada'] = worst_trades['entry_time'].dt.strftime('%d/%m/%Y')
         worst_trades['Saída'] = worst_trades['exit_time'].dt.strftime('%d/%m/%Y')
@@ -520,7 +514,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         )
 
     # === SEÇÃO 4: GRÁFICO DE PATRIMÔNIO ===
-    st.markdown("### Curva de Patrimônio com Drawdowns")
+    st.markdown("### 💰 Curva de Patrimônio com Drawdowns")
 
     # Calculate equity curve
     equity_curve = calculate_equity_curve(returns_data, initial_capital=10000)
@@ -537,7 +531,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         st.markdown(f"""
         <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
             <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Máximo Drawdown</div>
-            <div style="font-size: 1.1rem; font-weight: bold; color: #f44336;">{max_drawdown:.2f}%</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: #f44336;">🔴 {max_drawdown:.2f}%</div>
         </div>
         """, unsafe_allow_html=True)
     with col2:
@@ -557,7 +551,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         """, unsafe_allow_html=True)
 
     # === SEÇÃO 5: ÚLTIMOS TRADES ===
-    st.markdown("### Histórico de Trades")
+    st.markdown("### 📋 Histórico de Trades")
 
     # Show number of trades to display
     num_trades_to_show = min(len(returns_data), 30)
@@ -571,7 +565,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
     display_df = last_returns[['entry_time', 'exit_time', 'signal', 'entry_price', 'exit_price', 'return_pct']].copy()
     display_df['Data Entrada'] = display_df['entry_time'].dt.strftime('%d/%m/%Y')
     display_df['Data Saída'] = display_df['exit_time'].dt.strftime('%d/%m/%Y')
-    display_df['Tipo'] = display_df['signal'].map({'Buy': 'Compra', 'Sell': 'Venda'})
+    display_df['Tipo'] = display_df['signal'].map({'Buy': '🟢 Compra', 'Sell': '🔴 Venda'})
     display_df['Entrada'] = display_df['entry_price'].round(2)
     display_df['Saída'] = display_df['exit_price'].round(2)
     display_df['Retorno (%)'] = display_df['return_pct'].round(2)
@@ -722,7 +716,7 @@ def create_equity_chart(equity_data, symbol_label, criteria_name):
     )
 
     # Add zero line for drawdown
-    fig.add_hline(y=0, line_dash="dash", line_color="gray", row="2", col="1")
+    fig.add_hline(y=0, line_dash="dash", line_color="gray", row=2, col=1)
 
     # Update layout
     fig.update_layout(
@@ -779,7 +773,7 @@ def calculate_drawdown_metrics(equity_data):
 
 def display_investment_simulation(returns_data, price_data, symbol_label, strategy_name):
     """Display investment simulation section"""
-    st.markdown("### Simulação de Investimento")
+    st.markdown("### 💰 Simulação de Investimento")
     st.markdown(f"**Estratégia:** {strategy_name}")
 
     if returns_data.empty:
@@ -798,7 +792,7 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
             st.session_state.investment_initial_value = 10000.0
 
         initial_investment = st.number_input(
-            "Investimento Inicial (R$):",
+            "💰 Investimento Inicial (R$):",
             min_value=100.0,
             max_value=10000000.0,
             value=st.session_state.investment_initial_value,
@@ -847,49 +841,49 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
 
     with col1:
         return_color = "#4CAF50" if strategy_return >= 0 else "#f44336"
-        return_color_class = "color: #4CAF50" if strategy_return >= 0 else "color: #f44336"
+        return_icon = "🟢" if strategy_return >= 0 else "🔴"
         st.markdown(f"""
         <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
             <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Capital Final (Estratégia)</div>
             <div style="font-size: 1.1rem; font-weight: bold; color: #333;">R$ {final_capital_compound:,.2f}</div>
-            <div style="font-size: 0.9rem; font-weight: bold; {return_color_class};">{strategy_return:+.2f}%</div>
+            <div style="font-size: 0.9rem; font-weight: bold; color: {return_color};">{return_icon} {strategy_return:+.2f}%</div>
         </div>
         """, unsafe_allow_html=True)
 
     with col2:
         bh_color = "#4CAF50" if buy_hold_return >= 0 else "#f44336"
-        bh_color_class = "color: #4CAF50" if buy_hold_return >= 0 else "color: #f44336"
+        bh_icon = "🟢" if buy_hold_return >= 0 else "🔴"
         st.markdown(f"""
         <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
             <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Buy & Hold</div>
             <div style="font-size: 1.1rem; font-weight: bold; color: #333;">R$ {buy_hold_final:,.2f}</div>
-            <div style="font-size: 0.9rem; font-weight: bold; {bh_color_class};">{buy_hold_return:+.2f}%</div>
+            <div style="font-size: 0.9rem; font-weight: bold; color: {bh_color};">{bh_icon} {buy_hold_return:+.2f}%</div>
         </div>
         """, unsafe_allow_html=True)
 
     with col3:
         outperf_color = "#4CAF50" if outperformance > 0 else "#f44336"
-        outperf_color_class = "color: #4CAF50" if outperformance > 0 else "color: #f44336"
+        outperf_icon = "🟢" if outperformance > 0 else "🔴"
         st.markdown(f"""
         <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
             <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Outperformance</div>
-            <div style="font-size: 1.1rem; font-weight: bold; {outperf_color_class};">{outperformance:+.2f}%</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: {outperf_color};">{outperf_icon} {outperformance:+.2f}%</div>
         </div>
         """, unsafe_allow_html=True)
 
     with col4:
         profit_loss = final_capital_compound - initial_investment
         profit_color = "#4CAF50" if profit_loss > 0 else "#f44336"
-        profit_color_class = "color: #4CAF50" if profit_loss > 0 else "color: #f44336"
+        profit_icon = "🟢" if profit_loss > 0 else "🔴"
         st.markdown(f"""
         <div style="text-align: center; padding: 0.5rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.5rem;">
             <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Lucro/Prejuízo</div>
-            <div style="font-size: 1.1rem; font-weight: bold; {profit_color_class};">R$ {profit_loss:+,.2f}</div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: {profit_color};">{profit_icon} R$ {profit_loss:+,.2f}</div>
         </div>
         """, unsafe_allow_html=True)
 
     # Additional metrics
-    st.markdown("#### Métricas de Performance")
+    st.markdown("#### 📈 Métricas de Performance")
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -901,7 +895,7 @@ def display_investment_simulation(returns_data, price_data, symbol_label, strate
     annualized_return = ((final_capital_compound / initial_investment) ** (1/years) - 1) * 100 if years > 0 else 0
 
     # Calculate maximum consecutive losses value
-    equity_curve = calculate_equity_curve(returns_data, int(initial_investment))
+    equity_curve = calculate_equity_curve(returns_data, initial_investment)
     max_dd_value = equity_curve['drawdown'].min()
     max_dd_monetary = initial_investment * (abs(max_dd_value) / 100)
 
@@ -1099,122 +1093,131 @@ st.markdown("""
 </style>""", unsafe_allow_html=True)
 
 # Main title with custom styling
-st.markdown('<h1 class="main-title">OVECCHIA TRADING</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align: center; color: #666; font-size: 1.1rem; margin-bottom: 2rem;">Sistema Profissional de Análise de Mercado</p>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING</h1>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Sinais de Investimento </p>', unsafe_allow_html=True)
 
 # Create main navigation tabs
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Home", "Guia de Uso", "Análise Individual", "Screening Multi-Ativos", "Bot Telegram", "Sobre"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏠 Home", "📖 Guia de Utilização", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "🤖 Bot Telegram", "ℹ️ Sobre"])
 
 with tab1:
     # Home page content
     st.markdown("""
-    <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; text-align: center; margin-bottom: 2rem; border-left: 4px solid #1976d2;">
-        <h2 style="color: #1976d2; margin-bottom: 1rem;">Bem-vindo ao Ovecchia Trading</h2>
-        <p style="font-size: 1rem; color: #666;">Plataforma profissional de análise técnica quantitativa para o mercado financeiro</p>
+    <div style="background: linear-gradient(90deg, #e3f2fd, #f3e5f5); padding: 2rem; border-radius: 15px; text-align: center; margin-bottom: 2rem;">
+        <h2 style="color: #1976d2; margin-bottom: 1rem;">🚀 Bem-vindo ao Ovecchia Trading!</h2>
+        <p style="font-size: 1.2rem; color: #666;">Escolha uma das abas acima para começar sua análise profissional</p>
     </div>
     """, unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("### Análise Individual")
+        st.markdown("### 📊 Análise Individual")
         st.markdown("""
         <div class="metric-card">
-            <p><strong>Análise técnica avançada com Machine Learning</strong></p>
-            <p>Modelo proprietário OVELHA V2 identifica automaticamente os melhores pontos de entrada e saída do mercado.</p>
+            <p><strong>🤖 Potencialize seus investimentos com Machine Learning</strong><br>
+            Descubra oportunidades únicas no mercado com o modelo proprietário <strong>OVELHA V2</strong>, que utiliza Inteligência Artificial de última geração para identificar, em tempo real, os sinais mais importantes: <strong>Compra (Buy)</strong>, <strong>Venda (Sell)</strong> e <strong>Ficar de Fora (Stay Out)</strong>.</p>
             <ul>
-                <li>Dados em tempo real para criptomoedas, ações, forex e commodities</li>
-                <li>Múltiplos timeframes: de 1 minuto a 1 semana</li>
-                <li>Sinais claros: Buy, Sell ou Stay Out</li>
-                <li>Gráficos interativos e métricas de performance</li>
+                <li>🔥 <strong>Dados em Tempo Real:</strong> Criptomoedas, Forex, Metais, Ações e Índices, com histórico de até 5.000 candles</li>
+                <li>⚡ <strong>Múltiplos Timeframes:</strong> 1m, 5m, 15m, 30m, 1h, 4h, 1d — flexibilidade total para qualquer estratégia</li>
+                <li>📈 <strong>Ações Brasileiras (B3):</strong> Informações consolidadas para análises de médio e longo prazo</li>
+                <li>🎯 <strong>Sinais Inteligentes:</strong> Detectados automaticamente com precisão e clareza</li>
+                <li>📊 <strong>Interface Intuitiva:</strong> Gráficos interativos, objetivos e fáceis de interpretar</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown("### Screening Multi-Ativos")
+        st.markdown("### 🔍 Screening Multi-Ativos")
         st.markdown("""
         <div class="metric-card">
-            <p><strong>Monitore múltiplos ativos simultaneamente</strong></p>
-            <p>Identifique rapidamente mudanças de estado em listas de ativos para detectar oportunidades de trading.</p>
+            <p><strong>📈 Monitore Múltiplos Ativos Simultaneamente</strong><br>
+            Identifique rapidamente mudanças de estado em uma lista de ativos para detectar oportunidades de trading.</p>
             <ul>
-                <li>Monitoramento simultâneo de dezenas de ativos</li>
-                <li>Detecção automática de mudanças de sinal</li>
-                <li>Listas pré-definidas por categoria</li>
-                <li>Alertas visuais para oportunidades</li>
+                <li><strong>Yahoo Finance:</strong> Timeframe fixo diário com 2 anos de dados</li>
+                <li><strong>TwelveData:</strong> Timeframes flexíveis (1m a 1d) com 2000 registros</li>
+                <li><strong>Modelo OVELHA V2:</strong> Disponível com TwelveData para maior precisão</li>
+                <li><strong>Listas Pré-definidas:</strong> Criptos, ações BR/EUA, forex, commodities</li>
+                <li><strong>Detecção Inteligente:</strong> Alertas automáticos de mudanças de estado</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
 
 
 
-    st.markdown("### Bot Telegram")
+    st.markdown("### 🤖 Bot Telegram - Sistema Inteligente de Alertas")
     st.markdown("""
     <div class="metric-card" style="border-left: 4px solid #25D366;">
-        <p><strong>@Ovecchia_bot - Alertas automatizados</strong></p>
+        <p><strong>🚀 Bot @Ovecchia_bot - Análise Automatizada</strong></p>
         <ul>
-            <li>Análise individual de ativos com gráficos</li>
-            <li>Screening automático com alertas a cada 5 minutos</li>
-            <li>Notificações instantâneas de mudanças de estado</li>
-            <li>Suporte completo para todos os timeframes</li>
+            <li><strong>📊 Análise Individual:</strong> Análise completa de ativos selecionados pelo usuário com gráficos profissionais</li>
+            <li><strong>🔔 Screening Automático:</strong> Configure listas de ativos e receba alertas automáticos a cada 5 minutos</li>
+            <li><strong>⚡ Alertas em Tempo Real:</strong> Notificações instantâneas quando houver mudança de estado (Buy/Sell/Stay Out)</li>
+            <li><strong>🎯 Modelo OVELHA V2:</strong> Utilize Machine Learning para máxima precisão</li>
+            <li><strong>📈 Múltiplos Timeframes:</strong> Suporte completo para 1m, 5m, 15m, 30m, 1h, 4h, 1d</li>
         </ul>
-        <p style="margin-top: 1rem; font-size: 0.9rem; color: #25D366;">Exemplo: <code>/analise balanceada PETR4.SA 1d</code></p>
+        <p style="margin-top: 1rem; font-size: 0.9rem; color: #25D366;"><strong>💡 Exemplo de Screening Automático:</strong>
+        <code>/screening_auto 12data [BTC/USD,ETH/USD] ovelha2 balanceada 5m</code></p>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("### Recursos Principais")
+    st.markdown("### 🛠️ Recursos Disponíveis")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.markdown("#### Análise Quantitativa")
+        st.markdown("#### 📈 Análises Quantitativas")
         st.markdown("""
-        - Modelos baseados em variáveis estatísticas
-        - Algoritmos de momentum e volatilidade
-        - Controle de risco integrado
-        - Múltiplos critérios de saída
+        - Modelos baseados em variáveis estatísticas e padrões históricos
+        - Algoritmos de avaliação de momentum e volatilidade
+        - Faixas de oscilação dinâmica para controle de risco
+        - Estratégias com múltiplos níveis de saída
+        - Reconhecimento automático de zonas extremas de preço
         """)
 
     with col2:
-        st.markdown("#### Sinais de Trading")
+        st.markdown("#### 🎯 Sinais de Trading")
         st.markdown("""
-        - **Buy:** Sinais de entrada long
-        - **Sell:** Sinais de entrada short
-        - **Stay Out:** Aguardar oportunidade
+        - **Compra:** Sinais de entrada long
+        - **Venda:** Sinais de entrada short
+        - **Stay Out:** Ficar fora do mercado
         - **Confirmação:** Sinais consecutivos
+        - **Direções:** Long, Short ou Ambos
         """)
 
     with col3:
-        st.markdown("#### Métricas de Performance")
+        st.markdown("#### 📊 Análise de Performance")
         st.markdown("""
-        - Taxa de acerto (Win Rate)
-        - Retorno total acumulado
-        - Sharpe Ratio e drawdown
-        - Otimização de parâmetros
+        - **Taxa de Acerto:** Win Rate
+        - **Retorno Total:** Performance geral
+        - **Maior Ganho/Perda:** Maiores variações percentuais
+        - **Otimização:** Busca melhor configuração
+        - **Comparação:** Múltiplos critérios
         """)
 
 with tab2:
     # Guia de Utilização tab
-    st.markdown("## Guia de Utilização")
-    st.markdown("Manual completo para utilização das funcionalidades do sistema")
+    st.markdown("## 📖 Guia de Utilização - Manual Completo")
+    st.markdown("Manual detalhado para utilização de todas as funcionalidades do sistema OVECCHIA TRADING")
 
     # Create sub-tabs for different sections
     guide_tab1, guide_tab2, guide_tab3, guide_tab4, guide_tab5 = st.tabs([
-        "Análise Individual",
-        "Screening Multi-Ativos",
-        "Bot Telegram",
-        "Dúvidas Frequentes",
-        "Parâmetros"
+        "📊 Análise Individual",
+        "🔍 Screening Multi-Ativos",
+        "🤖 Bot Telegram",
+        "❓ Dúvidas Frequentes",
+        "⚙️ Parâmetros Gerais"
     ])
 
     with guide_tab1:
-        st.markdown("## Análise Individual")
+        st.markdown("## 📊 Guia de Utilização - Análise Individual do Ativo")
 
-        st.markdown("### O que é a Análise Individual?")
+        st.markdown("### 📌 O que é a Análise Individual?")
         st.info("""
-        A Análise Individual permite investigar qualquer ativo financeiro e identificar os melhores pontos de entrada e saída do mercado.
-        
-        Utilizando o modelo proprietário OVELHA V2, a ferramenta identifica automaticamente três estados: Buy (compra), Sell (venda) e Stay Out (aguardar).
+        A **Análise Individual** é a principal funcionalidade do sistema **OVECCHIA TRADING**.
+        Com ela, você pode investigar a fundo qualquer ativo — seja ação, criptomoeda, forex ou índice — e descobrir com precisão os melhores pontos de **entrada** e **saída** do mercado.
+
+        Impulsionada pelos modelos proprietários **OVELHA** e **OVELHA V2**, a ferramenta identifica automaticamente três estados de mercado: **Buy** (compra), **Sell** (venda) e **Stay Out** (ficar de fora).
+        O resultado? **Sinais claros, confiáveis e em tempo real**, ajudando você a tomar decisões mais inteligentes e estratégicas em suas operações.
         """)
 
         st.markdown("### 🎯 Como Utilizar - Exemplo Prático")
@@ -1223,12 +1226,12 @@ with tab2:
         st.markdown("#### 📝 Passo 1: Configuração da Fonte de Dados")
         st.markdown("""
         <div style="background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-            <p>🔹 Fonte de Dados: Escolha a base ideal para a sua análise:</p>
+            <p><strong>🔹 Fonte de Dados:</strong> Escolha a base ideal para a sua análise:</p>
             <ul>
-                <li>📈 Yahoo Finance: Recomendado para ações brasileiras (B3). Simples, gratuito e confiável.</li>
-                <li>🌍 TwelveData: Indicado para qualquer outro tipo de ativo — ações internacionais, criptomoedas, forex, metais e índices globais.</li>
+                <li><strong>📈 Yahoo Finance:</strong> Recomendado para ações brasileiras (B3). Simples, gratuito e confiável.</li>
+                <li><strong>🌍 TwelveData:</strong> Indicado para qualquer outro tipo de ativo — ações internacionais, criptomoedas, forex, metais e índices globais.</li>
             </ul>
-            <p style="font-size: 0.9rem; color: #666;">💡 Dica: utilize Yahoo Finance para explorar papéis da B3. Para todo o restante, como criptomoedas ou ações de outros países, opte pelo TwelveData para maior flexibilidade e cobertura de mercado.</p>
+            <p style="font-size: 0.9rem; color: #666;">💡 Dica: utilize <strong>Yahoo Finance</strong> para explorar papéis da B3. Para todo o restante, como criptomoedas ou ações de outros países, opte pelo <strong>TwelveData</strong> para maior flexibilidade e cobertura de mercado.</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1236,36 +1239,36 @@ with tab2:
         st.markdown("#### 📝 Passo 2: Inserir o Ticker Correto")
         st.markdown("""
         <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
-            <p>🔹 Ticker: Digite \"PETR4.SA\" (com ponto e SA no final)</p>
-            <p style=\"font-size: 0.9rem; color: #666;\">⚠️ Atenção: No Yahoo Finance, as ações brasileiras sempre terminam em .SA (ex: VALE3.SA, ITUB4.SA). Se estiver utilizando o TwelveData não é necessário S.A </p>
-            <p style=\"font-size: 0.9rem; color: #666;\">📋 Outros exemplos:</p>
+            <p><strong>🔹 Ticker:</strong> Digite \"PETR4.SA\" (com ponto e SA no final)</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">⚠️ <strong>Atenção:</strong> No Yahoo Finance, as ações brasileiras sempre terminam em .SA (ex: VALE3.SA, ITUB4.SA). Se estiver utilizando o TwelveData não é necessário S.A </p>
+            <p style=\"font-size: 0.9rem; color: #666;\">📋 <strong>Outros exemplos:</strong></p>
             <ul style=\"font-size: 0.9rem; color: #666;\">
-                <li> Criptomoedas: BTC-USD, ETH-USD (com hífen e USD)</li>
-                <li>Ações americanas: AAPL, MSFT, GOOGL (apenas o código)</li>
-                <li>Forex: EURUSD=X, GBPUSD=X (com =X no final)</li>
+                <li><strong> Criptomoedas:</strong> BTC-USD, ETH-USD (com hífen e USD)</li>
+                <li><strong>Ações americanas:</strong> AAPL, MSFT, GOOGL (apenas o código)</li>
+                <li><strong>Forex:</strong> EURUSD=X, GBPUSD=X (com =X no final)</li>
             </ul>
-            <p style=\"font-size: 0.9rem; color: #666;\">🔹 Exemplo TwelveData: BTC/USD para Bitcoin; AAPL para Apple (ações americanas).</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">🔹 <strong>Exemplo TwelveData:</strong> BTC/USD para Bitcoin; AAPL para Apple (ações americanas).</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("#### 📝 Passo 3: Definir Período de Análise")
         st.markdown("""
         <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
-            <p>🔹 Data Inicial: Selecione uma data 6-12 meses atrás (ex: 01/01/2024)</p>
-            <p>🔹 Data Final: Mantenha a data atual</p>
-            <p style=\"font-size: 0.9rem; color: #666;\">💡 Dica: Períodos de 6-12 meses oferecem análises mais confiáveis. TwelveData permite recuperar até 5000 registros históricos para uma análise mais abrangente.Recomenda-se utilizar na média 2.500 registros</p>
+            <p><strong>🔹 Data Inicial:</strong> Selecione uma data 6-12 meses atrás (ex: 01/01/2024)</p>
+            <p><strong>🔹 Data Final:</strong> Mantenha a data atual</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">💡 <strong>Dica:</strong> Períodos de 6-12 meses oferecem análises mais confiáveis. TwelveData permite recuperar até 5000 registros históricos para uma análise mais abrangente.Recomenda-se utilizar na média 2.500 registros</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("#### 📝 Passo 4: Escolher Timeframe")
         st.markdown("""
         <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
-            <p>🔹 Intervalo de Tempo: Selecione \"1 day\" (recomendado para iniciantes)</p>
-            <p style=\"font-size: 0.9rem; color: #666;\">📊 Orientações por perfil:</p>
+            <p><strong>🔹 Intervalo de Tempo:</strong> Selecione \"1 day\" (recomendado para iniciantes)</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">📊 <strong>Orientações por perfil:</strong></p>
             <ul style=\"font-size: 0.9rem; color: #666;\">
-                <li>Investidor (longo prazo): 1 day, 1 week</li>
-                <li>Swing Trader (médio prazo): 4 hours, 1 day (TwelveData intervalos de minutos disponíveis)</li>
-                <li>Day Trader (curto prazo): 15m, 30m, 1 hour</li>
+                <li><strong>Investidor (longo prazo):</strong> 1 day, 1 week</li>
+                <li><strong>Swing Trader (médio prazo):</strong> 4 hours, 1 day (TwelveData intervalos de minutos disponíveis)</li>
+                <li><strong>Day Trader (curto prazo):</strong> 15m, 30m, 1 hour</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1273,10 +1276,10 @@ with tab2:
         st.markdown("#### 📝 Passo 5: Selecionar o Modelo")
         st.markdown("""
         <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
-            <p>🔹 Modelo: Escolha \"OVELHA V2 (Machine Learning)\" para começar</p>
-            <p style=\"font-size: 0.9rem; color: #666;\">🤖 Modelos disponíveis:</p>
+            <p><strong>🔹 Modelo:</strong> Escolha \"OVELHA V2 (Machine Learning)\" para começar</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">🤖 <strong>Modelos disponíveis:</strong></p>
             <ul style=\"font-size: 0.9rem; color: #666;\">
-                <li>OVELHA V2 (Machine Learning): Modelo avançado com IA.</li>
+                <li><strong>OVELHA V2 (Machine Learning):</strong> Modelo avançado com IA.</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1284,12 +1287,12 @@ with tab2:
         st.markdown("#### 📝 Passo 6: Definir Estratégia")
         st.markdown("""
         <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
-            <p>🔹 Estratégia: Selecione \"Balanceado\" (recomendado)</p>
-            <p style=\"font-size: 0.9rem; color: #666;\">⚖️ Perfis de estratégia:</p>
+            <p><strong>🔹 Estratégia:</strong> Selecione \"Balanceado\" (recomendado)</p>
+            <p style=\"font-size: 0.9rem; color: #666;\">⚖️ <strong>Perfis de estratégia:</strong></p>
             <ul style=\"font-size: 0.9rem; color: #666;\">
-                <li>Balanceado: Equilíbrio ideal entre oportunidades e segurança</li>
-                <li>Agressivo: Mais sinais, maior risco</li>
-                <li>Conservador: Poucos sinais, maior segurança</li>
+                <li><strong>Balanceado:</strong> Equilíbrio ideal entre oportunidades e segurança</li>
+                <li><strong>Agressivo:</strong> Mais sinais, maior risco</li>
+                <li><strong>Conservador:</strong> Poucos sinais, maior segurança</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1297,8 +1300,8 @@ with tab2:
         st.markdown("#### 📝 Passo 7: Configurar Saída (Opcional)")
         st.markdown("""
         <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
-            <p>🔹 Critério de Saída: Mantenha \"Mudança de Estado\" (mais simples)</p>
-            <p>🔹 Checkbox: Deixe marcado \"Sair por mudança de estado?\"</p>
+            <p><strong>🔹 Critério de Saída:</strong> Mantenha \"Mudança de Estado\" (mais simples)</p>
+            <p><strong>🔹 Checkbox:</strong> Deixe marcado \"Sair por mudança de estado?\"</p>
             <p style=\"font-size: 0.9rem; color: #666;\">💡 Para o primeiro uso, mantenha as configurações padrão</p>
         </div>
         """, unsafe_allow_html=True)
@@ -1306,7 +1309,7 @@ with tab2:
         st.markdown("#### 📝 Passo 8: Executar Análise")
         st.markdown("""
         <div style=\"background: #e8f5e8; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #4CAF50;\">
-            <p>🚀 Clique em \"INICIAR ANÁLISE INDIVIDUAL\"</p>
+            <p><strong>🚀 Clique em \"INICIAR ANÁLISE INDIVIDUAL\"</strong></p>
             <p style=\"font-size: 0.9rem; color: #666;\">⏱️ O sistema processará os dados em alguns segundos e exibirá:</p>
             <ul style=\"font-size: 0.9rem; color: #666;\">
                 <li>Status atual do mercado (Buy/Sell/Stay Out)</li>
@@ -1320,14 +1323,14 @@ with tab2:
         st.markdown("#### 📝 Interpretando os Resultados")
         st.markdown("""
         <div style=\"background: #fff3cd; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #ffc107;\">
-            <p>📊 Como ler o gráfico:</p>
+            <p><strong>📊 Como ler o gráfico:</strong></p>
             <ul style=\"font-size: 0.9rem; color: #333;\">
-                <li>🔵 Linha Azul: Momento de compra - entre ou mantenha posição comprada</li>
-                <li>🔴 Linha Vermelha: Momento de venda - saia da posição ou entre vendido</li>
-                <li>⚫ Linha Preta: Fique de fora - aguarde melhor oportunidade</li>
+                <li><strong>🔵 Linha Azul:</strong> Momento de compra - entre ou mantenha posição comprada</li>
+                <li><strong>🔴 Linha Vermelha:</strong> Momento de venda - saia da posição ou entre vendido</li>
+                <li><strong>⚫ Linha Preta:</strong> Fique de fora - aguarde melhor oportunidade</li>
             </ul>
-            <p>🎯 Status Atual: Mostra o sinal no momento mais recente</p>
-            <p>💰 Métricas : Demonstra performance histórica da estratégia</p>
+            <p><strong>🎯 Status Atual:</strong> Mostra o sinal no momento mais recente</p>
+            <p><strong>💰 Métricas :</strong> Demonstra performance histórica da estratégia</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1337,16 +1340,16 @@ with tab2:
 
         with st.expander("🔧 Parâmetros e Configurações", expanded=False):
             st.markdown("""
-            Parâmetros Essenciais:
+            <strong>Parâmetros Essenciais:</strong>
             • Ticker (ex: PETR4.SA, BTC-USD) • Período mínimo de 30 dias • Timeframe conforme perfil • Estratégia adequada ao risco
 
-            Critérios de Saída:
+            <strong>Critérios de Saída:</strong>
             Mudança de Estado | Stop Loss | Alvo Fixo | Tempo | Média Móvel
 
-            Mudança de Estado:
+            <strong>Mudança de Estado:</strong>
             ✅ Ativado: sai automaticamente na mudança de sinal | ❌ Desativado: usa apenas critério escolhido
 
-            Otimização:
+            <strong>Otimização:</strong>
             🎯 Testa automaticamente múltiplas configurações para encontrar os melhores parâmetros
             """)
 
@@ -1496,89 +1499,89 @@ with tab2:
         st.markdown("### 🔍 Como encontrar o ticker correto de uma ação?")
         st.markdown("""
         <div class="metric-card">
-            <p>📊 Para verificar tickers e disponibilidade de ativos:</p>
+            <p><strong>📊 Para verificar tickers e disponibilidade de ativos:</strong></p>
             <ol>
-                <li>Yahoo Finance: Acesse <a href="https://finance.yahoo.com/" target="_blank">finance.yahoo.com</a></li>
-                <li>TwelveData: Acesse <a href="https://twelvedata.com/" target="_blank">twelvedata.com</a></li>
-                <li>Pesquise o nome da empresa: Digite o nome da empresa (ex: "Petrobras", "Apple")</li>
-                <li>Copie o símbolo correto: Use exatamente como aparece no site</li>
+                <li><strong>Yahoo Finance:</strong> Acesse <a href="https://finance.yahoo.com/" target="_blank">finance.yahoo.com</a></li>
+                <li><strong>TwelveData:</strong> Acesse <a href="https://twelvedata.com/" target="_blank">twelvedata.com</a></li>
+                <li><strong>Pesquise o nome da empresa:</strong> Digite o nome da empresa (ex: "Petrobras", "Apple")</li>
+                <li><strong>Copie o símbolo correto:</strong> Use exatamente como aparece no site</li>
             </ol>
-            <p>📝 Exemplos de formatos corretos:</p>
+            <p><strong>📝 Exemplos de formatos corretos:</strong></p>
             <ul>
-                <li>Ações Brasileiras: PETR4.SA, VALE3.SA, ITUB4.SA</li>
-                <li>Ações Americanas: AAPL, MSFT, GOOGL</li>
-                <li>Criptomoedas: BTC-USD, ETH-USD, BNB-USD</li>
-                <li>Forex: EURUSD=X, GBPUSD=X, USDJPY=X</li>
+                <li><strong>Ações Brasileiras:</strong> PETR4.SA, VALE3.SA, ITUB4.SA</li>
+                <li><strong>Ações Americanas:</strong> AAPL, MSFT, GOOGL</li>
+                <li><strong>Criptomoedas:</strong> BTC-USD, ETH-USD, BNB-USD</li>
+                <li><strong>Forex:</strong> EURUSD=X, GBPUSD=X, USDJPY=X</li>
             </ul>
-            <p style="color: #666; font-size: 0.9rem;">💡 Dica: Se encontrar dados históricos no site, o ativo é suportado pelo sistema!</p>
+            <p style="color: #666; font-size: 0.9rem;"><strong>💡 Dica:</strong> Se encontrar dados históricos no site, o ativo é suportado pelo sistema!</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("### 📈 Como interpretar os sinais do modelo?")
         st.info("""
-        🎯 Exemplo prático - Petrobras (PETR4.SA):
+        <strong>🎯 Exemplo prático - Petrobras (PETR4.SA):</strong>
 
-        📅 Dia 19/12/2024: Modelo mudou de "Stay Out" para "Buy"
+        <strong>📅 Dia 19/12/2024:</strong> Modelo mudou de "Stay Out" para "Buy"
 
-        💡 Interpretação: O modelo recomenda entrar comprado na Petrobras no dia 19
+        <strong>💡 Interpretação:</strong> O modelo recomenda <strong>entrar comprado</strong> na Petrobras no dia 19
 
-        🔮 Expectativa: Baseado no histórico, há maior probabilidade de alta nos próximos dias/semanas
+        <strong>🔮 Expectativa:</strong> Baseado no histórico, há maior probabilidade de alta nos próximos dias/semanas
 
-        ⏰ Duração: Manter posição até que o modelo mude para "Sell" ou "Stay Out"
+        <strong>⏰ Duração:</strong> Manter posição até que o modelo mude para "Sell" ou "Stay Out"
 
-        🚦 Estados do Modelo:
-        - 🔵 BUY (Compra): Entre comprado ou mantenha posição comprada
-        - 🔴 SELL (Venda): Entre vendido ou saia da posição comprada
-        - ⚫ STAY OUT (Fora): Fique de fora - aguarde melhor momento
+        🚦 <strong>Estados do Modelo:</strong>
+        - <strong>🔵 BUY (Compra):</strong> Entre comprado ou mantenha posição comprada
+        - <strong>🔴 SELL (Venda):</strong> Entre vendido ou saia da posição comprada
+        - <strong>⚫ STAY OUT (Fora):</strong> Fique de fora - aguarde melhor momento
 
-        💰 Como os retornos são calculados:
-        O sistema calcula o retorno a cada mudança de estado. Por exemplo:
+        <strong>💰 Como os retornos são calculados:</strong>
+        O sistema calcula o retorno <strong>a cada mudança de estado</strong>. Por exemplo:
         - Dia 10: Modelo muda para "Buy" (preço R$ 30,00)
         - Dia 25: Modelo muda para "Stay Out" (preço R$ 32,10)
-        - Retorno calculado: +7,0% nesta operação
+        - <strong>Retorno calculado:</strong> +7,0% nesta operação
         """)
 
         st.markdown("### 📊 Como avaliar se o modelo está funcionando bem?")
         st.markdown("""
-        🎯 Métricas principais para analisar:
+        <strong>🎯 Métricas principais para analisar:</strong>
 
-        1. Taxa de Acerto:
-        - Acima de 60%: Muito bom
-        - 50-60%: Razoável
-        - Abaixo de 50%: Considere mudar estratégia ou ativo
+        <strong>1. Taxa de Acerto:</strong>
+        - <strong>Acima de 60%:</strong> Muito bom
+        - <strong>50-60%:</strong> Razoável
+        - <strong>Abaixo de 50%:</strong> Considere mudar estratégia ou ativo
 
-        2. Retorno Total:
-        - Positivo: Modelo está lucrando no período
-        - Negativo: Modelo está perdendo - analise outras métricas
+        <strong>2. Retorno Total:</strong>
+        - <strong>Positivo:</strong> Modelo está lucrando no período
+        - <strong>Negativo:</strong> Modelo está perdendo - analise outras métricas
 
-        3. Sharpe Ratio:
-        - Acima de 1,0: Excelente relação risco/retorno
-        - 0,5 a 1,0: Bom
-        - Abaixo de 0,5: Risco pode não compensar
+        <strong>3. Sharpe Ratio:</strong>
+        - <strong>Acima de 1,0:</strong> Excelente relação risco/retorno
+        - <strong>0,5 a 1,0:</strong> Bom
+        - <strong>Abaixo de 0,5:</strong> Risco pode não compensar
 
-        4. Máximo Drawdown:
-        - Até 10%: Baixo risco
-        - 10-20%: Risco moderado
-        - Acima de 20%: Alto risco
+        <strong>4. Máximo Drawdown:</strong>
+        - <strong>Até 10%:</strong> Baixo risco
+        - <strong>10-20%:</strong> Risco moderado
+        - <strong>Acima de 20%:</strong> Alto risco
         """)
 
         st.markdown("### ⚙️ Qual estratégia devo escolher?")
         st.markdown("""
-        🎯 Guia de escolha baseado no seu perfil:
+        <strong>🎯 Guia de escolha baseado no seu perfil:</strong>
 
-        🔥 Estratégia Agressiva - Quando usar:
+        <strong>🔥 Estratégia Agressiva - Quando usar:</strong>
         - Você tem experiência em trading
         - Pode acompanhar o mercado frequentemente
         - Tolera mais risco em busca de mais oportunidades
         - Prefere mais operações no período
 
-        ⚖️ Estratégia Balanceada - Quando usar:
+        <strong>⚖️ Estratégia Balanceada - Quando usar:</strong>
         - Você é iniciante ou intermediário
         - Quer equilibrio entre oportunidades e segurança
         - Prefere uma quantidade moderada de sinais
-        - RECOMENDADA para a maioria dos usuários
+        - <strong>RECOMENDADA para a maioria dos usuários</strong>
 
-        🛡️ Estratégia Conservadora - Quando usar:
+        <strong>🛡️ Estratégia Conservadora - Quando usar:</strong>
         - Você prioriza preservação de capital
         - Prefere poucos sinais, mas mais confiáveis
         - Tem pouco tempo para acompanhar o mercado
@@ -1587,62 +1590,62 @@ with tab2:
 
         st.markdown("### 🤖 Qual a diferença entre os modelos OVELHA e OVELHA V2?")
         st.markdown("""
-        📊 OVELHA (Clássico):
-        - Baseado em: Análise técnica tradicional consolidada
-        - Vantagens: Mais estável, previsível, funciona em qualquer fonte
-        - Quando usar: Para análises de longo prazo, iniciantes
-        - Disponível em: Yahoo Finance e TwelveData
+        <strong>📊 OVELHA (Clássico):</strong>
+        - <strong>Baseado em:</strong> Análise técnica tradicional consolidada
+        - <strong>Vantagens:</strong> Mais estável, previsível, funciona em qualquer fonte
+        - <strong>Quando usar:</strong> Para análises de longo prazo, iniciantes
+        - <strong>Disponível em:</strong> Yahoo Finance e TwelveData
 
-        🧠 OVELHA V2 (Machine Learning):
-        - Baseado em: Inteligência Artificial com Machine Learning
-        - Vantagens: Mais adaptativo, considera múltiplas variáveis
-        - Quando usar: Para ativos voláteis, usuários experientes
-        - Disponível em: TwelveData e Yahoo Finance
-        - Recursos extras: Aprendizado constante, melhoria contínua
+        <strong>🧠 OVELHA V2 (Machine Learning):</strong>
+        - <strong>Baseado em:</strong> Inteligência Artificial com Machine Learning
+        - <strong>Vantagens:</strong> Mais adaptativo, considera múltiplas variáveis
+        - <strong>Quando usar:</strong> Para ativos voláteis, usuários experientes
+        - <strong>Disponível em:</strong> TwelveData e Yahoo Finance
+        - <strong>Recursos extras:</strong> Aprendizado constante, melhoria contínua
 
-        💡 Recomendação: Comece com OVELHA clássico para entender o sistema, depois experimente o V2 para comparar resultados.
+        <strong>💡 Recomendação:</strong> Comece com OVELHA clássico para entender o sistema, depois experimente o V2 para comparar resultados.
         """)
 
         st.markdown("### 📅 Qual timeframe devo usar?")
         st.markdown("""
-        ⏰ Guia de timeframes por perfil de investidor:
+        <strong>⏰ Guia de timeframes por perfil de investidor:</strong>
 
-        📈 Day Trader (operações no mesmo dia):
-        - Timeframes: 1m, 5m, 15m, 30m
-        - Atenção: Requer acompanhamento constante
-        - Fonte recomendada: TwelveData para melhor suporte
+        <strong>📈 Day Trader (operações no mesmo dia):</strong>
+        - <strong>Timeframes:</strong> 1m, 5m, 15m, 30m
+        - <strong>Atenção:</strong> Requer acompanhamento constante
+        - <strong>Fonte recomendada:</strong> TwelveData para melhor suporte
 
-        📊 Swing Trader (operações de dias a semanas):
-        - Timeframes: 1h, 4h, 1d
-        - Ideal para: Quem tem algumas horas por dia
-        - Mais equilibrado: Menos ruído, sinais mais confiáveis
+        <strong>📊 Swing Trader (operações de dias a semanas):</strong>
+        - <strong>Timeframes:</strong> 1h, 4h, 1d
+        - <strong>Ideal para:</strong> Quem tem algumas horas por dia
+        - <strong>Mais equilibrado:</strong> Menos ruído, sinais mais confiáveis
 
-        💼 Investidor (operações de semanas a meses):
-        - Timeframes: 1d, 1wk
-        - Ideal para: Análises de longo prazo
-        - Menos estresse: Acompanhamento semanal suficiente
+        <strong>💼 Investidor (operações de semanas a meses):</strong>
+        - <strong>Timeframes:</strong> 1d, 1wk
+        - <strong>Ideal para:</strong> Análises de longo prazo
+        - <strong>Menos estresse:</strong> Acompanhamento semanal suficiente
 
-        💡 Para iniciantes: Comece com 1d (1 dia) - oferece o melhor equilíbrio entre dados históricos e simplicidade.
+        <strong>💡 Para iniciantes:</strong> Comece com 1d (1 dia) - oferece o melhor equilíbrio entre dados históricos e simplicidade.
         """)
 
         st.markdown("### 💰 Como usar a simulação de investimento?")
         st.markdown("""
-        🎯 Entendendo a simulação:
+        <strong>🎯 Entendendo a simulação:</strong>
 
-        📊 O que a simulação faz:
+        <strong>📊 O que a simulação faz:</strong>
         - Simula quanto você teria se seguisse todos os sinais do modelo
         - Considera o valor inicial que você define
         - Calcula automaticamente os retornos compostos
         - Compara com estratégia Buy & Hold (comprar e segurar)
 
-        💡 Exemplo prático:
+        <strong>💡 Exemplo prático:</strong>
 
-        Investimento inicial: R$ 10.000
-        Resultado da estratégia: R$ 12.500 (+25%)
-        Buy & Hold: R$ 11.200 (+12%)
-        Outperformance: +13% melhor que só comprar e segurar
+        <strong>Investimento inicial:</strong> R$ 10.000
+        <strong>Resultado da estratégia:</strong> R$ 12.500 (+25%)
+        <strong>Buy & Hold:</strong> R$ 11.200 (+12%)
+        <strong>Outperformance:</strong> +13% melhor que só comprar e segurar
 
-        ⚠️ Importante lembrar:
+        <strong>⚠️ Importante lembrar:</strong>
         - É uma simulação baseada em dados históricos
         - Performance passada não garante resultados futuros
         - Considere custos de corretagem na vida real
@@ -1650,27 +1653,27 @@ with tab2:
 
         st.markdown("### 🛠️ Por que minha análise não funcionou?")
         st.markdown("""
-        🔧 Problemas mais comuns e soluções:
+        <strong>🔧 Problemas mais comuns e soluções:</strong>
 
-        ❌ "Sem dados encontrados para o ticker":
-        - Problema: Ticker incorreto ou não suportado
-        - Solução: Verifique no Yahoo Finance ou TwelveData se existe
-        - Exemplo: Use "PETR4.SA" em vez de "PETR4"
+        <strong>❌ "Sem dados encontrados para o ticker":</strong>
+        - <strong>Problema:</strong> Ticker incorreto ou não suportado
+        - <strong>Solução:</strong> Verifique no Yahoo Finance ou TwelveData se existe
+        - <strong>Exemplo:</strong> Use "PETR4.SA" em vez de "PETR4"
 
-        ❌ "Erro ao calcular indicadores":
-        - Problema: Período muito curto ou dados insuficientes
-        - Solução: Aumente o período para pelo menos 6 meses
-        - Dica: Use timeframes maiores para períodos históricos longos
+        <strong>❌ "Erro ao calcular indicadores":</strong>
+        - <strong>Problema:</strong> Período muito curto ou dados insuficientes
+        - <strong>Solução:</strong> Aumente o período para pelo menos 6 meses
+        - <strong>Dica:</strong> Use timeframes maiores para períodos históricos longos
 
-        ❌ "Timeframe não suportado":
-        - Problema: Yahoo Finance tem limitações para timeframes pequenos
-        - Solução: Use TwelveData para 1m, 5m, etc.
-        - Alternativa: Use 1h ou 1d que funcionam em ambas fontes
+        <strong>❌ "Timeframe não suportado":</strong>
+        - <strong>Problema:</strong> Yahoo Finance tem limitações para timeframes pequenos
+        - <strong>Solução:</strong> Use TwelveData para 1m, 5m, etc.
+        - <strong>Alternativa:</strong> Use 1h ou 1d que funcionam em ambas fontes
 
-        ❌ "Dados insuficientes para OVELHA V2":
-        - Problema: Modelo de ML precisa de mais dados históricos
-        - Solução: Use modelo OVELHA clássico ou aumente período
-        - Mínimo: 200 registros para o modelo V2 funcionar
+        <strong>❌ "Dados insuficientes para OVELHA V2":</strong>
+        - <strong>Problema:</strong> Modelo de ML precisa de mais dados históricos
+        - <strong>Solução:</strong> Use modelo OVELHA clássico ou aumente período
+        - <strong>Mínimo:</strong> 200 registros para o modelo V2 funcionar
         """)
 
     with guide_tab5:
@@ -1698,21 +1701,21 @@ with tab2:
         st.markdown("### 📌 Estratégias de Trading")
         st.write("**🎯 Perfis de Estratégia**")
 
-        st.write("🔥 Estratégia Agressiva")
+        st.write("<strong>🔥 Estratégia Agressiva</strong>")
         st.write("• Algoritmo calibrado para maior sensibilidade")
         st.write("• Gera mais sinais de entrada")
         st.write("• Maior frequência de operações")
         st.write("• Maior potencial de lucro, mas também maior risco")
         st.write("• Ideal para: Traders experientes, mercados com tendência clara")
 
-        st.write("⚖️ Estratégia Balanceada")
+        st.write("<strong>⚖️ Estratégia Balanceada</strong>")
         st.write("• Configuração otimizada para equilíbrio")
         st.write("• Equilíbrio entre frequência e confiabilidade")
         st.write("• Recomendada para maioria dos usuários")
         st.write("• Boa relação risco/retorno")
         st.write("• Ideal para: Investidores intermediários, carteiras diversificadas")
 
-        st.write("🛡️ Estratégia Conservadora")
+        st.write("<strong>🛡️ Estratégia Conservadora</strong>")
         st.write("• Parâmetros ajustados para maior segurança")
         st.write("• Menos sinais, mas mais confiáveis")
         st.write("• Menor frequência de operações")
@@ -1923,21 +1926,21 @@ with tab3:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
 
 
-        st.markdown("#### Modelo de Sinais")
+        st.markdown("#### 🤖 Modelo de Sinais")
         model_type = "OVELHA V2 (Machine Learning)"
         st.info("🧠 **OVELHA V2:** Sistema avançado com Machine Learning, buffer adaptativo automático e análise multidimensional para máxima precisão")
 
         # Buffer fixo para OVELHA V2
         buffer_value = 0.0015  # valor padrão fixo (0.15%)
 
-        st.markdown("#### Estratégia de Sinais")
+        st.markdown("#### 📈 Estratégia de Sinais")
         st.markdown("""
         <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
             <p style="margin: 0; font-size: 0.85rem; color: #333;">
-                ℹ️ Guia de Estratégias:<br>
-                • Agressivo: Maior quantidade de sinais (mais oportunidades, maior risco)<br>
-                • Balanceado: Quantidade média de sinais (equilíbrio entre oportunidade e confiabilidade)<br>
-                • Conservador: Poucos sinais, mas mais confiáveis (menor risco, menos oportunidades)
+                <strong>ℹ️ Guia de Estratégias:</strong><br>
+                • <strong>Agressivo:</strong> Maior quantidade de sinais (mais oportunidades, maior risco)<br>
+                • <strong>Balanceado:</strong> Quantidade média de sinais (equilíbrio entre oportunidade e confiabilidade)<br>
+                • <strong>Conservador:</strong> Poucos sinais, mas mais confiáveis (menor risco, menos oportunidades)
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -2027,7 +2030,6 @@ with tab3:
             # Download data using appropriate API
             kwargs = {}
             if data_source == "TwelveData":
-                outputsize = globals().get('outputsize', 5000) if 'outputsize' in globals() else 5000
                 kwargs['outputsize'] = outputsize
             df = get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
                                         end_date.strftime("%Y-%m-%d"), interval, data_source, **kwargs)
@@ -2381,9 +2383,9 @@ with tab3:
                         returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, include_state_change)
 
                         if not returns_df.empty:
-                            total_return = returns_df['return_pct'].sum()
-                            avg_return = returns_df['return_pct'].mean()
-                            win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
+                            total_return = returns_data['return_pct'].sum()
+                            avg_return = returns_data['return_pct'].mean()
+                            win_rate = (returns_data['return_pct'] > 0).sum() / len(returns_data) * 100
 
                             all_results.append({
                                 'parametro': f"{candles} candles",
@@ -2406,9 +2408,9 @@ with tab3:
                         returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, include_state_change)
 
                         if not returns_df.empty:
-                            total_return = returns_df['return_pct'].sum()
-                            avg_return = returns_df['return_pct'].mean()
-                            win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
+                            total_return = returns_data['return_pct'].sum()
+                            avg_return = returns_data['return_pct'].mean()
+                            win_rate = (returns_data['return_pct'] > 0).sum() / len(returns_data) * 100
 
                             all_results.append({
                                 'parametro': f"MM{ma_period}",
@@ -2431,9 +2433,9 @@ with tab3:
                         returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, include_state_change)
 
                         if not returns_df.empty:
-                            total_return = returns_df['return_pct'].sum()
-                            avg_return = returns_df['return_pct'].mean()
-                            win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
+                            total_return = returns_data['return_pct'].sum()
+                            avg_return = returns_data['return_pct'].mean()
+                            win_rate = (returns_data['return_pct'] > 0).sum() / len(returns_data) * 100
 
                             all_results.append({
                                 'parametro': stop_type,
@@ -2460,9 +2462,9 @@ with tab3:
                                 returns_df = calculate_custom_exit_returns(df, criteria, test_params, direction, include_state_change)
 
                                 if not returns_df.empty:
-                                    total_return = returns_df['return_pct'].sum()
-                                    avg_return = returns_df['return_pct'].mean()
-                                    win_rate = (returns_df['return_pct'] > 0).sum() / len(returns_df) * 100
+                                    total_return = returns_data['return_pct'].sum()
+                                    avg_return = returns_data['return_pct'].mean()
+                                    win_rate = (returns_data['return_pct'] > 0).sum() / len(returns_data) * 100
 
                                     all_results.append({
                                         'parametro': f"Stop {stop}% / Alvo {target}%",
@@ -2479,9 +2481,9 @@ with tab3:
 
                 return {
                     'best_returns': best_returns_df,
-                    'best_params': best_params if 'best_params' in locals() and best_params is not None else None,
+                    'best_params': best_params,
                     'best_total_return': best_return,
-                    'all_results': all_results if 'all_results' in locals() else []
+                    'all_results': all_results
                 }
 
             # Calculate returns with optimization if enabled
@@ -2491,13 +2493,11 @@ with tab3:
 
                 optimization_results = optimize_exit_parameters(df, exit_criteria, exit_params, trading_direction)
                 custom_returns_df = optimization_results['best_returns']
-                best_params = optimization_results.get('best_params', None)
-                all_results = optimization_results.get('all_results', [])
+                best_params = optimization_results['best_params']
+                all_results = optimization_results['all_results']
             else:
                 custom_returns_df = calculate_custom_exit_returns(df, exit_criteria, exit_params, trading_direction, include_state_change)
                 optimization_results = None
-                best_params = None
-                all_results = []
 
             progress_bar.progress(100)
             status_text.text("Análise Completa!")
@@ -2508,46 +2508,38 @@ with tab3:
 
             # Display results
             if optimize_params and optimization_results:
-                st.success(f"Análise e otimização completa para {symbol_label} ({data_source})")
+                st.success(f"✅ Análise e otimização completa para {symbol_label} ({data_source})")
 
                 # Show optimization results
-                st.subheader("Resultados da Otimização")
+                st.subheader("🎯 Resultados da Otimização")
 
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Melhor Retorno Total", f"{optimization_results['best_total_return']:.2f}%")
                 with col2:
-                    if best_params is not None:
-                        if exit_criteria == "Tempo":
-                            st.metric("Melhor Parâmetro", f"{best_params} candles")
-                        elif exit_criteria == "Stop Loss":
-                            st.metric("Melhor Stop", best_params)
-                        elif exit_criteria == "Alvo Fixo":
-                            st.metric("Melhor Combinação", f"Stop {best_params['stop']}% / Alvo {best_params['target']}%")
-                        elif exit_criteria == "Média Móvel":
-                            st.metric("Melhor Período MM", f"MM{best_params}")
-                    else:
-                        st.metric("Melhor Parâmetro", "N/A")
+                    if exit_criteria == "Tempo":
+                        st.metric("Melhor Parâmetro", f"{best_params} candles")
+                    elif exit_criteria == "Stop Loss":
+                        st.metric("Melhor Stop", best_params)
+                    elif exit_criteria == "Alvo Fixo":
+                        st.metric("Melhor Combinação", f"Stop {best_params['stop']}% / Alvo {best_params['target']}%")
+                    elif exit_criteria == "Média Móvel":
+                        st.metric("Melhor Período MM", f"MM{best_params}")
                 with col3:
                     st.metric("Operações", len(custom_returns_df))
 
                 # Show comparison table
-                if all_results:
-                    st.subheader("Comparação de Parâmetros")
-                    comparison_df = pd.DataFrame(all_results)
-                    comparison_df = comparison_df.sort_values('total_return', ascending=False)
-                else:
-                    st.warning("Nenhum resultado de otimização disponível.")
-                    comparison_df = pd.DataFrame()
+                st.subheader("📊 Comparação de Parâmetros")
+                comparison_df = pd.DataFrame(all_results)
+                comparison_df = comparison_df.sort_values('total_return', ascending=False)
 
-                # Format columns only if DataFrame is not empty
-                if not comparison_df.empty:
-                    comparison_df['total_return'] = comparison_df['total_return'].round(2)
-                    comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
-                    comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
+                # Format columns
+                comparison_df['total_return'] = comparison_df['total_return'].round(2)
+                comparison_df['avg_return'] = comparison_df['avg_return'].round(2)
+                comparison_df['win_rate'] = comparison_df['win_rate'].round(1)
 
-                    # Rename columns for better display
-                    comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
+                # Rename columns for better display
+                comparison_df.columns = ['Parâmetro', 'Retorno Total (%)', 'Retorno Médio (%)', 'Taxa de Acerto (%)', 'Total de Operações']
 
                 # Color code the best result
                 def highlight_best(s):
@@ -2556,11 +2548,8 @@ with tab3:
                         return ['background-color: lightgreen' if v else '' for v in is_max]
                     return ['' for _ in s]
 
-                if not comparison_df.empty:
-                    styled_df = comparison_df.style.apply(highlight_best, axis=0)
-                    st.dataframe(styled_df, use_container_width=True)
-                else:
-                    st.info("Nenhum dado para exibir na tabela de comparação.")
+                styled_df = comparison_df.style.apply(highlight_best, axis=0)
+                st.dataframe(styled_df, use_container_width=True)
 
                 # Show summary statistics
                 col1, col2, col3 = st.columns(3)
@@ -2571,12 +2560,12 @@ with tab3:
                 with col3:
                     st.metric("Diferença", f"{comparison_df['Retorno Total (%)'].max() - comparison_df['Retorno Total (%)'].min():.2f}%")
             else:
-                st.success(f"Análise completa para {symbol_label} ({data_source})")
+                st.success(f"✅ Análise completa para {symbol_label} ({data_source})")
 
             # Current status display with improved layout
             modelo_nome = "OVELHA V2"
 
-            st.markdown(f"### Status Atual - Modelo: {modelo_nome}")
+            st.markdown(f"### 📊 Status Atual do Mercado - Modelo: {modelo_nome}")
 
             col1, col2 = st.columns(2)
 
@@ -2586,17 +2575,17 @@ with tab3:
             with col1:
                 st.markdown(f"""
                 <div class="metric-card">
-                    <h4 style="margin: 0; color: #1f77b4;">Preço Atual</h4>
+                    <h4 style="margin: 0; color: #1f77b4;">💰 Preço Atual</h4>
                     <h2 style="margin: 0; color: #333;">{current_price:.2f}</h2>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col2:
                 signal_class = "status-buy" if current_signal == "Buy" else "status-sell" if current_signal == "Sell" else "status-out"
-                signal_icon = "" if current_signal == "Buy" else "" if current_signal == "Sell" else ""
+                signal_icon = "🔵" if current_signal == "Buy" else "🔴" if current_signal == "Sell" else "⚫"
                 st.markdown(f"""
                 <div class="metric-card">
-                    <h4 style="margin: 0; color: #1f77b4;">Sinal Atual</h4>
+                    <h4 style="margin: 0; color: #1f77b4;">🎯 Sinal Atual</h4>
                     <div class="{signal_class}">{signal_icon} {current_signal}</div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -2725,7 +2714,7 @@ with tab3:
 
             st.markdown("---")
             # Section 1: Advanced metrics
-            with st.expander("**Métricas Avançadas e Top Trades**", expanded=True):
+            with st.expander("📊 **Métricas Avançadas e Top Trades**", expanded=True):
                 if not returns_df.empty or not custom_returns_df.empty:
                     # Choose best performing dataset for advanced analysis
                     best_df = returns_df
@@ -2804,9 +2793,9 @@ with tab3:
                 st.markdown("### 🛡️ Níveis de Stop Loss")
                 st.markdown(f"""
                 <div class="metric-card">
-                    <p>🔴 Stop Justo: {df['Stop_Justo'].iloc[-1]:.2f}</p>
-                    <p>🟡 Stop Balanceado: {df['Stop_Balanceado'].iloc[-1]:.2f}</p>
-                    <p>🟢 Stop Largo: {df['Stop_Largo'].iloc[-1]:.2f}</p>
+                    <p><strong>🔴 Stop Justo:</strong> {df['Stop_Justo'].iloc[-1]:.2f}</p>
+                    <p><strong>🟡 Stop Balanceado:</strong> {df['Stop_Balanceado'].iloc[-1]:.2f}</p>
+                    <p><strong>🟢 Stop Largo:</strong> {df['Stop_Largo'].iloc[-1]:.2f}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -2818,9 +2807,9 @@ with tab3:
                 st.markdown("### 📊 Distribuição dos Sinais")
                 st.markdown(f"""
                 <div class="metric-card">
-                    <p>🔵 Sinais de Compra: {buy_signals}</p>
-                    <p>🔴 Sinais de Venda: {sell_signals}</p>
-                    <p>⚫ Fora do Mercado: {stay_out}</p>
+                    <p><strong>🔵 Sinais de Compra:</strong> {buy_signals}</p>
+                    <p><strong>🔴 Sinais de Venda:</strong> {sell_signals}</p>
+                    <p><strong>⚫ Fora do Mercado:</strong> {stay_out}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -2830,30 +2819,30 @@ with tab3:
                     if pd.notna(df['thr_used'].iloc[-1]) and pd.notna(df['buffer_pct'].iloc[-1]):
                         thr_atual = df['thr_used'].iloc[-1] * 100
                         buf_atual = df['buffer_pct'].iloc[-1] * 100
-                        st.markdown("### Parâmetros Dinâmicos")
+                        st.markdown("### ⚙️ Parâmetros Dinâmicos")
                         st.markdown(f"""
                         <div class="metric-card">
-                            <p>🎯 Threshold Atual: {thr_atual:.3f}%</p>
-                            <p>🔄 Buffer Atual: {buf_atual:.3f}%</p>
+                            <p><strong>🎯 Threshold Atual:</strong> {thr_atual:.3f}%</p>
+                            <p><strong>🔄 Buffer Atual:</strong> {buf_atual:.3f}%</p>
                             <p style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Valores calculados dinamicamente baseados na volatilidade (ATR)</p>
                         </div>
                         """, unsafe_allow_html=True)
                     else:
-                        st.markdown("### Parâmetros Dinâmicos")
+                        st.markdown("### ⚙️ Parâmetros Dinâmicos")
                         st.markdown(f"""
                         <div class="metric-card">
-                            <p>🎯 Threshold: Dinâmico</p>
-                            <p>🔄 Buffer: Dinâmico</p>
+                            <p><strong>🎯 Threshold:</strong> Dinâmico</p>
+                            <p><strong>🔄 Buffer:</strong> Dinâmico</p>
                             <p style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Baseados na volatilidade (ATR)</p>
                         </div>
                         """, unsafe_allow_html=True)
             else:
                 with col3:
-                    st.markdown("### Parâmetros Dinâmicos")
+                    st.markdown("### ⚙️ Parâmetros Dinâmicos")
                     st.markdown(f"""
                     <div class="metric-card">
-                        <p>🎯 Threshold: Dinâmico</p>
-                        <p>🔄 Buffer: Dinâmico</p>
+                        <p><strong>🎯 Threshold:</strong> Dinâmico</p>
+                        <p><strong>🔄 Buffer:</strong> Dinâmico</p>
                         <p style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Baseados na volatilidade (ATR)</p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -2863,15 +2852,15 @@ with tab3:
 
 with tab4:
     # Screening tab
-    st.markdown("## Screening de Múltiplos Ativos")
-    st.info("**Modo Screening:** Detecção de mudanças de estado dos sinais em múltiplos ativos.")
+    st.markdown("## 🔍 Screening de Múltiplos Ativos")
+    st.info("ℹ️ **Screening Mode:** O screening focará apenas na detecção de mudanças de estado dos sinais.")
 
     # Parameters section
     col1, col2 = st.columns([1, 1])
 
     with col1:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
-        st.markdown("#### Lista de Ativos")
+        st.markdown("#### 📊 Lista de Ativos")
 
         # Predefined lists
         preset_lists = {
@@ -2946,7 +2935,7 @@ with tab4:
 
     with col2:
         st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
-        st.markdown("#### Fonte de Dados e Configurações")
+        st.markdown("#### 📊 Fonte de Dados e Configurações")
 
         # Source selection for data
         data_source_screening = st.selectbox(
@@ -2959,8 +2948,8 @@ with tab4:
 
         # Configurações baseadas na fonte selecionada
         if data_source_screening == "Yahoo Finance":
-            st.info("**Yahoo Finance:** 2 anos de dados históricos")
-            st.info("**Timeframe:** 1 dia (fixo)")
+            st.info("📅 **Yahoo Finance:** 2 anos de dados históricos")
+            st.info("⏰ **Timeframe:** 1 dia (fixo)")
             interval_screening = "1d"
             outputsize_screening = None
 
@@ -2971,8 +2960,8 @@ with tab4:
             end_date_screening = default_end_screening
 
         else:  # TwelveData
-            st.info("**TwelveData:** Últimos 2000 registros")
-            st.markdown("#### Timeframe")
+            st.info("📅 **TwelveData:** Últimos 2000 registros")
+            st.markdown("#### ⏱️ Timeframe")
 
             # Intervalos específicos para TwelveData no screening
             interval_options_screening = {
@@ -2997,19 +2986,19 @@ with tab4:
             end_date_screening = None
 
         # Strategy selection
-        st.markdown("#### Modelo de Sinais")
+        st.markdown("#### 🤖 Modelo de Sinais")
 
         model_type_screening = "OVELHA V2 (Machine Learning)"
         st.info("🧠 **OVELHA V2:** Sistema avançado com Machine Learning, buffer adaptativo automático e análise multidimensional para máxima precisão")
 
-        st.markdown("#### Estratégia de Sinais")
+        st.markdown("#### 📈 Estratégia de Sinais")
         st.markdown("""
         <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
             <p style="margin: 0; font-size: 0.85rem; color: #333;">
-                ℹ️ Guia de Estratégias:<br>
-                • Agressivo: Maior quantidade de sinais (mais oportunidades, maior risco)<br>
-                • Balanceado: Quantidade média de sinais (equilíbrio entre oportunidade e confiabilidade)<br>
-                • Conservador: Poucos sinais, mas mais confiáveis (menor risco, menos oportunidades)
+                <strong>ℹ️ Guia de Estratégias:</strong><br>
+                • <strong>Agressivo:</strong> Maior quantidade de sinais (mais oportunidades, maior risco)<br>
+                • <strong>Balanceado:</strong> Quantidade média de sinais (equilíbrio entre oportunidade e confiabilidade)<br>
+                • <strong>Conservador:</strong> Poucos sinais, mas mais confiáveis (menor risco, menos oportunidades)
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -3064,9 +3053,8 @@ with tab4:
                         kwargs['outputsize'] = outputsize_screening
                         df_temp = get_market_data(current_symbol, None, None, interval_screening, data_source_screening, **kwargs)
                     else:
-                        start_str = start_date_screening.strftime("%Y-%m-%d") if start_date_screening else "2022-01-01"
-                        end_str = end_date_screening.strftime("%Y-%m-%d") if end_date_screening else datetime.now().strftime("%Y-%m-%d")
-                        df_temp = get_market_data(current_symbol, start_str, end_str, interval_screening, data_source_screening)
+                        df_temp = get_market_data(current_symbol, start_date_screening.strftime("%Y-%m-%d"),
+                                                    end_date_screening.strftime("%Y-%m-%d"), interval_screening, data_source_screening)
 
                     if df_temp is None or df_temp.empty:
                         screening_results.append({
@@ -3128,7 +3116,7 @@ with tab4:
 
             if data_source_screening == "TwelveData":
                 dados_info = f"últimos {outputsize_screening} registros"
-                timeframe_display = interval_screening
+                timeframe_display = interval_display_screening
             else:
                 dados_info = "2 anos de dados históricos"
                 timeframe_display = "1 dia"
@@ -3168,7 +3156,7 @@ with tab4:
                 st.info("ℹ️ Nenhum ativo com mudança de estado detectada no período analisado.")
 
             # Summary table of all assets
-            st.subheader("Resumo Geral do Screening")
+            st.subheader("📊 Resumo Geral do Screening")
 
             # Create summary dataframe
             summary_df = pd.DataFrame(screening_results)
@@ -3207,37 +3195,37 @@ with tab4:
 
 with tab5:
     # Telegram Bot tab
-    st.markdown("## Bot de Alertas do Telegram")
+    st.markdown("## 🤖 Bot de Alertas do Telegram")
     st.markdown("Manual de Instruções e Informações do Bot")
 
     # Bot information section
-    st.markdown("### Informações do Bot")
+    st.markdown("### 📱 Informações do Bot")
     st.markdown("""
     <div class="metric-card">
-        <h4 style="margin: 0; color: #1f77b4;">Bot do Telegram: @Ovecchia_bot</h4>
-        <p>Funcionalidades:</p>
+        <h4 style="margin: 0; color: #1f77b4;">🤖 Bot do Telegram: @Ovecchia_bot</h4>
+        <p><strong>Funcionalidades:</strong></p>
         <ul>
-            <li>Screening automático de múltiplos ativos</li>
-            <li>Detecção de topos e fundos</li>
-            <li>Alertas em tempo real de mudanças de estado</li>
-            <li>Análise baseada em timeframe de 1 dia</li>
-            <li>Estratégias: Agressiva, Balanceada e Conservadora</li>
+            <li>🔍 Screening automático de múltiplos ativos</li>
+            <li>📊 Detecção de topos e fundos</li>
+            <li>⚡ Alertas em tempo real de mudanças de estado</li>
+            <li>📈 Análise baseada em timeframe de 1 dia</li>
+            <li>🎯 Estratégias: Agressiva, Balanceada e Conservadora</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
 
     # How to use section
-    st.markdown("### Como Usar o Bot")
+    st.markdown("### 📋 Como Usar o Bot")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("#### Primeiros Passos")
+        st.markdown("#### 🚀 Primeiros Passos")
         st.markdown("""
-        1. Adicione o bot:
-        No Telegram, procure por @Ovecchia_bot e clique em "Iniciar"
+        <strong>1. Adicione o bot:</strong>
+        No Telegram, procure por <strong>@Ovecchia_bot</strong> e clique em "Iniciar"
 
-        2. Comandos disponíveis:
+        <strong>2. Comandos disponíveis:</strong>
         - `/start` - Iniciar o bot e ver boas-vindas
         - `/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]` - Análise individual com gráfico
         - `/screening [estrategia] [ativos]` - Screening de múltiplos ativos
@@ -3247,20 +3235,20 @@ with tab5:
         """)
 
     with col2:
-        st.markdown("#### Configurações")
+        st.markdown("#### ⚙️ Configurações")
         st.markdown("""
-        Estratégias disponíveis:
-        - **Agressiva:** Mais sinais, maior frequência
-        - **Balanceada:** Equilíbrio entre sinais e confiabilidade
-        - **Conservadora:** Sinais mais confiáveis, menor frequência
+        <strong>Estratégias disponíveis:</strong>
+        - <strong>🔥 agressiva:</strong> Mais sinais, maior frequência
+        - <strong>⚖️ balanceada:</strong> Equilíbrio entre sinais e confiabilidade
+        - <strong>🛡️ conservadora:</strong> Sinais mais confiáveis, menor frequência
 
-        Timeframes suportados: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
-        Período de dados: Baseado no comando específico
-        Datas personalizadas: Formato YYYY-MM-DD (opcional)
+        <strong>Timeframes suportados:</strong> 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+        <strong>Período de dados:</strong> Baseado no comando específico
+        <strong>Datas personalizadas:</strong> Formato YYYY-MM-DD (opcional)
         """)
 
     # Bot status section
-    st.markdown("### Status do Bot")
+    st.markdown("### 📊 Informações do Bot")
 
     col1, col2, col3 = st.columns(3)
 
@@ -3268,7 +3256,7 @@ with tab5:
         st.markdown(f"""
         <div class="metric-card">
             <h4 style="margin: 0; color: #1f77b4;">Status</h4>
-            <h2 style="margin: 0; color: #333;">Online 24/7</h2>
+            <h2 style="margin: 0; color: #333;">🟢 Online 24/7</h2>
             <p style="margin: 0; font-size: 0.9rem; color: #666;">Bot está sempre ativo</p>
         </div>
         """, unsafe_allow_html=True)
@@ -3292,17 +3280,17 @@ with tab5:
         """, unsafe_allow_html=True)
 
     # Instructions to use the bot
-    st.markdown("### Como Começar")
+    st.markdown("### 🚀 Como Começar")
     st.markdown("""
     <div class="metric-card">
         <h4 style="color: #1f77b4;">Passos para usar o bot:</h4>
         <ol style="color: #333;">
-            <li>Abra o Telegram no seu celular ou computador</li>
-            <li>Procure por: <code>@Ovecchia_bot</code></li>
-            <li>Clique em "Iniciar" ou digite <code>/start</code></li>
-            <li>Pronto! O bot responderá com as opções disponíveis</li>
+            <li><strong>Abra o Telegram</strong> no seu celular ou computador</li>
+            <li><strong>Procure por:</strong> <code>@Ovecchia_bot</code></li>
+            <li><strong>Clique em "Iniciar"</strong> ou digite <code>/start</code></li>
+            <li><strong>Pronto!</strong> O bot responderá com as opções disponíveis</li>
         </ol>
-        <p style="margin-top: 1rem;"><strong>Exemplos de comandos:</strong></p>
+        <p style="margin-top: 1rem;"><strong>💡 Exemplos de comandos:</strong></p>
         <ul style="color: #333;">
             <li><code>/analise balanceada PETR4.SA 1d</code> - Análise da Petrobras</li>
             <li><code>/screening balanceada BTC-USD ETH-USD</code> - Screening de criptos</li>
@@ -3312,32 +3300,32 @@ with tab5:
     """, unsafe_allow_html=True)
 
     # Example alerts section
-    st.markdown("### Exemplos de Alertas")
+    st.markdown("### 📢 Exemplos de Alertas")
 
     st.markdown("""
     <div class="metric-card">
-        <p><strong>Exemplo de Screening:</strong></p>
+        <p><strong>🔍 Exemplo de Screening:</strong></p>
         <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; font-family: monospace;">
-            ALERTAS DE MUDANÇA DE ESTADO<br><br>
-            Estratégia: Balanceado<br>
-            Timeframe: 1 dia<br><br>
-            BTC-USD<br>
-            Preço: 45,230.50<br>
-            Stay Out → Buy<br><br>
-            ETH-USD<br>
-            Preço: 2,850.75<br>
-            Buy → Sell
+            🚨 ALERTAS DE MUDANÇA DE ESTADO<br><br>
+            📊 Estratégia: Balanceado<br>
+            ⏰ Timeframe: 1 dia<br><br>
+            🟢 BTC-USD<br>
+            💰 Preço: 45,230.50<br>
+            📈 ⚫ Stay Out → 🟢 Buy<br><br>
+            🔴 ETH-USD<br>
+            💰 Preço: 2,850.75<br>
+            📈 🟢 Buy → 🔴 Sell
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="metric-card">
-        <p><strong>Exemplo de Análise Individual:</strong></p>
+        <p><strong>📊 Exemplo de Análise Individual:</strong></p>
         <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; font-family: monospace;">
-            OVECCHIA TRADING - PETR4.SA<br>
-            Balanceado | 1D<br>
-            Período: 2024-01-01 até 2024-12-01<br><br>
+            📊 OVECCHIA TRADING - PETR4.SA<br>
+            🎯 Balanceado | ⏰ 1D<br>
+            📅 Período: 2024-01-01 até 2024-12-01<br><br>
             [Gráfico de análise enviado como imagem]
         </div>
     </div>
@@ -3345,33 +3333,33 @@ with tab5:
 
     st.markdown("""
     <div class="metric-card">
-        <p><strong>Exemplo de Topos e Fundos:</strong></p>
+        <p><strong>📊 Exemplo de Topos e Fundos:</strong></p>
         <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; font-family: monospace;">
-            DETECÇÃO DE TOPOS E FUNDOS<br>
-            Timeframe: 1 dia<br><br>
-            POSSÍVEL FUNDO (COMPRA):<br>
+            📊 DETECÇÃO DE TOPOS E FUNDOS<br>
+            ⏰ Timeframe: 1 dia<br><br>
+            🟢 POSSÍVEL FUNDO (COMPRA):<br>
             • PETR4.SA: 28.45<br>
-            Distância: 2.30%<br><br>
-            POSSÍVEL TOPO (VENDA):<br>
+            📊 Distância: 2.30%<br><br>
+            🔴 POSSÍVEL TOPO (VENDA):<br>
             • VALE3.SA: 72.80<br>
-            Distância: 1.80%
+            📊 Distância: 1.80%
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     # Technical information
-    st.markdown("### Informações Técnicas")
+    st.markdown("### 🔧 Informações Técnicas")
 
     st.markdown("""
     <div class="metric-card">
-        <p>Especificações do Bot:</p>
+        <p><strong>Especificações do Bot:</strong></p>
         <ul>
-            <li>Polling: Verifica mensagens a cada 2 segundos</li>
-            <li>Timeout: 10 segundos para requisições</li>
-            <li>Análise automática: A cada 4 horas (configurável)</li>
-            <li>Fonte de dados: Yahoo Finance API e Binance API</li>
-            <li>Período de dados: 365 dias históricos (Yahoo), 2 anos (Binance para T&F)</li>
-            <li>Processamento: Thread separada para não bloquear interface</li>
+            <li><strong>Polling:</strong> Verifica mensagens a cada 2 segundos</li>
+            <li><strong>Timeout:</strong> 10 segundos para requisições</li>
+            <li><strong>Análise automática:</strong> A cada 4 horas (configurável)</li>
+            <li><strong>Fonte de dados:</strong> Yahoo Finance API e Binance API</li>
+            <li><strong>Período de dados:</strong> 365 dias históricos (Yahoo), 2 anos (Binance para T&F)</li>
+            <li><strong>Processamento:</strong> Thread separada para não bloquear interface</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -3384,7 +3372,7 @@ with tab6:
     st.markdown("### 🎯 Visão Geral")
     st.markdown("""
     <div class="metric-card">
-        <p>O OVECCHIA TRADING é uma plataforma profissional de análise técnica quantitativa que democratiza o acesso a ferramentas avançadas de trading. Desenvolvido com tecnologias de ponta, combina análise técnica tradicional com inteligência artificial para oferecer sinais precisos e análises detalhadas do mercado financeiro.</p>
+        <p>O <strong>OVECCHIA TRADING</strong> é uma plataforma profissional de análise técnica quantitativa que democratiza o acesso a ferramentas avançadas de trading. Desenvolvido com tecnologias de ponta, combina análise técnica tradicional com inteligência artificial para oferecer sinais precisos e análises detalhadas do mercado financeiro.</p>
         <p>Nossa missão é proporcionar aos investidores e traders ferramentas profissionais de análise de mercado de forma acessível, intuitiva e confiável.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -3398,12 +3386,12 @@ with tab6:
         st.markdown("#### 📊 Modelo OVELHA (Clássico)")
         st.markdown("""
         <div class="metric-card">
-            <p>Análise Técnica Consolidada</p>
+            <p><strong>Análise Técnica Consolidada</strong></p>
             <ul>
-                <li>Metodologia Testada: Baseado em anos de pesquisa quantitativa</li>
-                <li>Sinais Confiáveis: Algoritmo proprietário de detecção de padrões</li>
-                <li>Estabilidade: Performance consistente em diferentes mercados</li>
-                <li>Aplicação: Ideal para traders que buscam sinais claros e diretos</li>
+                <li><strong>Metodologia Testada:</strong> Baseado em anos de pesquisa quantitativa</li>
+                <li><strong>Sinais Confiáveis:</strong> Algoritmo proprietário de detecção de padrões</li>
+                <li><strong>Estabilidade:</strong> Performance consistente em diferentes mercados</li>
+                <li><strong>Aplicação:</strong> Ideal para traders que buscam sinais claros e diretos</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -3412,12 +3400,12 @@ with tab6:
         st.markdown("#### 🧠 Modelo OVELHA V2 (Machine Learning)")
         st.markdown("""
         <div class="metric-card">
-            <p>Inteligência Artificial de Nova Geração</p>
+            <p><strong>Inteligência Artificial de Nova Geração</strong></p>
             <ul>
-                <li>Aprendizado Contínuo: Modelo se adapta às condições de mercado</li>
-                <li>Análise Multidimensional: Processa múltiplas variáveis simultaneamente</li>
-                <li>Precisão Aprimorada: Tecnologia avançada para maior assertividade</li>
-                <li>Filtragem Inteligente: Reduz falsos sinais automaticamente</li>
+                <li><strong>Aprendizado Contínuo:</strong> Modelo se adapta às condições de mercado</li>
+                <li><strong>Análise Multidimensional:</strong> Processa múltiplas variáveis simultaneamente</li>
+                <li><strong>Precisão Aprimorada:</strong> Tecnologia avançada para maior assertividade</li>
+                <li><strong>Filtragem Inteligente:</strong> Reduz falsos sinais automaticamente</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -3426,20 +3414,20 @@ with tab6:
     st.markdown("### ⚙️ Como Nossos Modelos Funcionam")
     st.markdown("""
     <div class="metric-card">
-        <p>Processo Inteligente de Análise:</p>
+        <p><strong>Processo Inteligente de Análise:</strong></p>
         <ol>
-            <li>Coleta de Dados: Sistema captura informações relevantes do mercado em tempo real</li>
-            <li>Processamento Proprietário: Algoritmos exclusivos analisam padrões e tendências</li>
-            <li>Classificação Inteligente: Modelos determinam o melhor estado para cada momento</li>
-            <li>Geração de Sinais: Sistema produz recomendações claras e objetivas</li>
+            <li><strong>Coleta de Dados:</strong> Sistema captura informações relevantes do mercado em tempo real</li>
+            <li><strong>Processamento Proprietário:</strong> Algoritmos exclusivos analisam padrões e tendências</li>
+            <li><strong>Classificação Inteligente:</strong> Modelos determinam o melhor estado para cada momento</li>
+            <li><strong>Geração de Sinais:</strong> Sistema produz recomendações claras e objetivas</li>
         </ol>
-        <p>Estados de Mercado que Identificamos:</p>
+        <p><strong>Estados de Mercado que Identificamos:</strong></p>
         <ul>
-            <li>🔵 BUY: Momento favorável identificado para posições de compra</li>
-            <li>🔴 SELL: Condições adequadas detectadas para posições de venda</li>
-            <li>⚫ STAY OUT: Recomendação para aguardar melhor oportunidade</li>
+            <li><strong>🔵 BUY:</strong> Momento favorável identificado para posições de compra</li>
+            <li><strong>🔴 SELL:</strong> Condições adequadas detectadas para posições de venda</li>
+            <li><strong>⚫ STAY OUT:</strong> Recomendação para aguardar melhor oportunidade</li>
         </ul>
-        <p>💎 Diferenciais Exclusivos: Nossos modelos proprietários combinam técnicas avançadas de análise com proteções inteligentes contra ruídos de mercado, oferecendo sinais mais precisos e confiáveis.</p>
+        <p><strong>💎 Diferenciais Exclusivos:</strong> Nossos modelos proprietários combinam técnicas avançadas de análise com proteções inteligentes contra ruídos de mercado, oferecendo sinais mais precisos e confiáveis.</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -3481,7 +3469,7 @@ with tab6:
 
     st.markdown("""
     <div class="metric-card">
-        <p>Nossa plataforma suporta uma ampla gama de instrumentos financeiros:</p>
+        <p><strong>Nossa plataforma suporta uma ampla gama de instrumentos financeiros:</strong></p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -3491,7 +3479,7 @@ with tab6:
         st.markdown("#### 🪙 Criptomoedas")
         st.markdown("""
         <div class="metric-card">
-            <p>Principais:</p>
+            <p><strong>Principais:</strong></p>
             <ul>
                 <li>Bitcoin (BTC-USD)</li>
                 <li>Ethereum (ETH-USD)</li>
@@ -3506,7 +3494,7 @@ with tab6:
         st.markdown("#### 🇧🇷 Ações Brasileiras")
         st.markdown("""
         <div class="metric-card">
-            <p>Principais:</p>
+            <p><strong>Principais:</strong></p>
             <ul>
                 <li>Petrobras (PETR4.SA)</li>
                 <li>Vale (VALE3.SA)</li>
@@ -3521,7 +3509,7 @@ with tab6:
         st.markdown("#### 🌍 Mercados Globais")
         st.markdown("""
         <div class="metric-card">
-            <p>Principais:</p>
+            <p><strong>Principais:</strong></p>
             <ul>
                 <li>Ações EUA (AAPL, MSFT, GOOGL)</li>
                 <li>Forex (EURUSD=X, GBPUSD=X)</li>
@@ -3535,17 +3523,17 @@ with tab6:
     st.markdown("### 🔍 Como Verificar se um Ativo é Suportado")
     st.markdown("""
     <div class="metric-card" style="border-left: 4px solid #2196F3;">
-        <p>Para verificar se um ativo específico é suportado pelo sistema:</p>
+        <p><strong>Para verificar se um ativo específico é suportado pelo sistema:</strong></p>
         <ol>
-            <li>Yahoo Finance: Acesse <a href="https://finance.yahoo.com/" target="_blank">finance.yahoo.com</a></li>
-            <li>TwelveData: Acesse <a href="https://twelvedata.com/" target="_blank">twelvedata.com</a></li>
-            <li>Pesquise o símbolo: Digite o ticker do ativo (ex: AAPL, PETR4.SA, BTC-USD)</li>
-            <li>Verifique a disponibilidade: Se encontrar dados históricos, o ativo é suportado</li>
+            <li><strong>Yahoo Finance:</strong> Acesse <a href="https://finance.yahoo.com/" target="_blank">finance.yahoo.com</a></li>
+            <li><strong>TwelveData:</strong> Acesse <a href="https://twelvedata.com/" target="_blank">twelvedata.com</a></li>
+            <li><strong>Pesquise o símbolo:</strong> Digite o ticker do ativo (ex: AAPL, PETR4.SA, BTC-USD)</li>
+            <li><strong>Verifique a disponibilidade:</strong> Se encontrar dados históricos, o ativo é suportado</li>
         </ol>
-        <p>💡 Dica: Use o formato correto do ticker conforme a fonte:</p>
+        <p><strong>💡 Dica:</strong> Use o formato correto do ticker conforme a fonte:</p>
         <ul>
-            <li>Yahoo Finance: PETR4.SA, BTC-USD, AAPL, EURUSD=X</li>
-            <li>TwelveData: PETR4.SA, BTC/USD, AAPL, EUR/USD</li>
+            <li><strong>Yahoo Finance:</strong> PETR4.SA, BTC-USD, AAPL, EURUSD=X</li>
+            <li><strong>TwelveData:</strong> PETR4.SA, BTC/USD, AAPL, EUR/USD</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -3554,14 +3542,14 @@ with tab6:
     st.markdown("### 🔬 Nossa Tecnologia")
     st.markdown("""
     <div class="metric-card">
-        <p>Infraestrutura Profissional:</p>
+        <p><strong>Infraestrutura Profissional:</strong></p>
         <ul>
-            <li>Inteligência Artificial: Modelos proprietários de machine learning</li>
-            <li>Dados Confiáveis: Fontes institucionais de alta qualidade</li>
-            <li>Interface Moderna: Plataforma web intuitiva e responsiva</li>
-            <li>Alertas Inteligentes: Sistema automatizado via Telegram</li>
+            <li><strong>Inteligência Artificial:</strong> Modelos proprietários de machine learning</li>
+            <li><strong>Dados Confiáveis:</strong> Fontes institucionais de alta qualidade</li>
+            <li><strong>Interface Moderna:</strong> Plataforma web intuitiva e responsiva</li>
+            <li><strong>Alertas Inteligentes:</strong> Sistema automatizado via Telegram</li>
         </ul>
-        <p>Metodologia Exclusiva:</p>
+        <p><strong>Metodologia Exclusiva:</strong></p>
         <ul>
             <li>Análise quantitativa avançada com algoritmos proprietários</li>
             <li>Validação rigorosa em milhares de operações históricas</li>
@@ -3575,10 +3563,10 @@ with tab6:
     st.markdown("### ⚠️ Aviso Importante")
     st.markdown("""
     <div style="background: linear-gradient(90deg, #fff3cd, #f8d7da); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #ffc107; color: #721c24; margin: 1rem 0;">
-        <p>⚠️ DISCLAIMER:</p>
-        <p>Este sistema é desenvolvido exclusivamente para fins educacionais e de pesquisa. As análises, sinais e informações fornecidas NÃO constituem recomendações de investimento ou consultoria financeira.</p>
-        <p>Riscos: Trading e investimentos envolvem riscos significativos. Você pode perder parte ou todo o seu capital investido. Performance passada não garante resultados futuros.</p>
-        <p>Recomendação: Sempre consulte um profissional qualificado antes de tomar decisões de investimento. Use apenas capital que você pode perder sem comprometer sua situação financeira.</p>
+        <p><strong>⚠️ DISCLAIMER:</strong></p>
+        <p>Este sistema é desenvolvido exclusivamente para <strong>fins educacionais e de pesquisa</strong>. As análises, sinais e informações fornecidas <strong>NÃO constituem recomendações de investimento</strong> ou consultoria financeira.</p>
+        <p><strong>Riscos:</strong> Trading e investimentos envolvem riscos significativos. Você pode perder parte ou todo o seu capital investido. Performance passada não garante resultados futuros.</p>
+        <p><strong>Recomendação:</strong> Sempre consulte um profissional qualificado antes de tomar decisões de investimento. Use apenas capital que você pode perder sem comprometer sua situação financeira.</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -3595,7 +3583,7 @@ with tab6:
 st.markdown("---")
 st.markdown("""
 <div style="background: #f8f9fa; padding: 1rem; border-radius: 10px; text-align: center; margin-top: 2rem;">
-    <p style="color: #666; margin: 0;">OVECCHIA TRADING - MODELO QUANT</p>
+    <p style="color: #666; margin: 0;"><strong>OVECCHIA TRADING - MODELO QUANT</strong></p>
     <p style="color: #999; font-size: 0.9rem; margin: 0;">⚠️ Para fins educacionais apenas. Não constitui recomendação financeira.</p>
 </div>
 """, unsafe_allow_html=True)
