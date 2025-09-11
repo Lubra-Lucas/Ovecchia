@@ -1835,65 +1835,121 @@ def stop_alerts_command(message):
 def list_alerts_command(message):
     try:
         user_id = message.from_user.id
-        user_name = message.from_user.first_name
+        user_name = message.from_user.first_name or "Usuário"
         logger.info(f"Comando /list_alerts recebido de {user_name} (ID: {user_id})")
 
-        if user_id in trading_bot.active_alerts:
-            alert_config = trading_bot.active_alerts[user_id]
-
-            # Verificar se todas as chaves necessárias existem
-            required_keys = ['symbols', 'source', 'strategy', 'model', 'timeframe']
-            missing_keys = [key for key in required_keys if key not in alert_config]
-
-            if missing_keys:
-                logger.error(f"Chaves faltando na configuração de alerta para usuário {user_id}: {missing_keys}")
-                safe_bot_reply(message, f"❌ Erro na configuração do alerta. Chaves faltando: {', '.join(missing_keys)}. Use /stop_alerts e configure novamente.")
-                return
-
-            # Validar se symbols é uma lista
-            if not isinstance(alert_config['symbols'], list):
-                logger.error(f"Campo 'symbols' não é uma lista para usuário {user_id}: {type(alert_config['symbols'])}")
-                safe_bot_reply(message, "❌ Erro na configuração dos símbolos. Use /stop_alerts e configure novamente.")
-                return
-
-            symbols_list = ', '.join(alert_config['symbols'])
-
-            # Construir mensagem de forma segura
-            try:
-                source = str(alert_config['source']).upper()
-                strategy = str(alert_config['strategy'])
-                model = str(alert_config['model']).upper()
-                timeframe = str(alert_config['timeframe'])
-
-                alert_info = f"""
-                            📋 *ALERTA ATIVO*
-
-                            🔗 Fonte: {source}
-                            🎯 Estratégia: {strategy}
-                            🤖 Modelo: {model}
-                            ⏰ Intervalo: {timeframe}
-
-                            📈 Símbolos ({len(alert_config['symbols'])}): {symbols_list}
-
-                            🔔 Use /stop_alerts para interromper
-                            """
-
-                safe_bot_reply(message, alert_info, 'Markdown')
-                logger.info(f"Lista de alertas enviada para {user_name}: {len(alert_config['symbols'])} símbolos")
-
-            except Exception as format_error:
-                logger.error(f"Erro ao formatar mensagem de alerta para usuário {user_id}: {str(format_error)}")
-                # Enviar mensagem básica sem formatação
-                basic_info = f"📋 ALERTA ATIVO\n\nFonte: {alert_config.get('source', 'N/A')}\nSímbolos: {len(alert_config.get('symbols', []))}\n\nUse /stop_alerts para interromper"
-                safe_bot_reply(message, basic_info)
-
-        else:
-            safe_bot_reply(message, "ℹ️ Nenhum alerta automático ativo.")
+        # Verificar se o usuário tem alertas ativos
+        if user_id not in trading_bot.active_alerts:
+            safe_bot_reply(message, "ℹ️ Nenhum alerta automático ativo.\n\n💡 Use /screening_auto para configurar alertas.")
             logger.info(f"Nenhum alerta ativo para {user_name}")
+            return
+
+        # Obter configuração do alerta
+        alert_config = trading_bot.active_alerts[user_id]
+        
+        # Validar se a configuração não está vazia
+        if not alert_config or not isinstance(alert_config, dict):
+            logger.error(f"Configuração de alerta inválida para usuário {user_id}: {type(alert_config)}")
+            # Limpar configuração inválida
+            del trading_bot.active_alerts[user_id]
+            safe_bot_reply(message, "❌ Configuração de alerta corrompida foi removida. Configure novamente com /screening_auto.")
+            return
+
+        # Verificar chaves obrigatórias com valores padrão
+        required_keys = {
+            'symbols': [],
+            'source': 'yahoo',
+            'strategy': 'Balanceado',
+            'model': 'ovelha',
+            'timeframe': '1d'
+        }
+
+        # Preencher chaves faltantes com valores padrão
+        for key, default_value in required_keys.items():
+            if key not in alert_config:
+                alert_config[key] = default_value
+                logger.warning(f"Chave '{key}' faltando para usuário {user_id}, usando valor padrão: {default_value}")
+
+        # Validar e corrigir campo symbols
+        symbols = alert_config.get('symbols', [])
+        if not isinstance(symbols, list):
+            if isinstance(symbols, str):
+                # Tentar converter string para lista
+                try:
+                    if ',' in symbols:
+                        symbols = [s.strip() for s in symbols.split(',')]
+                    else:
+                        symbols = [symbols.strip()]
+                    alert_config['symbols'] = symbols
+                except Exception:
+                    symbols = []
+                    alert_config['symbols'] = []
+            else:
+                symbols = []
+                alert_config['symbols'] = []
+                logger.error(f"Campo 'symbols' inválido para usuário {user_id}: {type(symbols)}")
+
+        # Se não há símbolos válidos, remover configuração
+        if not symbols or len(symbols) == 0:
+            logger.error(f"Nenhum símbolo válido encontrado para usuário {user_id}")
+            del trading_bot.active_alerts[user_id]
+            safe_bot_reply(message, "❌ Configuração sem símbolos válidos foi removida. Configure novamente com /screening_auto.")
+            return
+
+        # Construir mensagem de forma segura
+        try:
+            source = str(alert_config.get('source', 'yahoo')).upper()
+            strategy = str(alert_config.get('strategy', 'Balanceado'))
+            model = str(alert_config.get('model', 'ovelha')).upper()
+            timeframe = str(alert_config.get('timeframe', '1d'))
+            
+            # Limitar lista de símbolos para evitar mensagem muito longa
+            symbols_display = symbols[:10]  # Mostrar no máximo 10 símbolos
+            symbols_text = ', '.join(symbols_display)
+            if len(symbols) > 10:
+                symbols_text += f", ... (+{len(symbols) - 10} mais)"
+
+            alert_info = f"""📋 *ALERTA ATIVO*
+
+🔗 Fonte: {source}
+🎯 Estratégia: {strategy}
+🤖 Modelo: {model}
+⏰ Intervalo: {timeframe}
+
+📈 Símbolos ({len(symbols)}):
+{symbols_text}
+
+🔔 Use /stop_alerts para interromper
+🔄 Use /screening_auto para reconfigurar"""
+
+            safe_bot_reply(message, alert_info, 'Markdown')
+            logger.info(f"Lista de alertas enviada para {user_name}: {len(symbols)} símbolos")
+
+        except Exception as format_error:
+            logger.error(f"Erro ao formatar mensagem para usuário {user_id}: {str(format_error)}")
+            
+            # Fallback: mensagem simples sem formatação Markdown
+            try:
+                simple_info = f"""📋 ALERTA ATIVO
+
+Fonte: {alert_config.get('source', 'N/A')}
+Estratégia: {alert_config.get('strategy', 'N/A')}
+Modelo: {alert_config.get('model', 'N/A')}
+Intervalo: {alert_config.get('timeframe', 'N/A')}
+Símbolos: {len(symbols)}
+
+Use /stop_alerts para interromper"""
+                
+                safe_bot_reply(message, simple_info)
+                logger.info(f"Mensagem simples enviada para {user_name}")
+                
+            except Exception as simple_error:
+                logger.error(f"Erro mesmo na mensagem simples para usuário {user_id}: {str(simple_error)}")
+                safe_bot_reply(message, f"📋 Alerta ativo com {len(symbols)} símbolos. Use /stop_alerts para interromper.")
 
     except Exception as e:
         logger.error(f"Erro geral no comando /list_alerts para usuário {user_id}: {str(e)}")
-        safe_bot_reply(message, "❌ Erro ao listar alertas. Tente novamente ou use /stop_alerts se houver problemas.")
+        safe_bot_reply(message, "❌ Erro ao listar alertas. Use /stop_alerts para limpar e /screening_auto para reconfigurar.")
 
 @bot.message_handler(commands=['pause'])
 def pause_command(message):
