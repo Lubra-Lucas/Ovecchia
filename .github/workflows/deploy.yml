@@ -1,0 +1,28 @@
+name: Deploy to EC2 (Windows)
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          port: ${{ secrets.EC2_PORT || 22 }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            cd C:\app\Ovecchia
+            git fetch --all
+            git reset --hard origin/main   # sempre sincroniza com main
+            C:\app\Ovecchia\.venv\Scripts\pip.exe install -r requirements.txt
+            C:\nssm-2.24\win64\nssm.exe restart OvecchiaWeb
+            C:\nssm-2.24\win64\nssm.exe restart OvecchiaBot
