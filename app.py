@@ -1103,7 +1103,7 @@ with tab1:
     # Home page content
     st.markdown("""
     <div style="background: linear-gradient(90deg, #e3f2fd, #f3e5f5); padding: 2rem; border-radius: 15px; text-align: center; margin-bottom: 2rem;">
-        <h2 style="color: #1976d2; margin-bottom: 1rem;">🚀 Bem-vindo ao Ovecchia Trading , o maior do brasil!</h2>
+        <h2 style="color: #1976d2; margin-bottom: 1rem;">🚀 Bem-vindo ao Ovecchia Trading!</h2>
         <p style="font-size: 1.2rem; color: #666;">Escolha uma das abas acima para começar sua análise profissional</p>
     </div>
     """, unsafe_allow_html=True)
