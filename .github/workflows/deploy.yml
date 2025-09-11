@@ -20,9 +20,9 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
           script: |
-            cd C:\app\Ovecchia
-            git fetch --all
-            git reset --hard origin/main   # sempre sincroniza com main
-            C:\app\Ovecchia\.venv\Scripts\pip.exe install -r requirements.txt
+            cd /d C:\app\Ovecchia
+            "C:\Program Files\Git\cmd\git.exe" fetch --all
+            "C:\Program Files\Git\cmd\git.exe" reset --hard origin/main
+            C:\app\Ovecchia\.venv\Scripts\pip.exe install -r C:\app\Ovecchia\requirements.txt
             C:\nssm-2.24\win64\nssm.exe restart OvecchiaWeb
             C:\nssm-2.24\win64\nssm.exe restart OvecchiaBot
