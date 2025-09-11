@@ -698,7 +698,7 @@ class OvecchiaTradingBot:
             logger.error(f"Erro no modelo OVELHA V2: {str(e)}")
             return None
 
-    
+
 
     def perform_screening(self, symbols_list, strategy_type="Balanceado"):
         """Realiza screening de múltiplos ativos usando OVELHA V2"""
@@ -1526,6 +1526,142 @@ def analise_command(message):
         trading_bot.processing_users.discard(user_id)
         user_lock.release()
 
+@bot.message_handler(commands=['quick'])
+def quick_command(message):
+    """
+    Analisa um ativo rapidamente com base nos parâmetros fornecidos.
+    Formato: /quick [ativo] [timeframe] [estrategia] [fonte]
+    Exemplos:
+    /quick BTC-USD 4h balanceada yahoo
+    /quick PETR4.SA 1d agressiva yahoo
+    /quick BTCUSDT 1h balanceada 12data
+    """
+    user_id = message.from_user.id
+    user_name = message.from_user.first_name or "Usuário"
+
+    # Obter lock do usuário
+    user_lock = trading_bot.get_user_lock(user_id)
+
+    if not user_lock.acquire(blocking=False):
+        safe_bot_reply(message, "⏳ Você já tem uma operação em andamento. Aguarde terminar.")
+        return
+
+    try:
+        logger.info(f"Comando /quick recebido de {user_name} (ID: {user_id})")
+
+        # Verificar se usuário já está processando
+        if user_id in trading_bot.processing_users:
+            safe_bot_reply(message, "⏳ Processando comando anterior. Aguarde.")
+            return
+
+        # Marcar usuário como processando
+        trading_bot.processing_users.add(user_id)
+
+        # Parse arguments
+        args = message.text.split()[1:]
+
+        if len(args) < 3: # Ativo, timeframe e estratégia são obrigatórios
+            help_message = """
+                            ⚡ *ANÁLISE RÁPIDA DE ATIVO*
+
+                            📝 *Como usar:*
+                            `/quick [ativo] [timeframe] [estrategia] [fonte]`
+
+                            🎯 *Estratégias:*
+                            • agressiva
+                            • balanceada (padrão)
+                            • conservadora
+
+                            ⏰ *Timeframes:*
+                            • 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+
+                            🔗 *Fontes:*
+                            • yahoo (padrão)
+                            • 12data
+
+                            📈 *Exemplos:*
+                            `/quick BTC-USD 4h balanceada yahoo`
+                            `/quick PETR4.SA 1d agressiva yahoo`
+                            `/quick BTCUSDT 1h balanceada 12data`
+                            `/quick AAPL 1d conservadora` (fonte yahoo é padrão)
+                            """
+            safe_bot_reply(message, help_message)
+            return
+
+        symbol = args[0].upper()
+        timeframe = args[1].lower()
+        strategy_input = args[2].lower()
+        source_input = args[3].lower() if len(args) > 3 else "yahoo"
+
+        # Validar fonte
+        if source_input not in ['yahoo', '12data']:
+            safe_bot_reply(message, "❌ Fonte inválida. Use: yahoo ou 12data")
+            return
+
+        # Mapear estratégias
+        strategy_map = {
+            'agressiva': 'Agressivo',
+            'balanceada': 'Balanceado',
+            'conservadora': 'Conservador'
+        }
+
+        if strategy_input not in strategy_map:
+            safe_bot_reply(message, "❌ Estratégia inválida. Use: agressiva, balanceada ou conservadora")
+            return
+        strategy = strategy_map[strategy_input]
+
+        # Validar timeframes
+        valid_timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1wk']
+        if timeframe not in valid_timeframes:
+            safe_bot_reply(message, f"❌ Timeframe inválido. Use: {', '.join(valid_timeframes)}")
+            return
+
+        # Define um período padrão para a análise rápida (ex: últimos 30 dias)
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=30)
+
+        model_display = "OVELHA V2"
+
+        safe_bot_reply(message, f"🔄 Analisando rapidamente {symbol} ({source_input}) - {timeframe} - {strategy_input}...")
+
+        # Gerar o gráfico de análise
+        chart_result = trading_bot.generate_analysis_chart(
+            symbol,
+            strategy,
+            timeframe,
+            start_date=start_date.strftime("%Y-%m-%d"),
+            end_date=end_date.strftime("%Y-%m-%d"),
+            data_source=source_input
+        )
+
+        if chart_result['success']:
+            # Enviar o gráfico e a legenda
+            with open(chart_result['chart_path'], 'rb') as chart_file:
+                bot.send_photo(
+                    message.chat.id,
+                    chart_file,
+                    caption=chart_result['caption'],
+                    parse_mode='HTML'
+                )
+
+            # Limpar arquivo temporário
+            os.remove(chart_result['chart_path'])
+            logger.info(f"Análise rápida enviada para {user_name}: {symbol}")
+        else:
+            safe_bot_reply(message, f"❌ Erro na análise rápida: {chart_result['error']}")
+
+    except telebot.apihelper.ApiException as e:
+        logger.error(f"Erro da API Telegram no /quick: {str(e)}")
+        safe_bot_reply(message, "❌ Erro temporário da API. Aguarde e tente novamente.")
+    except Exception as e:
+        logger.error(f"Erro no comando /quick: {str(e)}")
+        safe_bot_reply(message, "❌ Erro ao processar análise rápida. Tente novamente.")
+    finally:
+        # Sempre limpar estados do usuário
+        trading_bot.processing_users.discard(user_id)
+        user_lock.release()
+
+
 @bot.message_handler(commands=['screening_auto'])
 def screening_auto_command(message):
     try:
@@ -1749,7 +1885,7 @@ def list_alerts_command(message):
 
         # Obter configuração do alerta
         alert_config = trading_bot.active_alerts[user_id]
-        
+
         # Validar se a configuração não está vazia
         if not alert_config or not isinstance(alert_config, dict):
             logger.error(f"Configuração de alerta inválida para usuário {user_id}: {type(alert_config)}")
@@ -1805,7 +1941,7 @@ def list_alerts_command(message):
             strategy = str(alert_config.get('strategy', 'Balanceado'))
             model = str(alert_config.get('model', 'ovelha')).upper()
             timeframe = str(alert_config.get('timeframe', '1d'))
-            
+
             # Limitar lista de símbolos para evitar mensagem muito longa
             symbols_display = symbols[:10]  # Mostrar no máximo 10 símbolos
             symbols_text = ', '.join(symbols_display)
@@ -1830,10 +1966,10 @@ def list_alerts_command(message):
 
         except Exception as format_error:
             logger.error(f"Erro ao formatar mensagem para usuário {user_id}: {str(format_error)}")
-            
+
             # Fallback: mensagem simples sem formatação Markdown
             try:
-                simple_info = f"""📋 ALERTA ATIVO
+                simple_info = f"""📋 Alerta ativo
 
 Fonte: {alert_config.get('source', 'N/A')}
 Estratégia: {alert_config.get('strategy', 'N/A')}
@@ -1842,10 +1978,10 @@ Intervalo: {alert_config.get('timeframe', 'N/A')}
 Símbolos: {len(symbols)}
 
 Use /stop_alerts para interromper"""
-                
+
                 safe_bot_reply(message, simple_info)
                 logger.info(f"Mensagem simples enviada para {user_name}")
-                
+
             except Exception as simple_error:
                 logger.error(f"Erro mesmo na mensagem simples para usuário {user_id}: {str(simple_error)}")
                 safe_bot_reply(message, f"📋 Alerta ativo com {len(symbols)} símbolos. Use /stop_alerts para interromper.")
@@ -1915,8 +2051,13 @@ def help_command(message):
 
                         📋 COMANDOS DISPONÍVEIS:
 
-                        📊 /analise [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
-                          📝 ANÁLISE INDIVIDUAL COM GRÁFICO
+                        ⚡ /quick [ativo] [timeframe] [estrategia] [fonte]
+                          📝 ANÁLISE RÁPIDA DE ATIVO
+                          • Gera um gráfico simplificado do ativo
+                          • Útil para uma visão rápida de tendências
+
+                        📊 /analise [fonte] [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]
+                          📝 ANÁLISE INDIVIDUAL COM GRÁFICO COMPLETO
                           • Gera gráfico completo do ativo escolhido
                           • Mostra sinais de compra/venda em tempo real
                           • Suporte a múltiplos timeframes e estratégias
@@ -1986,7 +2127,7 @@ def help_command(message):
                         🤖 MODELO:
                         • OVELHA V2 - Machine Learning com análise adaptativa e algoritmos avançados
 
-                        📊 LISTAS PRÉ-DEFINIDAS:
+                        📊 LISTAS PRÉ-DEFINIDAS PARA SCREENING:
                         • açõesBR - Ações brasileiras
                         • açõesEUA - Ações americanas
                         • criptos - Criptomoedas
@@ -1994,13 +2135,15 @@ def help_command(message):
                         • commodities - Commodities
 
                         ⏰ TIMEFRAMES POR COMANDO:
+                        • /quick: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
                         • /analise: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
                         • /screening: 1d fixo
                         • /screening_auto: 1m, 5m, 15m, 1h, 4h, 1d (12Data apenas)
 
                         💡 EXEMPLOS PRÁTICOS:
-                        • Análise rápida: /analise yahoo balanceada PETR4.SA 1d
-                        • Análise cripto ML: /analise 12data agressiva BTCUSDT 4h ovelha2
+                        • Análise rápida: /quick PETR4.SA 1d balanceada
+                        • Análise completa: /analise yahoo balanceada PETR4.SA 1d
+                        • Análise cripto ML: /analise 12data agressiva BTCUSDT 4h
                         • Screening geral: /screening balanceada açõesBR
                         • Alerta 12Data: /screening_auto 12data [BTCUSDT,ETHUSDT] balanceada 1m
 
@@ -2044,16 +2187,18 @@ def handle_message(message):
                 screening_command(message)
             elif command == 'help':
                 help_command(message)
+            elif command == 'quick':
+                quick_command(message)
             return
 
         # Mensagens de saudação
         user_message_lower = user_message.lower()
         if any(word in user_message_lower for word in ['oi', 'olá', 'hello', 'hi']):
-            safe_bot_reply(message, "👋 Olá! Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /analise - Análise individual\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
+            safe_bot_reply(message, "👋 Olá! Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /quick - Análise rápida\n• /analise - Análise individual completa\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
         elif any(word in user_message_lower for word in ['ajuda', 'help']):
             help_command(message)
         else:
-            safe_bot_reply(message, "🤖 Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /analise - Análise individual\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos (12Data)\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
+            safe_bot_reply(message, "🤖 Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /quick - Análise rápida\n• /analise - Análise individual completa\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
 
     except telebot.apihelper.ApiException as e:
         logger.error(f"Erro da API Telegram no handler de mensagem: {str(e)}")
@@ -2198,7 +2343,8 @@ def run_bot():
             # Configurar comandos do bot
             try:
                 bot.set_my_commands([
-                    telebot.types.BotCommand("analise", "Análise individual com gráfico"),
+                    telebot.types.BotCommand("quick", "Análise rápida de ativo"),
+                    telebot.types.BotCommand("analise", "Análise individual completa"),
                     telebot.types.BotCommand("screening", "Screening de múltiplos ativos"),
                     telebot.types.BotCommand("screening_auto", "Alertas automáticos de screening"),
                     telebot.types.BotCommand("list_alerts", "Ver alertas ativos"),
