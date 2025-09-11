@@ -1,20 +1,32 @@
-- name: SSH into EC2 and deploy (PowerShell per line)
-  uses: appleboy/ssh-action@v1.0.3
-  with:
-    host: ${{ secrets.EC2_HOST }}
-    username: ${{ secrets.EC2_USER }}
-    port: ${{ secrets.EC2_PORT || 22 }}
-    key: ${{ secrets.EC2_SSH_KEY }}
-    script_stop: true
-    script: |
-      powershell -NoProfile -Command "Write-Host 'User:' (whoami)"
-      powershell -NoProfile -Command "Set-Location 'C:\app\Ovecchia'"
-      powershell -NoProfile -Command "& 'C:\Program Files\Git\cmd\git.exe' remote -v"
-      powershell -NoProfile -Command "& 'C:\Program Files\Git\cmd\git.exe' fetch --all --prune"
-      powershell -NoProfile -Command "& 'C:\Program Files\Git\cmd\git.exe' reset --hard origin/main"
-      powershell -NoProfile -Command "& 'C:\app\Ovecchia\.venv\Scripts\pip.exe' install -r 'C:\app\Ovecchia\requirements.txt'"
-      powershell -NoProfile -Command "& 'C:\nssm-2.24\win64\nssm.exe' restart OvecchiaWeb"
-      powershell -NoProfile -Command "& 'C:\nssm-2.24\win64\nssm.exe' restart OvecchiaBot"
-      powershell -NoProfile -Command "Get-Content 'C:\app\Ovecchia\logs\web_stderr.log' -Tail 50"
-      powershell -NoProfile -Command "Get-Content 'C:\app\Ovecchia\logs\bot_stderr.log' -Tail 50"
+name: Deploy to EC2 (Windows)
 
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH into EC2 and deploy (PowerShell)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          port: ${{ secrets.EC2_PORT || 22 }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            powershell -NoProfile -Command "Write-Host 'User:' (whoami)"
+            powershell -NoProfile -Command "Set-Location 'C:\app\Ovecchia'"
+            powershell -NoProfile -Command "& 'C:\Program Files\Git\cmd\git.exe' remote -v"
+            powershell -NoProfile -Command "& 'C:\Program Files\Git\cmd\git.exe' fetch --all --prune"
+            powershell -NoProfile -Command "& 'C:\Program Files\Git\cmd\git.exe' reset --hard origin/main"
+            powershell -NoProfile -Command "& 'C:\app\Ovecchia\.venv\Scripts\pip.exe' install -r 'C:\app\Ovecchia\requirements.txt'"
+            powershell -NoProfile -Command "& 'C:\nssm-2.24\win64\nssm.exe' restart OvecchiaWeb"
+            powershell -NoProfile -Command "& 'C:\nssm-2.24\win64\nssm.exe' restart OvecchiaBot"
+            powershell -NoProfile -Command "Get-Content 'C:\app\Ovecchia\logs\web_stderr.log' -Tail 50"
+            powershell -NoProfile -Command "Get-Content 'C:\app\Ovecchia\logs\bot_stderr.log' -Tail 50"
+      
