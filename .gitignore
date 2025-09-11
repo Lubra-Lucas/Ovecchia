@@ -1,0 +1,29 @@
+﻿# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+*.egg-info/
+
+# Variáveis sensíveis
+.env
+*.log
+logs/
+data/
+.tmp/
+.temp/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDEs/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
