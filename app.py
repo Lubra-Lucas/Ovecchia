@@ -1931,12 +1931,8 @@ with tab3:
 
 
         st.markdown("#### 🤖 Modelo de Sinais")
-        model_type = st.selectbox(
-            "Escolha o Modelo:",
-            ["OVELHA (Clássico)", "OVELHA V2 (Machine Learning)"],
-            index=0,
-            help="OVELHA: Modelo clássico baseado em indicadores técnicos | OVELHA V2: Modelo avançado de machine learning"
-        )
+        model_type = "OVELHA V2 (Machine Learning)"
+        st.info("🧠 **Modelo OVELHA V2**: Sistema avançado com Machine Learning e algoritmos adaptativos para máxima precisão")
 
         # Buffer fixo para OVELHA V2
         buffer_value = 0.0015  # valor padrão fixo (0.15%)
@@ -2083,59 +2079,14 @@ with tab3:
             progress_bar.progress(80)
             status_text.text("Gerando sinais de trading...")
 
-            # Escolher modelo baseado na seleção do usuário
-            if model_type == "OVELHA V2 (Machine Learning)":
-                # Pass the strategy_type and remove the now redundant buffer parameter
-                df_with_signals = calculate_ovelha_v2_signals(df, strategy_type=strategy_type, sma_short=sma_short, sma_long=sma_long, use_dynamic_threshold=True, vol_factor=0.5)
-                if df_with_signals is not None:
-                    df = df_with_signals
-                    st.info(f"✅ Modelo OVELHA V2 aplicado com sucesso!")
-                else:
-                    # Fallback para modelo clássico se houver erro
-                    model_type = "OVELHA (Clássico)"
-                    st.warning("⚠️ Usando modelo clássico OVELHA como fallback.")
-
-            if model_type == "OVELHA (Clássico)" or 'Estado' not in df.columns: # Ensure Estado column exists for OVELHA
-                # Signal generation - Modelo Original
-                df['Signal'] = 'Stay Out'
-                for i in range(1, len(df)):
-                    rsi_up = df['RSI_14'].iloc[i] > df['RSI_14'].iloc[i-1]
-                    rsi_down = df['RSI_14'].iloc[i] < df['RSI_14'].iloc[i-1]
-                    rsl = df['RSL_20'].iloc[i]
-                    rsl_prev = df['RSL_20'].iloc[i-1]
-
-                    rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
-                    rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
-
-                    if (
-                        df['close'].iloc[i] > df[f'SMA_{sma_short}'].iloc[i]
-                        and df['close'].iloc[i] > df[f'SMA_{sma_long}'].iloc[i]
-                        and rsi_up and rsl_buy
-                    ):
-                        df.at[i, 'Signal'] = 'Buy'
-                    elif (
-                        df['close'].iloc[i] < df[f'SMA_{sma_short}'].iloc[i]
-                        and rsi_down and rsl_sell
-                    ):
-                        df.at[i, 'Signal'] = 'Sell'
-
-                # State persistence - aplicar sinal imediatamente
-                df['Estado'] = 'Stay Out'
-
-                for i in range(len(df)):
-                    if i == 0:
-                        # Primeiro candle sempre Stay Out
-                        continue
-
-                    # Estado anterior
-                    estado_anterior = df['Estado'].iloc[i - 1]
-
-                    # Aplicar sinal imediatamente
-                    sinal_atual = df['Signal'].iloc[i]
-                    if sinal_atual != 'Stay Out':
-                        df.loc[df.index[i], 'Estado'] = sinal_atual
-                    else:
-                        df.loc[df.index[i], 'Estado'] = estado_anterior
+            # Aplicar modelo OVELHA V2
+            df_with_signals = calculate_ovelha_v2_signals(df, strategy_type=strategy_type, sma_short=sma_short, sma_long=sma_long, use_dynamic_threshold=True, vol_factor=0.5)
+            if df_with_signals is not None:
+                df = df_with_signals
+                st.success("✅ Modelo OVELHA V2 aplicado com sucesso!")
+            else:
+                st.error("❌ Erro ao aplicar modelo OVELHA V2. Dados insuficientes ou erro no processamento.")
+                st.stop()
 
             # ATR and Stop Loss calculations
             df['prior_close'] = df['close'].shift(1)
@@ -2616,7 +2567,7 @@ with tab3:
                 st.success(f"✅ Análise completa para {symbol_label} ({data_source})")
 
             # Current status display with improved layout
-            modelo_nome = "OVELHA V2" if model_type == "OVELHA V2 (Machine Learning)" else "OVELHA"
+            modelo_nome = "OVELHA V2"
 
             st.markdown(f"### 📊 Status Atual do Mercado - Modelo: {modelo_nome}")
 
@@ -2650,17 +2601,16 @@ with tab3:
             
             # Preparar informações de threshold e buffer para o rodapé
             rodape_info = ""
-            if model_type == "OVELHA V2 (Machine Learning)":
-                if 'thr_used' in df.columns and 'buffer_pct' in df.columns:
-                    # Verificar se as colunas têm valores válidos
-                    if pd.notna(df['thr_used'].iloc[-1]) and pd.notna(df['buffer_pct'].iloc[-1]):
-                        thr_atual = df['thr_used'].iloc[-1] * 100  # converter para percentual
-                        buf_atual = df['buffer_pct'].iloc[-1] * 100  # converter para percentual
-                        rodape_info = f" | Thr: {thr_atual:.3f}% | Buf: {buf_atual:.3f}%"
-                    else:
-                        rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
+            if 'thr_used' in df.columns and 'buffer_pct' in df.columns:
+                # Verificar se as colunas têm valores válidos
+                if pd.notna(df['thr_used'].iloc[-1]) and pd.notna(df['buffer_pct'].iloc[-1]):
+                    thr_atual = df['thr_used'].iloc[-1] * 100  # converter para percentual
+                    buf_atual = df['buffer_pct'].iloc[-1] * 100  # converter para percentual
+                    rodape_info = f" | Thr: {thr_atual:.3f}% | Buf: {buf_atual:.3f}%"
                 else:
                     rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
+            else:
+                rodape_info = " | Thr: Dinâmico | Buf: Dinâmico"
             
             titulo_grafico = f"OVECCHIA TRADING - {symbol_label} ({data_source}) - {modelo_nome} - Timeframe: {interval.upper()}{rodape_info}"
 
@@ -2869,7 +2819,7 @@ with tab3:
                 """, unsafe_allow_html=True)
 
             # Add threshold and buffer information for OVELHA V2
-            if model_type == "OVELHA V2 (Machine Learning)" and 'thr_used' in df.columns and 'buffer_pct' in df.columns:
+            if 'thr_used' in df.columns and 'buffer_pct' in df.columns:
                 with col3:
                     if pd.notna(df['thr_used'].iloc[-1]) and pd.notna(df['buffer_pct'].iloc[-1]):
                         thr_atual = df['thr_used'].iloc[-1] * 100
@@ -2891,6 +2841,16 @@ with tab3:
                             <p style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Baseados na volatilidade (ATR)</p>
                         </div>
                         """, unsafe_allow_html=True)
+            else:
+                with col3:
+                    st.markdown("### ⚙️ Parâmetros Dinâmicos")
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <p><strong>🎯 Threshold:</strong> Dinâmico</p>
+                        <p><strong>🔄 Buffer:</strong> Dinâmico</p>
+                        <p style="font-size: 0.8rem; color: #666; margin-top: 0.5rem;">Baseados na volatilidade (ATR)</p>
+                    </div>
+                    """, unsafe_allow_html=True)
         except Exception as e:
             st.error(f"An error occurred during analysis: {str(e)}")
             st.write("Please check your inputs and try again.")
@@ -3033,25 +2993,8 @@ with tab4:
         # Strategy selection
         st.markdown("#### 🤖 Modelo de Sinais")
         
-        if data_source_screening == "Yahoo Finance":
-            model_type_screening = st.selectbox(
-                "Modelo:",
-                ["OVELHA (Clássico)"],
-                index=0,
-                help="Yahoo Finance utiliza o modelo OVELHA clássico",
-                key="model_screening"
-            )
-        else:  # TwelveData
-            model_type_screening = st.selectbox(
-                "Modelo:",
-                ["OVELHA (Clássico)", "OVELHA V2 (Machine Learning)"],
-                index=1,  # Default para OVELHA V2
-                help="TwelveData suporta ambos os modelos. OVELHA V2 recomendado para melhor performance.",
-                key="model_screening"
-            )
-            
-            if model_type_screening == "OVELHA V2 (Machine Learning)":
-                st.info("🧠 **OVELHA V2:** Modelo com Machine Learning e buffer adaptativo automático")
+        model_type_screening = "OVELHA V2 (Machine Learning)"
+        st.info("🧠 **OVELHA V2:** Sistema avançado com Machine Learning, buffer adaptativo automático e análise multidimensional para máxima precisão")
 
         st.markdown("#### 📈 Estratégia de Sinais")
         st.markdown("""
@@ -3129,73 +3072,21 @@ with tab4:
                         })
                         continue
 
-                    # Escolher modelo baseado na seleção do usuário para screening
-                    if model_type_screening == "OVELHA V2 (Machine Learning)":
-                        df_with_signals = calculate_ovelha_v2_signals(df_temp, strategy_type=strategy_type_screening, sma_short=sma_short_screening, sma_long=sma_long_screening, use_dynamic_threshold=True, vol_factor=0.5)
-                        if df_with_signals is not None:
-                            df_temp = df_with_signals
-                        else:
-                            # Fallback para modelo clássico se houver erro
-                            model_type_screening_current = "OVELHA (Clássico)"
-
-                    if model_type_screening == "OVELHA (Clássico)" or 'Estado' not in df_temp.columns: # Ensure Estado column exists for OVELHA
-                        # Calculate indicators (simplified for screening)
-                        df_temp[f'SMA_{sma_short_screening}'] = df_temp['close'].rolling(window=sma_short_screening).mean()
-                        df_temp[f'SMA_{sma_long_screening}'] = df_temp['close'].rolling(window=sma_long_screening).mean()
-                        df_temp['SMA_20'] = df_temp['close'].rolling(window=20).mean()
-
-                        # RSI calculation
-                        delta = df_temp['close'].diff()
-                        gain = np.where(delta > 0, delta, 0)
-                        loss = np.where(delta < 0, -delta, 0)
-                        avg_gain = pd.Series(gain, index=df_temp.index).rolling(window=14).mean()
-                        avg_loss = pd.Series(loss, index=df_temp.index).rolling(window=14).mean()
-                        rs = avg_gain / avg_loss
-                        df_temp['RSI_14'] = 100 - (100 / (1 + rs))
-
-                        # RSL calculation
-                        df_temp['RSL_20'] = df_temp['close'] / df_temp['SMA_20']
-
-                        # Signal generation
-                        df_temp['Signal'] = 'Stay Out'
-                        for i in range(1, len(df_temp)):
-                            rsi_up = df_temp['RSI_14'].iloc[i] > df_temp['RSI_14'].iloc[i-1]
-                            rsi_down = df_temp['RSI_14'].iloc[i] < df_temp['RSI_14'].iloc[i-1]
-                            rsl = df_temp['RSL_20'].iloc[i]
-                            rsl_prev = df_temp['RSL_20'].iloc[i-1]
-
-                            rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
-                            rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
-
-                            if (
-                                df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_short_screening}'].iloc[i]
-                                and df_temp['close'].iloc[i] > df_temp[f'SMA_{sma_long_screening}'].iloc[i]
-                                and rsi_up and rsl_buy
-                            ):
-                                df_temp.at[i, 'Signal'] = 'Buy'
-                            elif (
-                                df_temp['close'].iloc[i] < df_temp[f'SMA_{sma_short_screening}'].iloc[i]
-                                and rsi_down and rsl_sell
-                            ):
-                                df_temp.at[i, 'Signal'] = 'Sell'
-
-                        # State persistence - aplicar sinal imediatamente
-                        df_temp['Estado'] = 'Stay Out'
-
-                        for i in range(len(df_temp)):
-                            if i == 0:
-                                # Primeiro candle sempre Stay Out
-                                continue
-
-                            # Estado anterior
-                            estado_anterior = df_temp['Estado'].iloc[i - 1]
-
-                            # Aplicar sinal imediatamente
-                            sinal_atual = df_temp['Signal'].iloc[i]
-                            if sinal_atual != 'Stay Out':
-                                df_temp.loc[df_temp.index[i], 'Estado'] = sinal_atual
-                            else:
-                                df_temp.loc[df_temp.index[i], 'Estado'] = estado_anterior
+                    # Aplicar modelo OVELHA V2
+                    df_with_signals = calculate_ovelha_v2_signals(df_temp, strategy_type=strategy_type_screening, sma_short=sma_short_screening, sma_long=sma_long_screening, use_dynamic_threshold=True, vol_factor=0.5)
+                    if df_with_signals is not None:
+                        df_temp = df_with_signals
+                    else:
+                        # Pular este ativo se não conseguir processar
+                        screening_results.append({
+                            'symbol': current_symbol,
+                            'status': 'Erro - OVELHA V2 falhou',
+                            'current_state': 'N/A',
+                            'previous_state': 'N/A',
+                            'state_change': False,
+                            'current_price': 'N/A'
+                        })
+                        continue
 
                     # Check for state change
                     current_state = df_temp['Estado'].iloc[-1]
@@ -3226,7 +3117,7 @@ with tab4:
             status_text.text("Screening Completo!")
 
             # Display screening results
-            modelo_nome_screening = "OVELHA V2" if model_type_screening == "OVELHA V2 (Machine Learning)" else "OVELHA"
+            modelo_nome_screening = "OVELHA V2"
             
             if data_source_screening == "TwelveData":
                 dados_info = f"últimos {outputsize_screening} registros"

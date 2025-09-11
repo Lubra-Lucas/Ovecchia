@@ -698,95 +698,17 @@ class OvecchiaTradingBot:
             logger.error(f"Erro no modelo OVELHA V2: {str(e)}")
             return None
 
-    def calculate_indicators_and_signals(self, df, strategy_type="Balanceado"):
-        """Calcula indicadores e gera sinais"""
-        if df.empty:
-            return df
-
-        try:
-            # Definir parâmetros baseado na estratégia
-            if strategy_type == "Agressivo":
-                sma_short = 10
-                sma_long = 21
-            elif strategy_type == "Conservador":
-                sma_short = 140
-                sma_long = 200
-            else:  # Balanceado
-                sma_short = 60
-                sma_long = 70
-
-            # Calculate indicators
-            df[f'SMA_{sma_short}'] = df['close'].rolling(window=sma_short).mean()
-            df[f'SMA_{sma_long}'] = df['close'].rolling(window=sma_long).mean()
-            df['SMA_20'] = df['close'].rolling(window=20).mean()
-
-            # RSI calculation
-            delta = df['close'].diff()
-            gain = np.where(delta > 0, delta, 0)
-            loss = np.where(delta < 0, -delta, 0)
-            avg_gain = pd.Series(gain, index=df.index).rolling(window=14).mean()
-            avg_loss = pd.Series(loss, index=df.index).rolling(window=14).mean()
-            rs = avg_gain / avg_loss
-            df['RSI_14'] = 100 - (100 / (1 + rs))
-
-            # RSL calculation
-            df['RSL_20'] = df['close'] / df['SMA_20']
-
-            # Signal generation
-            df['Signal'] = 'Stay Out'
-            for i in range(1, len(df)):
-                try:
-                    rsi_up = df['RSI_14'].iloc[i] > df['RSI_14'].iloc[i-1]
-                    rsi_down = df['RSI_14'].iloc[i] < df['RSI_14'].iloc[i-1]
-                    rsl = df['RSL_20'].iloc[i]
-                    rsl_prev = df['RSL_20'].iloc[i-1]
-
-                    rsl_buy = (rsl > 1 and rsl > rsl_prev) or (rsl < 1 and rsl > rsl_prev)
-                    rsl_sell = (rsl > 1 and rsl < rsl_prev) or (rsl < 1 and rsl < rsl_prev)
-
-                    if (
-                        df['close'].iloc[i] > df[f'SMA_{sma_short}'].iloc[i]
-                        and df['close'].iloc[i] > df[f'SMA_{sma_long}'].iloc[i]
-                        and rsi_up and rsl_buy
-                    ):
-                        df.at[i, 'Signal'] = 'Buy'
-                    elif (
-                        df['close'].iloc[i] < df[f'SMA_{sma_short}'].iloc[i]
-                        and rsi_down and rsl_sell
-                    ):
-                        df.at[i, 'Signal'] = 'Sell'
-                except Exception as e:
-                    logger.error(f"Erro no cálculo de sinais na linha {i}: {str(e)}")
-                    continue
-
-            # State persistence
-            df['Estado'] = 'Stay Out'
-            for i in range(len(df)):
-                if i == 0:
-                    continue
-
-                estado_anterior = df['Estado'].iloc[i - 1]
-                sinal_atual = df['Signal'].iloc[i]
-
-                if sinal_atual != 'Stay Out':
-                    df.loc[df.index[i], 'Estado'] = sinal_atual
-                else:
-                    df.loc[df.index[i], 'Estado'] = estado_anterior
-
-            return df
-        except Exception as e:
-            logger.error(f"Erro no cálculo de indicadores: {str(e)}")
-            return df
+    
 
     def perform_screening(self, symbols_list, strategy_type="Balanceado"):
-        """Realiza screening de múltiplos ativos"""
+        """Realiza screening de múltiplos ativos usando OVELHA V2"""
         results = []
         end_date = datetime.now().date()
         start_date = end_date - timedelta(days=730)  # 2 years
 
         for symbol in symbols_list:
             try:
-                logger.info(f"Analisando {symbol}")
+                logger.info(f"Analisando {symbol} com OVELHA V2")
                 df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
                                         end_date.strftime("%Y-%m-%d"), "1d")
 
@@ -794,9 +716,15 @@ class OvecchiaTradingBot:
                     logger.warning(f"Sem dados para {symbol}")
                     continue
 
-                df = self.calculate_indicators_and_signals(df, strategy_type)
+                # Aplicar modelo OVELHA V2
+                df_with_signals = self.calculate_ovelha_v2_signals(df, strategy_type)
+                if df_with_signals is not None:
+                    df = df_with_signals
+                else:
+                    logger.warning(f"Falha ao aplicar OVELHA V2 para {symbol}")
+                    continue
 
-                if len(df) > 1:
+                if len(df) > 1 and 'Estado' in df.columns:
                     current_state = df['Estado'].iloc[-1]
                     previous_state = df['Estado'].iloc[-2]
 
@@ -904,17 +832,13 @@ class OvecchiaTradingBot:
                         logger.warning(f"Dados insuficientes para {symbol}: apenas {len(df)} registros")
                         continue
 
-                    # Escolher modelo baseado na seleção do usuário
-                    if model_type == "ovelha2":
-                        df_with_signals = self.calculate_ovelha_v2_signals(df, strategy_type)
-                        if df_with_signals is not None and not df_with_signals.empty:
-                            df = df_with_signals
-                        else:
-                            logger.info(f"Fallback para modelo clássico para {symbol}")
-                            model_type = "ovelha"  # Fallback
-
-                    if model_type == "ovelha" or 'Estado' not in df.columns:
-                        df = self.calculate_indicators_and_signals(df, strategy_type)
+                    # Aplicar modelo OVELHA V2
+                    df_with_signals = self.calculate_ovelha_v2_signals(df, strategy_type)
+                    if df_with_signals is not None and not df_with_signals.empty:
+                        df = df_with_signals
+                    else:
+                        logger.warning(f"Falha ao aplicar OVELHA V2 para {symbol}")
+                        continue
 
                     if df.empty or 'Estado' not in df.columns:
                         logger.warning(f"Falha ao calcular indicadores para {symbol}")
@@ -961,7 +885,7 @@ class OvecchiaTradingBot:
             logger.error(f"Erro geral no screening automatizado: {str(e)}")
             return {}, []
 
-    def generate_analysis_chart(self, symbol, strategy_type, timeframe, model_type="ovelha", custom_start_date=None, custom_end_date=None, data_source="yahoo"):
+    def generate_analysis_chart(self, symbol, strategy_type, timeframe, custom_start_date=None, custom_end_date=None, data_source="yahoo"):
         """Gera gráfico de análise para um ativo específico usando matplotlib"""
         try:
             # Configurar matplotlib para thread safety
@@ -1011,18 +935,13 @@ class OvecchiaTradingBot:
             if df.empty:
                 return {'success': False, 'error': f'Sem dados encontrados para {symbol}'}
 
-            # Calcular indicadores e sinais baseado no modelo escolhido
-            if model_type == "ovelha2":
-                df_v2 = self.calculate_ovelha_v2_signals(df, strategy_type)
-                if df_v2 is not None:
-                    df = df_v2
-                    model_used = "OVELHA V2"
-                else:
-                    df = self.calculate_indicators_and_signals(df, strategy_type)
-                    model_used = "OVELHA (fallback)"
+            # Aplicar modelo OVELHA V2
+            df_v2 = self.calculate_ovelha_v2_signals(df, strategy_type)
+            if df_v2 is not None:
+                df = df_v2
+                model_used = "OVELHA V2"
             else:
-                df = self.calculate_indicators_and_signals(df, strategy_type)
-                model_used = "OVELHA"
+                return {'success': False, 'error': 'Erro ao aplicar modelo OVELHA V2. Dados insuficientes.'}
 
             if df.empty:
                 return {'success': False, 'error': 'Erro ao calcular indicadores'}
@@ -1397,13 +1316,13 @@ def analise_command(message):
         else:
             args = message.text.split()[1:]  # Fallback para método original
 
-        # Argumentos esperados: [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
+        # Argumentos esperados: [fonte] [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]
         if len(args) < 4: # Fonte, estratégia, ativo, timeframe são obrigatórios
             help_message = """
                             📊 ANÁLISE INDIVIDUAL DE ATIVO
 
                             📝 Como usar:
-                            /analise [fonte] [estrategia] [ativo] [timeframe] [modelo] [data_inicio] [data_fim]
+                            /analise [fonte] [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]
 
                             🔗 Fontes disponíveis:
                             • yahoo - Yahoo Finance (padrão)
@@ -1414,9 +1333,8 @@ def analise_command(message):
                             • balanceada - Equilibrada (recomendada)
                             • conservadora - Sinais mais confiáveis
 
-                            🤖 Modelos disponíveis:
-                            • ovelha - Modelo clássico (padrão)
-                            • ovelha2 - Machine Learning (Random Forest)
+                            🤖 Modelo:
+                            • OVELHA V2 - Machine Learning com análise adaptativa
 
                             ⏰ Timeframes disponíveis:
                             1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
@@ -1426,15 +1344,15 @@ def analise_command(message):
 
                             📈 Exemplos:
                             /analise yahoo balanceada PETR4.SA 1d
-                            /analise twelvedata agressiva BTCUSDT 4h ovelha2
-                            /analise yahoo conservadora AAPL 1d ovelha 2024-06-01 2024-12-01
+                            /analise twelvedata agressiva BTCUSDT 4h
+                            /analise yahoo conservadora AAPL 1d 2024-06-01 2024-12-01
 
                             💡 Ativos suportados:
                             • Yahoo: PETR4.SA, VALE3.SA, AAPL, BTC-USD, EURUSD=X
                             • 12Data: BTCUSDT, EURUSD, AAPL
 
                             ℹ️ Se não especificar fonte, será usado YAHOO
-                            ℹ️ Se não especificar modelo, será usado OVELHA clássico
+                            ℹ️ Usa sempre o modelo OVELHA V2 com Machine Learning
                             ℹ️ Se não especificar datas, será usado período padrão baseado no timeframe"""
             safe_bot_reply(message, help_message)
             return
@@ -1444,37 +1362,26 @@ def analise_command(message):
         symbol = args[2].upper()
         timeframe = args[3].lower()
 
-        # Modelo e datas são opcionais
-        model_input = "ovelha"  # padrão
+        # Datas são opcionais (5º e 6º argumentos)
         start_date = None
         end_date = None
 
-        # Verificar se o 4º argumento (após timeframe) é um modelo
-        if len(args) >= 5:
-            if args[4].lower() in ['ovelha', 'ovelha2']:
-                model_input = args[4].lower()
-                # Datas começam no 6º argumento
-                if len(args) >= 7:
-                    try:
-                        start_date = args[5]
-                        end_date = args[6]
-                        datetime.strptime(start_date, '%Y-%m-%d')
-                        datetime.strptime(end_date, '%Y-%m-%d')
-                    except ValueError:
-                        safe_bot_reply(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
-                        return
-            else:
-                # 5º argumento não é modelo, deve ser data
-                try:
-                    start_date = args[4]
-                    end_date = args[5] if len(args) >= 6 else None
-                    if start_date:
-                        datetime.strptime(start_date, '%Y-%m-%d')
-                    if end_date:
-                        datetime.strptime(end_date, '%Y-%m-%d')
-                except ValueError:
-                    safe_bot_reply(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
-                    return
+        if len(args) >= 6:
+            try:
+                start_date = args[4]
+                end_date = args[5]
+                datetime.strptime(start_date, '%Y-%m-%d')
+                datetime.strptime(end_date, '%Y-%m-%d')
+            except ValueError:
+                safe_bot_reply(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
+                return
+        elif len(args) >= 5:
+            try:
+                start_date = args[4]
+                datetime.strptime(start_date, '%Y-%m-%d')
+            except ValueError:
+                safe_bot_reply(message, "❌ Formato de data inválido. Use YYYY-MM-DD (exemplo: 2024-01-01)")
+                return
 
         # Validar fonte
         if source_input not in ['yahoo', 'twelvedata']:
@@ -1500,7 +1407,7 @@ def analise_command(message):
             safe_bot_reply(message, f"❌ Timeframe inválido. Use: {', '.join(valid_timeframes)}")
             return
 
-        model_display = "OVELHA V2" if model_input == "ovelha2" else "OVELHA"
+        model_display = "OVELHA V2"
 
         # Registrar tarefa ativa
         trading_bot.active_tasks[user_id] = {
@@ -1531,7 +1438,7 @@ def analise_command(message):
         analysis_timeout = 30 if timeframe in ['1m', '5m', '15m', '30m'] and source_input == "ccxt" else 60 # CCXT não é mais uma fonte válida
 
         def run_analysis():
-            return trading_bot.generate_analysis_chart(symbol, strategy, timeframe, model_input, start_date, end_date, source_input)
+            return trading_bot.generate_analysis_chart(symbol, strategy, timeframe, start_date, end_date, source_input)
 
         # Executar análise com timeout
         import threading
@@ -1644,9 +1551,8 @@ def screening_auto_command(message):
                             • Para 12Data: [BTC/USD,ETH/USD,LTC/USD]
                             • Para Yahoo: [BTC-USD,ETH-USD,PETR4.SA]
 
-                            🤖 *Modelos:*
-                            • ovelha - Modelo clássico
-                            • ovelha2 - Machine Learning (Random Forest)
+                            🤖 *Modelo:*
+                            • OVELHA V2 - Machine Learning com análise adaptativa
 
                             🎯 *Estratégias:*
                             • agressiva - Mais sinais
@@ -1662,9 +1568,9 @@ def screening_auto_command(message):
                             • 1d - 1 dia (diário)
 
                             📈 *Exemplos:*
-                            `/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] ovelha2 balanceada 1m`
-                            `/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] ovelha2 balanceada 4h`
-                            `/screening_auto yahoo [BTC-USD,ETH-USD,PETR4.SA] ovelha balanceada 1d`
+                            `/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] balanceada 1m`
+                            `/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] balanceada 4h`
+                            `/screening_auto yahoo [BTC-USD,ETH-USD,PETR4.SA] balanceada 1d`
 
                             💡 *Nota:* Os símbolos são convertidos automaticamente para o formato da API (BTC/USD → btc-usd)
                                         """
@@ -1674,9 +1580,11 @@ def screening_auto_command(message):
         try:
             source = args[0].lower()
             symbols_str = args[1]
-            model_type = args[2].lower()
-            strategy = args[3].lower()
-            timeframe = args[4].lower()
+            strategy = args[2].lower()
+            timeframe = args[3].lower()
+
+            # Usar sempre OVELHA V2
+            model_type = "ovelha2"
 
             # Validar fonte
             if source not in ['12data', 'yahoo']:
@@ -1692,11 +1600,6 @@ def screening_auto_command(message):
 
             if len(symbols_list) == 0 or len(symbols_list) > 10:
                 safe_bot_reply(message, "❌ Lista deve conter entre 1 e 10 símbolos")
-                return
-
-            # Validar modelo
-            if model_type not in ['ovelha', 'ovelha2']:
-                safe_bot_reply(message, "❌ Modelo inválido. Use: ovelha ou ovelha2")
                 return
 
             # Validar estratégia
@@ -2020,12 +1923,12 @@ def help_command(message):
 
                           🔗 Fontes: yahoo (padrão), 12data
                           🎯 Estratégias: agressiva, balanceada, conservadora
-                          🤖 Modelos: ovelha (padrão), ovelha2
+                          🤖 Modelo: OVELHA V2 (Machine Learning)
                           ⏰ Timeframes: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
                           📅 Datas: YYYY-MM-DD
 
                           Exemplo básico: /analise yahoo balanceada PETR4.SA 1d
-                          Com 12Data e ML: /analise 12data agressiva BTCUSDT 4h ovelha2
+                          Com 12Data: /analise 12data agressiva BTCUSDT 4h
 
                         🔍 /screening [estrategia] [lista/ativos]
                           📝 SCREENING PONTUAL DE MÚLTIPLOS ATIVOS
@@ -2080,9 +1983,8 @@ def help_command(message):
                         • balanceada - Equilibrio entre sinais e confiabilidade (recomendada)
                         • conservadora - Sinais mais confiáveis, menor frequência
 
-                        🤖 MODELOS:
-                        • ovelha - Modelo clássico
-                        • ovelha2 - Machine Learning (mais avançado)
+                        🤖 MODELO:
+                        • OVELHA V2 - Machine Learning com análise adaptativa e algoritmos avançados
 
                         📊 LISTAS PRÉ-DEFINIDAS:
                         • açõesBR - Ações brasileiras
@@ -2100,7 +2002,7 @@ def help_command(message):
                         • Análise rápida: /analise yahoo balanceada PETR4.SA 1d
                         • Análise cripto ML: /analise 12data agressiva BTCUSDT 4h ovelha2
                         • Screening geral: /screening balanceada açõesBR
-                        • Alerta 12Data: /screening_auto [BTCUSDT,ETHUSDT] ovelha2 balanceada 1m
+                        • Alerta 12Data: /screening_auto 12data [BTCUSDT,ETHUSDT] balanceada 1m
 
                         📝 FORMATOS DE SÍMBOLOS:
                         • Yahoo: PETR4.SA, AAPL, BTC-USD, EURUSD=X
