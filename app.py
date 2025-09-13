@@ -246,7 +246,7 @@ def calculate_ovelha_v2_signals(
         df_work.loc[df_work['future_ret'] >  df_work['thr_used'], 'y'] =  1
         df_work.loc[df_work['future_ret'] < -df_work['thr_used'], 'y'] = -1
 
-        # Versão binária (apenas onde há trade)
+        # Versão binária (apenas ±1; onde previu 0 vira NaN)
         df_work['y_bin'] = df_work['y'].replace({0: np.nan})
 
         # =======================
@@ -1514,7 +1514,7 @@ with tab2:
         """, unsafe_allow_html=True)
 
         st.markdown("### 📈 Como interpretar os sinais do modelo?")
-        st.info("""
+        st.markdown("""
         <strong>🎯 Exemplo prático - Petrobras (PETR4.SA):</strong>
 
         <strong>📅 Dia 19/12/2024:</strong> Modelo mudou de "Stay Out" para "Buy"
@@ -3059,7 +3059,7 @@ with tab4:
                             'current_state': 'N/A',
                             'previous_state': 'N/A',
                             'state_change': False,
-                            'current_price': 'N/A'
+                            'current_price': 0.0  # Usar 0.0 em vez de 'N/A'
                         })
                         continue
 
@@ -3075,15 +3075,46 @@ with tab4:
                             'current_state': 'N/A',
                             'previous_state': 'N/A',
                             'state_change': False,
-                            'current_price': 'N/A'
+                            'current_price': 0.0  # Usar 0.0 em vez de 'N/A'
                         })
                         continue
 
-                    # Check for state change
+                    # Verificar se há dados suficientes e se Estado existe
+                    if 'Estado' not in df_temp.columns or len(df_temp) < 2:
+                        screening_results.append({
+                            'symbol': current_symbol,
+                            'status': 'Erro - Dados insuficientes',
+                            'current_state': 'N/A',
+                            'previous_state': 'N/A',
+                            'state_change': False,
+                            'current_price': df_temp['close'].iloc[-1] if not df_temp.empty else 0.0
+                        })
+                        continue
+
+                    # Check for state change - melhorar a lógica
                     current_state = df_temp['Estado'].iloc[-1]
-                    previous_state = df_temp['Estado'].iloc[-2] if len(df_temp) > 1 else current_state
-                    state_change = current_state != previous_state
-                    current_price = df_temp['close'].iloc[-1]
+
+                    # Procurar por uma mudança de estado mais robusta
+                    # Verificar os últimos 5 períodos para detectar mudanças recentes
+                    state_change = False
+                    previous_state = current_state
+
+                    for i in range(min(5, len(df_temp)-1)):
+                        prev_idx = -(i+2)  # -2, -3, -4, -5, -6
+                        if prev_idx < -len(df_temp):
+                            break
+                        temp_prev_state = df_temp['Estado'].iloc[prev_idx]
+                        if temp_prev_state != current_state:
+                            state_change = True
+                            previous_state = temp_prev_state
+                            break
+
+                    # Se não encontrou mudança, usar o estado anterior imediato
+                    if not state_change:
+                        previous_state = df_temp['Estado'].iloc[-2] if len(df_temp) > 1 else current_state
+                        state_change = current_state != previous_state
+
+                    current_price = float(df_temp['close'].iloc[-1])
 
                     screening_results.append({
                         'symbol': current_symbol,
@@ -3095,13 +3126,14 @@ with tab4:
                     })
 
                 except Exception as e:
+                    logger.error(f"Erro específico no screening de {current_symbol}: {str(e)}")
                     screening_results.append({
                         'symbol': current_symbol,
                         'status': f'Erro: {str(e)[:50]}...',
                         'current_state': 'N/A',
                         'previous_state': 'N/A',
                         'state_change': False,
-                        'current_price': 'N/A'
+                        'current_price': 0.0  # Usar 0.0 em vez de 'N/A'
                     })
 
             progress_bar.progress(100)
