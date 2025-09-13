@@ -389,7 +389,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
             consecutive_losses = 0
 
     # === SEÇÃO 1: MÉTRICAS PRINCIPAIS ===
-    st.markdown("### 📊 Métricas Principais")
+    st.markdown("### Métricas Principais")
 
     # Métricas em formato mais compacto
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -434,7 +434,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
 
 
     # === SEÇÃO 2: MÉTRICAS AVANÇADAS ===
-    st.markdown("### 🎯 Métricas Avançadas")
+    st.markdown("### Métricas Avançadas")
 
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1:
@@ -481,7 +481,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         """, unsafe_allow_html=True)
 
     # === SEÇÃO 3: TOP 10 MELHORES E PIORES TRADES ===
-    st.markdown("### 🏆 Top 10 Melhores e Piores Trades")
+    st.markdown("### Top 10 Melhores e Piores Trades")
 
     col1, col2 = st.columns(2)
 
@@ -500,7 +500,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         )
 
     with col2:
-        st.markdown("#### 🔴 Top 10 Piores Trades")
+        st.markdown("#### Top 10 Piores Trades")
         worst_trades = returns_data.nsmallest(10, 'return_pct')[['entry_time', 'exit_time', 'signal', 'entry_price', 'exit_price', 'return_pct']].copy()
         worst_trades['Entrada'] = worst_trades['entry_time'].dt.strftime('%d/%m/%Y')
         worst_trades['Saída'] = worst_trades['exit_time'].dt.strftime('%d/%m/%Y')
@@ -514,7 +514,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         )
 
     # === SEÇÃO 4: GRÁFICO DE PATRIMÔNIO ===
-    st.markdown("### 💰 Curva de Patrimônio com Drawdowns")
+    st.markdown("### Curva de Patrimônio")
 
     # Calculate equity curve
     equity_curve = calculate_equity_curve(returns_data, initial_capital=10000)
@@ -551,7 +551,7 @@ def display_advanced_returns_section(returns_data, criteria_name, price_data, sy
         """, unsafe_allow_html=True)
 
     # === SEÇÃO 5: ÚLTIMOS TRADES ===
-    st.markdown("### 📋 Histórico de Trades")
+    st.markdown("### Histórico de Trades")
 
     # Show number of trades to display
     num_trades_to_show = min(len(returns_data), 30)
@@ -1093,17 +1093,17 @@ st.markdown("""
 </style>""", unsafe_allow_html=True)
 
 # Main title with custom styling
-st.markdown('<h1 class="main-title">📈 OVECCHIA TRADING</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">OVECCHIA TRADING</h1>', unsafe_allow_html=True)
 st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Sinais de Investimento </p>', unsafe_allow_html=True)
 
 # Create main navigation tabs
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏠 Home", "📖 Guia de Utilização", "📊 Análise Individual", "🔍 Screening Multi-Ativos", "🤖 Bot Telegram", "ℹ️ Sobre"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Home", "Guia de Utilização", "Análise Individual", "Screening Multi-Ativos", "Bot Telegram", "Sobre"])
 
 with tab1:
     # Home page content
     st.markdown("""
     <div style="background: linear-gradient(90deg, #e3f2fd, #f3e5f5); padding: 2rem; border-radius: 15px; text-align: center; margin-bottom: 2rem;">
-        <h2 style="color: #1976d2; margin-bottom: 1rem;">🚀 Bem-vindo ao Ovecchia Trading!</h2>
+        <h2 style="color: #1976d2; margin-bottom: 1rem;"> Bem-vindo ao Ovecchia Trading!</h2>
         <p style="font-size: 1.2rem; color: #666;">Escolha uma das abas acima para começar sua análise profissional</p>
     </div>
     """, unsafe_allow_html=True)
@@ -1111,7 +1111,7 @@ with tab1:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("### 📊 Análise Individual")
+        st.markdown("### Análise Individual")
         st.markdown("""
         <div class="metric-card">
             <p><strong>🤖 Potencialize seus investimentos com Machine Learning</strong><br>
@@ -1127,10 +1127,10 @@ with tab1:
         """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown("### 🔍 Screening Multi-Ativos")
+        st.markdown("### Screening Multi-Ativos")
         st.markdown("""
         <div class="metric-card">
-            <p><strong>📈 Monitore Múltiplos Ativos Simultaneamente</strong><br>
+            <p><strong>Monitore Múltiplos Ativos Simultaneamente</strong><br>
             Identifique rapidamente mudanças de estado em uma lista de ativos para detectar oportunidades de trading.</p>
             <ul>
                 <li><strong>Yahoo Finance:</strong> Timeframe fixo diário com 2 anos de dados</li>
@@ -1180,7 +1180,6 @@ with tab1:
         - **Compra:** Sinais de entrada long
         - **Venda:** Sinais de entrada short
         - **Stay Out:** Ficar fora do mercado
-        - **Confirmação:** Sinais consecutivos
         - **Direções:** Long, Short ou Ambos
         """)
 
@@ -1201,26 +1200,26 @@ with tab2:
 
     # Create sub-tabs for different sections
     guide_tab1, guide_tab2, guide_tab3, guide_tab4, guide_tab5 = st.tabs([
-        "📊 Análise Individual",
-        "🔍 Screening Multi-Ativos",
-        "🤖 Bot Telegram",
-        "❓ Dúvidas Frequentes",
-        "⚙️ Parâmetros Gerais"
+        "Análise Individual",
+        "Screening Multi-Ativos",
+        "Bot Telegram",
+        "Dúvidas Frequentes",
+        "Parâmetros Gerais"
     ])
 
     with guide_tab1:
-        st.markdown("## 📊 Guia de Utilização - Análise Individual do Ativo")
+        st.markdown("## Guia de Utilização - Análise Individual do Ativo")
 
-        st.markdown("### 📌 O que é a Análise Individual?")
+        st.markdown("### O que é a Análise Individual?")
         st.info("""
         A **Análise Individual** é a principal funcionalidade do sistema **OVECCHIA TRADING**.
         Com ela, você pode investigar a fundo qualquer ativo — seja ação, criptomoeda, forex ou índice — e descobrir com precisão os melhores pontos de **entrada** e **saída** do mercado.
 
-        Impulsionada pelos modelos proprietários **OVELHA** e **OVELHA V2**, a ferramenta identifica automaticamente três estados de mercado: **Buy** (compra), **Sell** (venda) e **Stay Out** (ficar de fora).
+        Impulsionada pelos modelo proprietário OVELHA V2**, a ferramenta identifica automaticamente três estados de mercado: **Buy** (compra), **Sell** (venda) e **Stay Out** (ficar de fora).
         O resultado? **Sinais claros, confiáveis e em tempo real**, ajudando você a tomar decisões mais inteligentes e estratégicas em suas operações.
         """)
 
-        st.markdown("### 🎯 Como Utilizar - Exemplo Prático")
+        st.markdown("### Como Utilizar - Exemplo Prático")
         st.markdown("**Vamos fazer uma análise passo a passo da Petrobras (PETR4.SA):**")
 
         st.markdown("#### 📝 Passo 1: Configuração da Fonte de Dados")
@@ -1276,10 +1275,7 @@ with tab2:
         st.markdown("#### 📝 Passo 5: Selecionar o Modelo")
         st.markdown("""
         <div style=\"background: #f0f2f6; padding: 1rem; border-radius: 8px; margin: 1rem 0;\">
-            <p><strong>🔹 Modelo:</strong> Escolha \"OVELHA V2 (Machine Learning)\" para começar</p>
-            <p style=\"font-size: 0.9rem; color: #666;\">🤖 <strong>Modelos disponíveis:</strong></p>
-            <ul style=\"font-size: 0.9rem; color: #666;\">
-                <li><strong>OVELHA V2 (Machine Learning):</strong> Modelo avançado com IA.</li>
+            <p><strong>🔹 Modelo:</strong> O modelo OVELHA V2 será selecionado automaticamente </p>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -1358,19 +1354,19 @@ with tab2:
 
 
     with guide_tab2:
-        st.markdown("## 🔍 Guia de Utilização - Screening Multi-Ativos")
+        st.markdown("## Guia de Utilização - Screening Multi-Ativos")
 
-        st.markdown("### 📌 O que é o Screening?")
+        st.markdown("### O que é o Screening?")
         st.info("O Screening Multi-Ativos é uma ferramenta poderosa que permite monitorar simultaneamente múltiplos ativos financeiros, identificando rapidamente mudanças de estado nos sinais de trading. É ideal para quem gerencia carteiras diversificadas ou quer identificar oportunidades em diferentes mercados ao mesmo tempo.")
 
-        st.markdown("### 📌 Como Funciona?")
+        st.markdown("### Como Funciona?")
         st.write("O sistema aplica a mesma metodologia da análise individual, mas de forma simultânea em uma lista de ativos:")
         st.write("• **Análise Simultânea**: Processa múltiplos ativos de uma só vez")
         st.write("• **Detecção de Mudanças**: Identifica automaticamente quando um ativo muda de estado (ex: de 'Stay Out' para 'Buy')")
         st.write("• **Alertas Visuais**: Destaca ativos com mudanças recentes de estado")
         st.write("• **Resumo Executivo**: Apresenta estatísticas gerais da análise")
 
-        st.markdown("### 📌 Listas Pré-definidas")
+        st.markdown("### Listas Pré-definidas")
         st.write("O sistema oferece listas curadas de ativos para facilitar sua análise:")
         st.write("• **🪙 Criptomoedas**: BTC-USD, ETH-USD, BNB-USD, ADA-USD, XRP-USD e mais")
         st.write("• **🇧🇷 Ações Brasileiras**: PETR4.SA, VALE3.SA, ITUB4.SA, BBDC4.SA e mais")
@@ -1394,12 +1390,12 @@ with tab2:
         st.write("• **🔴 Para Venda**: Ativos que mudaram para sinal de venda")
         st.write("• **⚫ Para Fora**: Ativos que mudaram para 'stay out'")
 
-        st.write("**📊 Resumo Geral**")
+        st.write("**Resumo Geral**")
         st.write("• **Total de Ativos**: Quantidade total analisada")
         st.write("• **Análises Bem-sucedidas**: Ativos processados sem erro")
         st.write("• **Sinais Atuais**: Distribuição dos sinais por tipo")
 
-        st.markdown("### 📌 Melhores Práticas")
+        st.markdown("### Melhores Práticas")
         st.write("**💡 Frequência**: Execute o screening diariamente para capturar mudanças recentes")
         st.write("**📋 Listas Focadas**: Use listas específicas por categoria para análises mais direcionadas")
         st.write("**🔍 Acompanhamento**: Monitore ativos que mudaram de estado para oportunidades")
@@ -1409,10 +1405,10 @@ with tab2:
     with guide_tab3:
         st.markdown("## 🤖 Guia de Utilização - Bot Telegram")
 
-        st.markdown("### 📌 O que é o Bot Telegram?")
+        st.markdown("###  O que é o Bot Telegram?")
         st.info("O Bot Telegram @Ovecchia_bot é uma extensão do sistema que permite acesso às funcionalidades principais diretamente pelo Telegram, oferecendo análises rápidas e alertas personalizados onde quer que você esteja.")
 
-        st.markdown("### 📌 Como Começar a Usar")
+        st.markdown("###  Como Começar a Usar")
         st.write("**🚀 Passos Iniciais**")
         st.write("1. **Abra o Telegram** no seu dispositivo")
         st.write("2. **Procure por**: `@Ovecchia_bot`")
@@ -1439,7 +1435,7 @@ with tab2:
         st.write("• **data_inicio**: formato YYYY-MM-DD (opcional)")
         st.write("• **data_fim**: formato YYYY-MM-DD (opcional)")
 
-        st.write("**💡 Exemplos**")
+        st.write("** Exemplos**")
         st.code("/analise balanceada PETR4.SA 1d")
         st.code("/analise agressiva BTC-USD 4h 2024-01-01 2024-06-01")
         st.code("/analise conservadora AAPL 1d")
@@ -1928,7 +1924,7 @@ with tab3:
 
         st.markdown("#### 🤖 Modelo de Sinais")
         model_type = "OVELHA V2 (Machine Learning)"
-        st.info("🧠 **OVELHA V2:** Sistema avançado com Machine Learning, buffer adaptativo automático e análise multidimensional para máxima precisão")
+        st.info("**OVELHA V2:** Sistema avançado de Machine Learning")
 
         # Buffer fixo para OVELHA V2
         buffer_value = 0.0015  # valor padrão fixo (0.15%)
@@ -1974,7 +1970,7 @@ with tab3:
 
     # Exit criteria section
     st.markdown('<div class="parameter-section">', unsafe_allow_html=True)
-    st.markdown("#### 🚪 Critérios de Saída Personalizados")
+    st.markdown("#### 🚪 Quando sair da operação?")
 
     col_exit1, col_exit2, col_exit3 = st.columns(3)
 
