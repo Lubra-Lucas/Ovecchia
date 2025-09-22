@@ -794,95 +794,140 @@ class OvecchiaTradingBot:
         return results
 
     def perform_automated_screening(self, user_id, symbols_list, source, model_type, strategy_type, timeframe):
-        """Realiza screening automático e detecta mudanças de estado"""
+        """Realiza screening automático e detecta mudanças de estado - VERSÃO ROBUSTA"""
         try:
             current_states = {}
             changes_detected = []
             successful_analyses = 0
+            failed_symbols = []
 
-            for symbol in symbols_list:
+            # Validar lista de símbolos
+            if not symbols_list or len(symbols_list) == 0:
+                logger.warning(f"Lista de símbolos vazia para usuário {user_id}")
+                return {}, []
+
+            logger.info(f"Iniciando screening para usuário {user_id}: {len(symbols_list)} símbolos via {source}")
+
+            for i, symbol in enumerate(symbols_list):
                 try:
-                    logger.info(f"Analisando {symbol} para usuário {user_id}")
-
                     # Validar símbolo antes de processar
                     if not symbol or len(symbol.strip()) == 0:
-                        logger.warning(f"Símbolo vazio ou inválido: '{symbol}'")
+                        logger.warning(f"Símbolo vazio na posição {i}: '{symbol}'")
+                        failed_symbols.append(symbol)
                         continue
 
                     symbol = symbol.strip().upper()
+                    logger.info(f"Analisando {symbol} ({i+1}/{len(symbols_list)}) para usuário {user_id}")
 
-                    if source == "ccxt":
-                        df = self.get_ccxt_data(symbol, timeframe, 1000)
-                    elif source == "12data":
-                        end_date = datetime.now().date()
-                        start_date = end_date - timedelta(days=365)
-                        df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), timeframe, 2000)
-                    else: # Yahoo
-                        end_date = datetime.now().date()
-                        start_date = end_date - timedelta(days=365)
-                        df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
-                                                end_date.strftime("%Y-%m-%d"), timeframe, "yahoo")
+                    # Tentar coletar dados com timeout
+                    df = pd.DataFrame()
+                    data_collection_success = False
 
-                    if df.empty:
-                        logger.warning(f"Sem dados disponíveis para {symbol} via {source}")
+                    try:
+                        if source == "12data" or source == "twelvedata":
+                            end_date = datetime.now().date()
+                            start_date = end_date - timedelta(days=365)
+                            df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), timeframe, 2000)
+                        else: # Yahoo
+                            end_date = datetime.now().date()
+                            start_date = end_date - timedelta(days=365)
+                            df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
+                                                    end_date.strftime("%Y-%m-%d"), timeframe, "yahoo")
+                        
+                        if not df.empty and len(df) >= 50:
+                            data_collection_success = True
+                        else:
+                            logger.warning(f"Dados insuficientes para {symbol}: {len(df)} registros")
+                            
+                    except Exception as data_error:
+                        logger.error(f"Erro na coleta de dados para {symbol}: {str(data_error)}")
+
+                    if not data_collection_success:
+                        failed_symbols.append(symbol)
                         continue
 
-                    # Verificar se há dados suficientes
-                    if len(df) < 50:
-                        logger.warning(f"Dados insuficientes para {symbol}: apenas {len(df)} registros")
+                    # Aplicar modelo OVELHA V2 com tratamento de erro
+                    try:
+                        df_with_signals = self.calculate_ovelha_v2_signals(df, strategy_type)
+                        if df_with_signals is not None and not df_with_signals.empty and 'Estado' in df_with_signals.columns:
+                            df = df_with_signals
+                        else:
+                            logger.warning(f"Falha ao aplicar OVELHA V2 para {symbol}")
+                            failed_symbols.append(symbol)
+                            continue
+                    except Exception as model_error:
+                        logger.error(f"Erro no modelo para {symbol}: {str(model_error)}")
+                        failed_symbols.append(symbol)
                         continue
 
-                    # Aplicar modelo OVELHA V2
-                    df_with_signals = self.calculate_ovelha_v2_signals(df, strategy_type)
-                    if df_with_signals is not None and not df_with_signals.empty:
-                        df = df_with_signals
-                    else:
-                        logger.warning(f"Falha ao aplicar OVELHA V2 para {symbol}")
+                    # Extrair estado e preço atual
+                    try:
+                        current_state = df['Estado'].iloc[-1]
+                        current_price = df['close'].iloc[-1]
+
+                        # Validar estado
+                        if current_state not in ['Buy', 'Sell', 'Stay Out']:
+                            logger.warning(f"Estado inválido para {symbol}: {current_state}")
+                            failed_symbols.append(symbol)
+                            continue
+
+                        # Validar preço
+                        if pd.isna(current_price) or current_price <= 0:
+                            logger.warning(f"Preço inválido para {symbol}: {current_price}")
+                            failed_symbols.append(symbol)
+                            continue
+
+                        # Salvar estado atual
+                        current_states[symbol] = {
+                            'state': current_state,
+                            'price': float(current_price)
+                        }
+                        successful_analyses += 1
+
+                        # Verificar mudança de estado
+                        if user_id in self.alert_states and symbol in self.alert_states[user_id]:
+                            try:
+                                previous_state = self.alert_states[user_id][symbol].get('state', 'Stay Out')
+                                if current_state != previous_state:
+                                    changes_detected.append({
+                                        'symbol': symbol,
+                                        'previous_state': previous_state,
+                                        'current_state': current_state,
+                                        'current_price': float(current_price)
+                                    })
+                                    logger.info(f"Mudança detectada em {symbol}: {previous_state} -> {current_state}")
+                            except Exception as change_error:
+                                logger.error(f"Erro ao verificar mudança para {symbol}: {str(change_error)}")
+
+                    except Exception as state_error:
+                        logger.error(f"Erro ao extrair estado para {symbol}: {str(state_error)}")
+                        failed_symbols.append(symbol)
                         continue
-
-                    if df.empty or 'Estado' not in df.columns:
-                        logger.warning(f"Falha ao calcular indicadores para {symbol}")
-                        continue
-
-                    current_state = df['Estado'].iloc[-1]
-                    current_price = df['close'].iloc[-1]
-
-                    # Validar estado
-                    if current_state not in ['Buy', 'Sell', 'Stay Out']:
-                        logger.warning(f"Estado inválido para {symbol}: {current_state}")
-                        continue
-
-                    current_states[symbol] = {
-                        'state': current_state,
-                        'price': current_price
-                    }
-                    successful_analyses += 1
-
-                    # Verificar se houve mudança de estado
-                    if user_id in self.alert_states and symbol in self.alert_states[user_id]:
-                        previous_state = self.alert_states[user_id][symbol]['state']
-                        if current_state != previous_state:
-                            changes_detected.append({
-                                'symbol': symbol,
-                                'previous_state': previous_state,
-                                'current_state': current_state,
-                                'current_price': current_price
-                            })
 
                 except Exception as e:
-                    logger.error(f"Erro específico ao analisar {symbol}: {str(e)}")
+                    logger.error(f"Erro crítico ao analisar {symbol}: {str(e)}")
+                    failed_symbols.append(symbol)
                     continue
 
-            # Atualizar estados salvos
+            # Atualizar estados salvos (apenas símbolos com sucesso)
             if user_id not in self.alert_states:
                 self.alert_states[user_id] = {}
-            self.alert_states[user_id].update(current_states)
+            
+            # Atualizar apenas símbolos que foram analisados com sucesso
+            for symbol, state_data in current_states.items():
+                self.alert_states[user_id][symbol] = state_data
 
-            logger.info(f"Screening completado para usuário {user_id}: {successful_analyses}/{len(symbols_list)} símbolos analisados com sucesso")
+            # Log de resultado
+            success_rate = (successful_analyses / len(symbols_list)) * 100 if len(symbols_list) > 0 else 0
+            logger.info(f"Screening para usuário {user_id} completado: {successful_analyses}/{len(symbols_list)} símbolos ({success_rate:.1f}% sucesso)")
+            
+            if failed_symbols:
+                logger.warning(f"Símbolos com falha para usuário {user_id}: {', '.join(failed_symbols)}")
+
             return current_states, changes_detected
 
         except Exception as e:
-            logger.error(f"Erro geral no screening automatizado: {str(e)}")
+            logger.error(f"Erro crítico no screening automatizado para usuário {user_id}: {str(e)}")
             return {}, []
 
     def generate_analysis_chart(self, symbol, strategy_type, timeframe, custom_start_date=None, custom_end_date=None, data_source="yahoo"):
@@ -2231,7 +2276,7 @@ def schedule_alerts_for_user(user_id, timeframe):
         logger.error(f"Erro ao programar alerta para usuário {user_id}: {str(e)}")
 
 def send_scheduled_alert(user_id):
-    """Envia alerta programado para um usuário específico"""
+    """Envia alerta programado para um usuário específico - VERSÃO CONSOLIDADA"""
     try:
         if user_id not in trading_bot.active_alerts:
             logger.info(f"Alerta cancelado para usuário {user_id} - configuração removida")
@@ -2239,59 +2284,126 @@ def send_scheduled_alert(user_id):
             return
 
         alert_config = trading_bot.active_alerts[user_id]
+        symbols_list = alert_config.get('symbols', [])
 
-        logger.info(f"Executando screening automático para usuário {user_id}")
+        logger.info(f"Executando screening automático para usuário {user_id} - {len(symbols_list)} símbolos")
 
-        # Realizar screening
-        current_states, changes = trading_bot.perform_automated_screening(
-            user_id,
-            alert_config['symbols'],
-            alert_config['source'],
-            alert_config['model'],
-            alert_config['strategy'],
-            alert_config['timeframe']
-        )
+        # Realizar screening com timeout para evitar travamentos
+        current_states = {}
+        changes = []
+        successful_analyses = 0
+        failed_analyses = 0
 
-        # Preparar mensagem
+        try:
+            current_states, changes = trading_bot.perform_automated_screening(
+                user_id,
+                symbols_list,
+                alert_config['source'],
+                alert_config['model'],
+                alert_config['strategy'],
+                alert_config['timeframe']
+            )
+            successful_analyses = len(current_states)
+            failed_analyses = len(symbols_list) - successful_analyses
+        except Exception as e:
+            logger.error(f"Erro no screening automático para usuário {user_id}: {str(e)}")
+            # Tentar continuar mesmo com erro
+
+        # Preparar mensagem única e consolidada
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
+        
+        # CABEÇALHO SEMPRE PRESENTE
+        message = f"🔔 **SCREENING AUTOMÁTICO**\n📅 {timestamp}\n\n"
+        
+        # CONFIGURAÇÃO
+        message += f"⚙️ **Configuração:**\n"
+        message += f"🔗 {alert_config.get('source', 'N/A').upper()} | "
+        message += f"🎯 {alert_config.get('strategy', 'N/A')} | "
+        message += f"🤖 {alert_config.get('model', 'N/A').upper()}\n"
+        message += f"⏰ Intervalo: {alert_config.get('timeframe', 'N/A')}\n\n"
 
+        # ESTATÍSTICAS
+        message += f"📊 **Resultado:** {successful_analyses}/{len(symbols_list)} símbolos analisados\n"
+        if failed_analyses > 0:
+            message += f"❌ **Falhas:** {failed_analyses} símbolos com erro\n"
+        message += "\n"
+
+        # MUDANÇAS DETECTADAS (se houver)
         if changes:
-            # Mudanças detectadas
-            message = f"🚨 *ALERTAS DE MUDANÇA DETECTADOS*\n📅 {timestamp}\n\n"
-            message += f"⚙️ **Configuração:**\n"
-            message += f"🔗 {alert_config['source'].upper()} | 🎯 {alert_config['strategy']} | 🤖 {alert_config['model'].upper()}\n"
-            message += f"⏰ Intervalo: {alert_config['timeframe']}\n\n"
-
-            for change in changes:
+            message += f"🚨 **MUDANÇAS DETECTADAS ({len(changes)}):**\n"
+            for i, change in enumerate(changes, 1):
                 prev_icon = "🔵" if change['previous_state'] == "Buy" else "🔴" if change['previous_state'] == "Sell" else "⚫"
                 curr_icon = "🔵" if change['current_state'] == "Buy" else "🔴" if change['current_state'] == "Sell" else "⚫"
 
-                message += f"📊 **{change['symbol']}**\n"
-                message += f"💰 Preço: {change['current_price']:.4f}\n"
-                message += f"🔄 {prev_icon} {change['previous_state']} → {curr_icon} {change['current_state']}\n\n"
+                message += f"{i}. **{change['symbol']}** ({change['current_price']:.4f})\n"
+                message += f"   {prev_icon} {change['previous_state']} → {curr_icon} {change['current_state']}\n"
+            message += "\n"
 
-            message += f"⏰ Próximo alerta em: {alert_config['timeframe']}"
+        # STATUS ATUAL DE TODOS OS SÍMBOLOS
+        message += f"📈 **STATUS ATUAL ({len(current_states)} símbolos):**\n"
+        
+        # Agrupar por status para melhor visualização
+        buy_symbols = []
+        sell_symbols = []
+        stay_out_symbols = []
+        
+        for symbol, state_info in current_states.items():
+            if state_info['state'] == 'Buy':
+                buy_symbols.append(f"{symbol} ({state_info['price']:.4f})")
+            elif state_info['state'] == 'Sell':
+                sell_symbols.append(f"{symbol} ({state_info['price']:.4f})")
+            else:
+                stay_out_symbols.append(f"{symbol} ({state_info['price']:.4f})")
 
-        else:
-            # Nenhuma mudança
-            message = f"ℹ️ *SCREENING AUTOMÁTICO - SEM MUDANÇAS*\n📅 {timestamp}\n\n"
-            message += f"⚙️ **Configuração:**\n"
-            message += f"🔗 {alert_config['source'].upper()} | 🎯 {alert_config['strategy']} | 🤖 {alert_config['model'].upper()}\n"
-            message += f"⏰ Intervalo: {alert_config['timeframe']}\n\n"
+        # Mostrar agrupado
+        if buy_symbols:
+            message += f"🔵 **COMPRA ({len(buy_symbols)}):** {', '.join(buy_symbols)}\n"
+        if sell_symbols:
+            message += f"🔴 **VENDA ({len(sell_symbols)}):** {', '.join(sell_symbols)}\n"
+        if stay_out_symbols:
+            message += f"⚫ **FICAR DE FORA ({len(stay_out_symbols)}):** {', '.join(stay_out_symbols)}\n"
 
-            message += f"📊 **Status Atual ({len(current_states)} símbolos):**\n"
-            for symbol, state_info in current_states.items():
-                state_icon = "🔵" if state_info['state'] == "Buy" else "🔴" if state_info['state'] == "Sell" else "⚫"
-                message += f"• {symbol}: {state_icon} {state_info['state']} ({state_info['price']:.4f})\n"
+        # Mostrar símbolos que falharam (se houver)
+        failed_symbols = []
+        for symbol in symbols_list:
+            if symbol not in current_states:
+                failed_symbols.append(symbol)
+        
+        if failed_symbols:
+            message += f"❌ **ERRO NA ANÁLISE:** {', '.join(failed_symbols)}\n"
 
-            message += f"\n⏰ Próximo alerta em: {alert_config['timeframe']}"
+        # RODAPÉ
+        message += f"\n⏰ **Próximo alerta em:** {alert_config.get('timeframe', 'N/A')}"
 
-        # Enviar mensagem
-        bot.send_message(alert_config['chat_id'], message, parse_mode='Markdown')
-        logger.info(f"Alerta enviado para usuário {user_id}: {len(changes)} mudanças detectadas")
+        # Verificar se a mensagem não está muito longa (limite do Telegram é 4096 caracteres)
+        if len(message) > 4000:
+            # Se muito longa, encurtar
+            message = message[:3950] + "\n\n... (mensagem truncada)"
+            logger.warning(f"Mensagem de alerta truncada para usuário {user_id} (muito longa)")
+
+        # Enviar APENAS UMA mensagem consolidada
+        try:
+            bot.send_message(alert_config['chat_id'], message, parse_mode='Markdown')
+            logger.info(f"Alerta consolidado enviado para usuário {user_id}: {successful_analyses} símbolos, {len(changes)} mudanças")
+        except Exception as send_error:
+            logger.error(f"Erro ao enviar mensagem consolidada: {str(send_error)}")
+            # Tentar enviar sem markdown como fallback
+            try:
+                # Remover markdown e tentar novamente
+                clean_message = message.replace('*', '').replace('`', '')
+                bot.send_message(alert_config['chat_id'], clean_message)
+                logger.info(f"Alerta enviado sem formatação para usuário {user_id}")
+            except:
+                logger.error(f"Falha total ao enviar alerta para usuário {user_id}")
 
     except Exception as e:
-        logger.error(f"Erro ao enviar alerta programado para usuário {user_id}: {str(e)}")
+        logger.error(f"Erro geral ao enviar alerta programado para usuário {user_id}: {str(e)}")
+        # Tentar enviar mensagem de erro
+        try:
+            error_message = f"❌ Erro no screening automático ({datetime.now().strftime('%H:%M')})\nVerifique a configuração ou use /restart"
+            bot.send_message(trading_bot.active_alerts[user_id]['chat_id'], error_message)
+        except:
+            logger.error(f"Não foi possível notificar erro para usuário {user_id}")
 
 def run_scheduler():
     """Thread separada para executar o scheduler com melhor tratamento de erros"""
