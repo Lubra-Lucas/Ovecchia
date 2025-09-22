@@ -1215,7 +1215,7 @@ with tab2:
         A **Análise Individual** é a principal funcionalidade do sistema **OVECCHIA TRADING**.
         Com ela, você pode investigar a fundo qualquer ativo — seja ação, criptomoeda, forex ou índice — e descobrir com precisão os melhores pontos de **entrada** e **saída** do mercado.
 
-        Impulsionada pelos modelo proprietário OVELHA V2**, a ferramenta identifica automaticamente três estados de mercado: **Buy** (compra), **Sell** (venda) e **Stay Out** (ficar de fora).
+        Impulsionada pelos modelo proprietário OVELHA V2, a ferramenta identifica automaticamente três estados de mercado: **Buy** (compra), **Sell** (venda) e **Stay Out** (ficar de fora).
         O resultado? **Sinais claros, confiáveis e em tempo real**, ajudando você a tomar decisões mais inteligentes e estratégicas em suas operações.
         """)
 
@@ -1336,16 +1336,16 @@ with tab2:
 
         with st.expander("🔧 Parâmetros e Configurações", expanded=False):
             st.markdown("""
-            <strong>Parâmetros Essenciais:</strong>
+            Parâmetros Essenciais:
             • Ticker (ex: PETR4.SA, BTC-USD) • Período mínimo de 30 dias • Timeframe conforme perfil • Estratégia adequada ao risco
 
-            <strong>Critérios de Saída:</strong>
+            Critérios de Saída:
             Mudança de Estado | Stop Loss | Alvo Fixo | Tempo | Média Móvel
 
-            <strong>Mudança de Estado:</strong>
+            Mudança de Estado:
             ✅ Ativado: sai automaticamente na mudança de sinal | ❌ Desativado: usa apenas critério escolhido
 
-            <strong>Otimização:</strong>
+            Otimização:
             🎯 Testa automaticamente múltiplas configurações para encontrar os melhores parâmetros
             """)
 
@@ -1515,133 +1515,116 @@ with tab2:
 
         st.markdown("### 📈 Como interpretar os sinais do modelo?")
         st.markdown("""
-        <strong>🎯 Exemplo prático - Petrobras (PETR4.SA):</strong>
+        🎯 Exemplo prático - Petrobras (PETR4.SA):
 
-        <strong>📅 Dia 19/12/2024:</strong> Modelo mudou de "Stay Out" para "Buy"
+        📅 Dia 19/12/2024: Modelo mudou de "Stay Out" para "Buy"
 
-        <strong>💡 Interpretação:</strong> O modelo recomenda <strong>entrar comprado</strong> na Petrobras no dia 19
+        💡 Interpretação: O modelo recomenda entrar comprado na Petrobras no dia 19
 
-        <strong>🔮 Expectativa:</strong> Baseado no histórico, há maior probabilidade de alta nos próximos dias/semanas
+        🔮 Expectativa: Baseado no histórico, há maior probabilidade de alta nos próximos dias/semanas
 
-        <strong>⏰ Duração:</strong> Manter posição até que o modelo mude para "Sell" ou "Stay Out"
+        ⏰ Duração: Manter posição até que o modelo mude para "Sell" ou "Stay Out"
 
-        🚦 <strong>Estados do Modelo:</strong>
-        - <strong>🔵 BUY (Compra):</strong> Entre comprado ou mantenha posição comprada
-        - <strong>🔴 SELL (Venda):</strong> Entre vendido ou saia da posição comprada
-        - <strong>⚫ STAY OUT (Fora):</strong> Fique de fora - aguarde melhor momento
+        🚦 Estados do Modelo:
+        - 🔵 BUY (Compra): Entre comprado ou mantenha posição comprada
+        - 🔴 SELL (Venda): Entre vendido ou saia da posição comprada
+        - ⚫ STAY OUT (Fora): Fique de fora - aguarde melhor momento
 
-        <strong>💰 Como os retornos são calculados:</strong>
-        O sistema calcula o retorno <strong>a cada mudança de estado</strong>. Por exemplo:
+        💰 Como os retornos são calculados:
+        O sistema calcula o retorno a cada mudança de estado. Por exemplo:
         - Dia 10: Modelo muda para "Buy" (preço R$ 30,00)
         - Dia 25: Modelo muda para "Stay Out" (preço R$ 32,10)
-        - <strong>Retorno calculado:</strong> +7,0% nesta operação
+        - Retorno calculado: +7,0% nesta operação
         """)
 
         st.markdown("### 📊 Como avaliar se o modelo está funcionando bem?")
         st.markdown("""
-        <strong>🎯 Métricas principais para analisar:</strong>
+        🎯 Métricas principais para analisar:
 
-        <strong>1. Taxa de Acerto:</strong>
-        - <strong>Acima de 60%:</strong> Muito bom
-        - <strong>50-60%:</strong> Razoável
-        - <strong>Abaixo de 50%:</strong> Considere mudar estratégia ou ativo
+        1. Taxa de Acerto:
+        - Acima de 60%: Muito bom
+        - 50-60%: Razoável
+        - Abaixo de 50%: Considere mudar estratégia ou ativo
 
-        <strong>2. Retorno Total:</strong>
-        - <strong>Positivo:</strong> Modelo está lucrando no período
-        - <strong>Negativo:</strong> Modelo está perdendo - analise outras métricas
+        2. Retorno Total:
+        - Positivo: Modelo está lucrando no período
+        - Negativo:Modelo está perdendo - analise outras métricas
 
-        <strong>3. Sharpe Ratio:</strong>
-        - <strong>Acima de 1,0:</strong> Excelente relação risco/retorno
-        - <strong>0,5 a 1,0:</strong> Bom
-        - <strong>Abaixo de 0,5:</strong> Risco pode não compensar
+        3. Sharpe Ratio:
+        - Acima de 1,0: Excelente relação risco/retorno
+        - 0,5 a 1,0: Bom
+        - Abaixo de 0,5: Risco pode não compensar
 
-        <strong>4. Máximo Drawdown:</strong>
-        - <strong>Até 10%:</strong> Baixo risco
-        - <strong>10-20%:</strong> Risco moderado
-        - <strong>Acima de 20%:</strong> Alto risco
+        4. Máximo Drawdown:
+        - Até 10%: Baixo risco
+        - 10-20%: Risco moderado
+        - Acima de 20%: Alto risco
         """)
 
         st.markdown("### ⚙️ Qual estratégia devo escolher?")
         st.markdown("""
-        <strong>🎯 Guia de escolha baseado no seu perfil:</strong>
+        🎯 Guia de escolha baseado no seu perfil:
 
-        <strong>🔥 Estratégia Agressiva - Quando usar:</strong>
+        🔥 Estratégia Agressiva - Quando usar:
         - Você tem experiência em trading
         - Pode acompanhar o mercado frequentemente
         - Tolera mais risco em busca de mais oportunidades
         - Prefere mais operações no período
 
-        <strong>⚖️ Estratégia Balanceada - Quando usar:</strong>
+        ⚖️ Estratégia Balanceada - Quando usar:
         - Você é iniciante ou intermediário
         - Quer equilibrio entre oportunidades e segurança
         - Prefere uma quantidade moderada de sinais
-        - <strong>RECOMENDADA para a maioria dos usuários</strong>
+        - RECOMENDADA para a maioria dos usuários
 
-        <strong>🛡️ Estratégia Conservadora - Quando usar:</strong>
+        🛡️ Estratégia Conservadora - Quando usar:
         - Você prioriza preservação de capital
         - Prefere poucos sinais, mas mais confiáveis
         - Tem pouco tempo para acompanhar o mercado
         - É mais avesso ao risco
         """)
 
-        st.markdown("### 🤖 Qual a diferença entre os modelos OVELHA e OVELHA V2?")
-        st.markdown("""
-        <strong>📊 OVELHA (Clássico):</strong>
-        - <strong>Baseado em:</strong> Análise técnica tradicional consolidada
-        - <strong>Vantagens:</strong> Mais estável, previsível, funciona em qualquer fonte
-        - <strong>Quando usar:</strong> Para análises de longo prazo, iniciantes
-        - <strong>Disponível em:</strong> Yahoo Finance e TwelveData
-
-        <strong>🧠 OVELHA V2 (Machine Learning):</strong>
-        - <strong>Baseado em:</strong> Inteligência Artificial com Machine Learning
-        - <strong>Vantagens:</strong> Mais adaptativo, considera múltiplas variáveis
-        - <strong>Quando usar:</strong> Para ativos voláteis, usuários experientes
-        - <strong>Disponível em:</strong> TwelveData e Yahoo Finance
-        - <strong>Recursos extras:</strong> Aprendizado constante, melhoria contínua
-
-        <strong>💡 Recomendação:</strong> Comece com OVELHA clássico para entender o sistema, depois experimente o V2 para comparar resultados.
-        """)
 
         st.markdown("### 📅 Qual timeframe devo usar?")
         st.markdown("""
-        <strong>⏰ Guia de timeframes por perfil de investidor:</strong>
+        ⏰ Guia de timeframes por perfil de investidor:
 
-        <strong>📈 Day Trader (operações no mesmo dia):</strong>
-        - <strong>Timeframes:</strong> 1m, 5m, 15m, 30m
-        - <strong>Atenção:</strong> Requer acompanhamento constante
-        - <strong>Fonte recomendada:</strong> TwelveData para melhor suporte
+        📈 Day Trader (operações no mesmo dia):
+        -Timeframes: 1m, 5m, 15m, 30m
+        -Atenção:> Requer acompanhamento constante
+        - Fonte recomendada: TwelveData para melhor suporte
 
-        <strong>📊 Swing Trader (operações de dias a semanas):</strong>
-        - <strong>Timeframes:</strong> 1h, 4h, 1d
-        - <strong>Ideal para:</strong> Quem tem algumas horas por dia
-        - <strong>Mais equilibrado:</strong> Menos ruído, sinais mais confiáveis
+        📊 Swing Trader (operações de dias a semanas):
+        - Timeframes: 1h, 4h, 1d
+        -Ideal para: Quem tem algumas horas por dia
+        - Mais equilibrado: Menos ruído, sinais mais confiáveis
 
-        <strong>💼 Investidor (operações de semanas a meses):</strong>
-        - <strong>Timeframes:</strong> 1d, 1wk
-        - <strong>Ideal para:</strong> Análises de longo prazo
-        - <strong>Menos estresse:</strong> Acompanhamento semanal suficiente
+        💼 Investidor (operações de semanas a meses):
+        - Timeframes: 1d, 1wk
+        - Ideal para: Análises de longo prazo
+        - Menos estresse Acompanhamento semanal suficiente
 
-        <strong>💡 Para iniciantes:</strong> Comece com 1d (1 dia) - oferece o melhor equilíbrio entre dados históricos e simplicidade.
+       💡 Para iniciantes: Comece com 1d (1 dia) - oferece o melhor equilíbrio entre dados históricos e simplicidade.
         """)
 
         st.markdown("### 💰 Como usar a simulação de investimento?")
         st.markdown("""
-        <strong>🎯 Entendendo a simulação:</strong>
+        🎯 Entendendo a simulação:
 
-        <strong>📊 O que a simulação faz:</strong>
+        📊 O que a simulação faz:
         - Simula quanto você teria se seguisse todos os sinais do modelo
         - Considera o valor inicial que você define
         - Calcula automaticamente os retornos compostos
         - Compara com estratégia Buy & Hold (comprar e segurar)
 
-        <strong>💡 Exemplo prático:</strong>
+        💡 Exemplo prático:
 
-        <strong>Investimento inicial:</strong> R$ 10.000
-        <strong>Resultado da estratégia:</strong> R$ 12.500 (+25%)
-        <strong>Buy & Hold:</strong> R$ 11.200 (+12%)
-        <strong>Outperformance:</strong> +13% melhor que só comprar e segurar
+        Investimento inicial: R$ 10.000
+        Resultado da estratégia: R$ 12.500 (+25%)
+        Buy & Hold: R$ 11.200 (+12%)
+        Outperformance: +13% melhor que só comprar e segurar
 
-        <strong>⚠️ Importante lembrar:</strong>
+        ⚠️ Importante lembrar:
         - É uma simulação baseada em dados históricos
         - Performance passada não garante resultados futuros
         - Considere custos de corretagem na vida real
@@ -1649,27 +1632,27 @@ with tab2:
 
         st.markdown("### 🛠️ Por que minha análise não funcionou?")
         st.markdown("""
-        <strong>🔧 Problemas mais comuns e soluções:</strong>
+        🔧 Problemas mais comuns e soluções:
 
-        <strong>❌ "Sem dados encontrados para o ticker":</strong>
-        - <strong>Problema:</strong> Ticker incorreto ou não suportado
-        - <strong>Solução:</strong> Verifique no Yahoo Finance ou TwelveData se existe
-        - <strong>Exemplo:</strong> Use "PETR4.SA" em vez de "PETR4"
+        ❌ "Sem dados encontrados para o ticker"
+        -Problema: Ticker incorreto ou não suportado
+        - Solução Verifique no Yahoo Finance ou TwelveData se existe
+        - Exemplo Use "PETR4.SA" em vez de "PETR4"
 
-        <strong>❌ "Erro ao calcular indicadores":</strong>
-        - <strong>Problema:</strong> Período muito curto ou dados insuficientes
-        - <strong>Solução:</strong> Aumente o período para pelo menos 6 meses
-        - <strong>Dica:</strong> Use timeframes maiores para períodos históricos longos
+        ❌ "Erro ao calcular indicadores":
+        - Problema: Período muito curto ou dados insuficientes
+        - Solução: Aumente o período para pelo menos 6 meses
+        - Dica: Use timeframes maiores para períodos históricos longos
 
-        <strong>❌ "Timeframe não suportado":</strong>
-        - <strong>Problema:</strong> Yahoo Finance tem limitações para timeframes pequenos
-        - <strong>Solução:</strong> Use TwelveData para 1m, 5m, etc.
-        - <strong>Alternativa:</strong> Use 1h ou 1d que funcionam em ambas fontes
+        ❌ "Timeframe não suportado":
+        - Problema: Yahoo Finance tem limitações para timeframes pequenos
+        - Solução: Use TwelveData para 1m, 5m, etc.
+        - Alternativa: Use 1h ou 1d que funcionam em ambas fontes
 
-        <strong>❌ "Dados insuficientes para OVELHA V2":</strong>
-        - <strong>Problema:</strong> Modelo de ML precisa de mais dados históricos
-        - <strong>Solução:</strong> Use modelo OVELHA clássico ou aumente período
-        - <strong>Mínimo:</strong> 200 registros para o modelo V2 funcionar
+        ❌ "Dados insuficientes para OVELHA V2":
+        - Problema: Modelo de ML precisa de mais dados históricos
+        - Solução: Use modelo OVELHA clássico ou aumente período
+        - Mínimo: 200 registros para o modelo V2 funcionar
         """)
 
     with guide_tab5:
@@ -3250,10 +3233,10 @@ with tab5:
     with col1:
         st.markdown("#### 🚀 Primeiros Passos")
         st.markdown("""
-        <strong>1. Adicione o bot:</strong>
-        No Telegram, procure por <strong>@Ovecchia_bot</strong> e clique em "Iniciar"
+        1. Adicione o bot:
+        No Telegram, procure por @Ovecchia_bot e clique em "Iniciar"
 
-        <strong>2. Comandos disponíveis:</strong>
+        2. Comandos disponíveis:
         - `/start` - Iniciar o bot e ver boas-vindas
         - `/analise [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]` - Análise individual com gráfico
         - `/screening [estrategia] [ativos]` - Screening de múltiplos ativos
@@ -3265,14 +3248,14 @@ with tab5:
     with col2:
         st.markdown("#### ⚙️ Configurações")
         st.markdown("""
-        <strong>Estratégias disponíveis:</strong>
-        - <strong>🔥 agressiva:</strong> Mais sinais, maior frequência
-        - <strong>⚖️ balanceada:</strong> Equilíbrio entre sinais e confiabilidade
-        - <strong>🛡️ conservadora:</strong> Sinais mais confiáveis, menor frequência
+        Estratégias disponíveis
+        - agressiva: Mais sinais, maior frequência
+        - balanceada: Equilíbrio entre sinais e confiabilidade
+        - conservadora: Sinais mais confiáveis, menor frequência
 
-        <strong>Timeframes suportados:</strong> 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
-        <strong>Período de dados:</strong> Baseado no comando específico
-        <strong>Datas personalizadas:</strong> Formato YYYY-MM-DD (opcional)
+        Timeframes suportados: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
+        Período de dados: Baseado no comando específico
+        Datas personalizadas: Formato YYYY-MM-DD (opcional)
         """)
 
     # Bot status section
@@ -3359,21 +3342,6 @@ with tab5:
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class="metric-card">
-        <p><strong>📊 Exemplo de Topos e Fundos:</strong></p>
-        <div style="background: #f0f2f6; padding: 0.75rem; border-radius: 8px; font-family: monospace;">
-            📊 DETECÇÃO DE TOPOS E FUNDOS<br>
-            ⏰ Timeframe: 1 dia<br><br>
-            🟢 POSSÍVEL FUNDO (COMPRA):<br>
-            • PETR4.SA: 28.45<br>
-            📊 Distância: 2.30%<br><br>
-            🔴 POSSÍVEL TOPO (VENDA):<br>
-            • VALE3.SA: 72.80<br>
-            📊 Distância: 1.80%
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
 
     # Technical information
     st.markdown("### 🔧 Informações Técnicas")
