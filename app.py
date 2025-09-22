@@ -3405,38 +3405,24 @@ with tab6:
     </div>
     """, unsafe_allow_html=True)
 
-    # Modelos de Análise
-    st.markdown("### 🤖 Modelos de Análise Proprietários")
+    # Modelo de Análise
+    st.markdown("### 🤖 Modelo de Análise Proprietário")
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("#### 📊 Modelo OVELHA (Clássico)")
-        st.markdown("""
-        <div class="metric-card">
-            <p><strong>Análise Técnica Consolidada</strong></p>
-            <ul>
-                <li><strong>Metodologia Testada:</strong> Baseado em anos de pesquisa quantitativa</li>
-                <li><strong>Sinais Confiáveis:</strong> Algoritmo proprietário de detecção de padrões</li>
-                <li><strong>Estabilidade:</strong> Performance consistente em diferentes mercados</li>
-                <li><strong>Aplicação:</strong> Ideal para traders que buscam sinais claros e diretos</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("#### 🧠 Modelo OVELHA V2 (Machine Learning)")
-        st.markdown("""
-        <div class="metric-card">
-            <p><strong>Inteligência Artificial de Nova Geração</strong></p>
-            <ul>
-                <li><strong>Aprendizado Contínuo:</strong> Modelo se adapta às condições de mercado</li>
-                <li><strong>Análise Multidimensional:</strong> Processa múltiplas variáveis simultaneamente</li>
-                <li><strong>Precisão Aprimorada:</strong> Tecnologia avançada para maior assertividade</li>
-                <li><strong>Filtragem Inteligente:</strong> Reduz falsos sinais automaticamente</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown("#### 🧠 Modelo OVELHA V2 (Machine Learning)")
+    st.markdown("""
+    <div class="metric-card">
+        <p><strong>Inteligência Artificial de Nova Geração</strong></p>
+        <ul>
+            <li><strong>Aprendizado Contínuo:</strong> Modelo se adapta às condições de mercado</li>
+            <li><strong>Análise Multidimensional:</strong> Processa múltiplas variáveis simultaneamente</li>
+            <li><strong>Precisão Aprimorada:</strong> Tecnologia avançada para maior assertividade</li>
+            <li><strong>Filtragem Inteligente:</strong> Reduz falsos sinais automaticamente</li>
+            <li><strong>Buffer Adaptativo:</strong> Sistema dinâmico que se ajusta à volatilidade</li>
+            <li><strong>Random Forest:</strong> Algoritmo de Machine Learning para máxima precisão</li>
+            <li><strong>Threshold Dinâmico:</strong> Limites adaptativos baseados na volatilidade atual</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Como funciona (versão simplificada)
     st.markdown("### ⚙️ Como Nossos Modelos Funcionam")
