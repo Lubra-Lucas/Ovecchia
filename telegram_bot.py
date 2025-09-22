@@ -1571,190 +1571,72 @@ def analise_command(message):
         trading_bot.processing_users.discard(user_id)
         user_lock.release()
 
-@bot.message_handler(commands=['quick'])
-def quick_command(message):
-    """
-    Analisa um ativo rapidamente com base nos parâmetros fornecidos.
-    Formato: /quick [ativo] [timeframe] [estrategia] [fonte]
-    Exemplos:
-    /quick BTC-USD 4h balanceada yahoo
-    /quick PETR4.SA 1d agressiva yahoo
-    /quick BTCUSDT 1h balanceada 12data
-    """
-    user_id = message.from_user.id
-    user_name = message.from_user.first_name or "Usuário"
 
-    # Obter lock do usuário
-    user_lock = trading_bot.get_user_lock(user_id)
-
-    if not user_lock.acquire(blocking=False):
-        safe_bot_reply(message, "⏳ Você já tem uma operação em andamento. Aguarde terminar.")
-        return
-
-    try:
-        logger.info(f"Comando /quick recebido de {user_name} (ID: {user_id})")
-
-        # Verificar se usuário já está processando
-        if user_id in trading_bot.processing_users:
-            safe_bot_reply(message, "⏳ Processando comando anterior. Aguarde.")
-            return
-
-        # Marcar usuário como processando
-        trading_bot.processing_users.add(user_id)
-
-        # Parse arguments
-        args = message.text.split()[1:]
-
-        if len(args) < 3: # Ativo, timeframe e estratégia são obrigatórios
-            help_message = """
-                            ⚡ *ANÁLISE RÁPIDA DE ATIVO*
-
-                            📝 *Como usar:*
-                            `/quick [ativo] [timeframe] [estrategia] [fonte]`
-
-                            🎯 *Estratégias:*
-                            • agressiva
-                            • balanceada (padrão)
-                            • conservadora
-
-                            ⏰ *Timeframes:*
-                            • 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
-
-                            🔗 *Fontes:*
-                            • yahoo (padrão)
-                            • 12data
-
-                            📈 *Exemplos:*
-                            `/quick BTC-USD 4h balanceada yahoo`
-                            `/quick PETR4.SA 1d agressiva yahoo`
-                            `/quick BTCUSDT 1h balanceada 12data`
-                            `/quick AAPL 1d conservadora` (fonte yahoo é padrão)
-                            """
-            safe_bot_reply(message, help_message)
-            return
-
-        symbol = args[0].upper()
-        timeframe = args[1].lower()
-        strategy_input = args[2].lower()
-        source_input = args[3].lower() if len(args) > 3 else "yahoo"
-
-        # Validar fonte
-        if source_input not in ['yahoo', '12data']:
-            safe_bot_reply(message, "❌ Fonte inválida. Use: yahoo ou 12data")
-            return
-
-        # Mapear estratégias
-        strategy_map = {
-            'agressiva': 'Agressivo',
-            'balanceada': 'Balanceado',
-            'conservadora': 'Conservador'
-        }
-
-        if strategy_input not in strategy_map:
-            safe_bot_reply(message, "❌ Estratégia inválida. Use: agressiva, balanceada ou conservadora")
-            return
-        strategy = strategy_map[strategy_input]
-
-        # Validar timeframes
-        valid_timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1wk']
-        if timeframe not in valid_timeframes:
-            safe_bot_reply(message, f"❌ Timeframe inválido. Use: {', '.join(valid_timeframes)}")
-            return
-
-        # Define um período padrão para a análise rápida (ex: últimos 30 dias)
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=30)
-
-        model_display = "OVELHA V2"
-
-        safe_bot_reply(message, f"🔄 Analisando rapidamente {symbol} ({source_input}) - {timeframe} - {strategy_input}...")
-
-        # Gerar o gráfico de análise
-        chart_result = trading_bot.generate_analysis_chart(
-            symbol,
-            strategy,
-            timeframe,
-            start_date=start_date.strftime("%Y-%m-%d"),
-            end_date=end_date.strftime("%Y-%m-%d"),
-            data_source=source_input
-        )
-
-        if chart_result['success']:
-            # Enviar o gráfico e a legenda
-            with open(chart_result['chart_path'], 'rb') as chart_file:
-                bot.send_photo(
-                    message.chat.id,
-                    chart_file,
-                    caption=chart_result['caption'],
-                    parse_mode='HTML'
-                )
-
-            # Limpar arquivo temporário
-            os.remove(chart_result['chart_path'])
-            logger.info(f"Análise rápida enviada para {user_name}: {symbol}")
-        else:
-            safe_bot_reply(message, f"❌ Erro na análise rápida: {chart_result['error']}")
-
-    except telebot.apihelper.ApiException as e:
-        logger.error(f"Erro da API Telegram no /quick: {str(e)}")
-        safe_bot_reply(message, "❌ Erro temporário da API. Aguarde e tente novamente.")
-    except Exception as e:
-        logger.error(f"Erro no comando /quick: {str(e)}")
-        safe_bot_reply(message, "❌ Erro ao processar análise rápida. Tente novamente.")
-    finally:
-        # Sempre limpar estados do usuário
-        trading_bot.processing_users.discard(user_id)
-        user_lock.release()
 
 
 @bot.message_handler(commands=['screening_auto'])
 def screening_auto_command(message):
     try:
-        user_name = message.from_user.first_name
+        user_name = message.from_user.first_name or "Usuário"
         user_id = message.from_user.id
         logger.info(f"Comando /screening_auto recebido de {user_name}")
 
         # Parse arguments
         args = message.text.split()[1:]
 
-        if len(args) < 5: # fonte, símbolos, modelo, estratégia, timeframe são obrigatórios
-            help_message = """
-                            🔄 *SCREENING AUTOMÁTICO*
+        if len(args) < 4: # fonte, símbolos, estratégia, timeframe são obrigatórios (removido modelo)
+            help_message = """🔄 **SCREENING AUTOMÁTICO**
 
-                            📝 *Como usar:*
-                            /screening_auto [fonte] [símbolos] [modelo] [estrategia] [timeframe]
+📝 **Como usar:**
+`/screening_auto [fonte] [símbolos] [estrategia] [timeframe]`
 
-                            🔗 *Fontes disponíveis:*
-                            • 12data - 12Data API (recomendado)
-                            • yahoo - Yahoo Finance
+🔗 **Fontes disponíveis:**
+• `12data` - 12Data API (recomendado para criptos)
+• `yahoo` - Yahoo Finance (ações e índices)
 
-                            📊 *Símbolos:* Lista separada por vírgulas entre colchetes
-                            • Para 12Data: [BTC/USD,ETH/USD,LTC/USD]
-                            • Para Yahoo: [BTC-USD,ETH-USD,PETR4.SA]
+📊 **Símbolos:** Lista entre colchetes separada por vírgulas
+• Para 12Data: `[BTC/USD,ETH/USD,LTC/USD]`
+• Para Yahoo: `[BTC-USD,ETH-USD,PETR4.SA]`
 
-                            🤖 *Modelo:*
-                            • OVELHA V2 - Machine Learning com análise adaptativa
+🎯 **Estratégias:**
+• `agressiva` - Mais sinais, maior frequência
+• `balanceada` - Equilibrada (recomendado)
+• `conservadora` - Sinais mais confiáveis
 
-                            🎯 *Estratégias:*
-                            • agressiva - Mais sinais
-                            • balanceada - Equilibrada
-                            • conservadora - Mais confiáveis
+⏰ **Timeframes:**
+• `1m` - 1 minuto (apenas 12Data)
+• `5m` - 5 minutos 
+• `15m` - 15 minutos
+• `1h` - 1 hora
+• `4h` - 4 horas
+• `1d` - 1 dia
 
-                            ⏰ *Timeframes disponíveis:*
-                            • 1m - 1 minuto (apenas 12Data)
-                            • 5m - 5 minutos (apenas 12Data)
-                            • 15m - 15 minutos
-                            • 1h - 1 hora
-                            • 4h - 4 horas
-                            • 1d - 1 dia (diário)
+📈 **Exemplos práticos:**
 
-                            📈 *Exemplos:*
-                            `/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] balanceada 1m`
-                            `/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] balanceada 4h`
-                            `/screening_auto yahoo [BTC-USD,ETH-USD,PETR4.SA] balanceada 1d`
+**Criptomoedas (12Data):**
+`/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] balanceada 1h`
 
-                            💡 *Nota:* Os símbolos são convertidos automaticamente para o formato da API (BTC/USD → btc-usd)
-                                        """
+**Ações brasileiras (Yahoo):**
+`/screening_auto yahoo [PETR4.SA,VALE3.SA,ITUB4.SA] conservadora 1d`
+
+**Ações americanas (Yahoo):**
+`/screening_auto yahoo [AAPL,MSFT,GOOGL] agressiva 4h`
+
+**Mix de ativos (Yahoo):**
+`/screening_auto yahoo [BTC-USD,AAPL,EURUSD=X] balanceada 1h`
+
+🔔 **O que acontece:**
+1. Analisa todos os símbolos na primeira execução
+2. Monitora mudanças de estado automaticamente
+3. Envia alertas quando detecta Buy/Sell/Stay Out
+4. Funciona no intervalo escolhido
+
+💡 **Dicas importantes:**
+• Use no máximo 10 símbolos por alerta
+• 12Data é melhor para timeframes pequenos (1m, 5m)
+• Yahoo é mais estável para timeframes maiores
+• O modelo OVELHA V2 é usado automaticamente"""
+
             safe_bot_reply(message, help_message, 'Markdown')
             return
 
@@ -1768,19 +1650,33 @@ def screening_auto_command(message):
             model_type = "ovelha2"
 
             # Validar fonte
-            if source not in ['12data', 'yahoo']:
-                safe_bot_reply(message, "❌ Fonte inválida. Use: 12data ou yahoo")
+            if source not in ['12data', 'yahoo', 'twelvedata']:
+                safe_bot_reply(message, "❌ Fonte inválida. Use: `12data` ou `yahoo`", 'Markdown')
                 return
 
-            # Extrair símbolos da lista
+            # Normalizar fonte
+            if source == 'twelvedata':
+                source = '12data'
+
+            # Extrair símbolos da lista com tratamento robusto
             if not symbols_str.startswith('[') or not symbols_str.endswith(']'):
-                safe_bot_reply(message, "❌ Formato de símbolos inválido. Use: [SYMBOL1,SYMBOL2,...]")
+                safe_bot_reply(message, "❌ Formato de símbolos inválido. Use: `[SYMBOL1,SYMBOL2,...]`", 'Markdown')
                 return
 
-            symbols_list = [s.strip() for s in symbols_str[1:-1].split(',')]
+            symbols_raw = symbols_str[1:-1].split(',')
+            symbols_list = []
+            
+            for symbol in symbols_raw:
+                clean_symbol = symbol.strip()
+                if clean_symbol and len(clean_symbol) > 0:
+                    symbols_list.append(clean_symbol)
 
-            if len(symbols_list) == 0 or len(symbols_list) > 10:
-                safe_bot_reply(message, "❌ Lista deve conter entre 1 e 10 símbolos")
+            if len(symbols_list) == 0:
+                safe_bot_reply(message, "❌ Lista de símbolos vazia. Adicione pelo menos 1 símbolo.")
+                return
+                
+            if len(symbols_list) > 10:
+                safe_bot_reply(message, "❌ Lista muito grande. Máximo de 10 símbolos por alerta.")
                 return
 
             # Validar estratégia
@@ -1791,7 +1687,7 @@ def screening_auto_command(message):
             }
 
             if strategy not in strategy_map:
-                safe_bot_reply(message, "❌ Estratégia inválida. Use: agressiva, balanceada ou conservadora")
+                safe_bot_reply(message, "❌ Estratégia inválida. Use: `agressiva`, `balanceada` ou `conservadora`", 'Markdown')
                 return
 
             strategy_formatted = strategy_map[strategy]
@@ -1800,11 +1696,14 @@ def screening_auto_command(message):
             if source == '12data':
                 valid_timeframes = ['1m', '5m', '15m', '1h', '4h', '1d']
             else: # Yahoo
-                valid_timeframes = ['5m','15m', '1h', '4h', '1d'] # Yahoo suporta 5m, mas não 1m
+                valid_timeframes = ['5m','15m', '1h', '4h', '1d']
 
             if timeframe not in valid_timeframes:
-                safe_bot_reply(message, f"❌ Timeframe inválido para {source}. Use: {', '.join(valid_timeframes)}")
+                safe_bot_reply(message, f"❌ Timeframe inválido para {source}. Use: `{', '.join(valid_timeframes)}`", 'Markdown')
                 return
+
+            # Enviar mensagem de processamento
+            safe_bot_reply(message, f"🔄 Configurando alerta automático...\n📊 {len(symbols_list)} símbolos via {source.upper()}\n⏰ Intervalo: {timeframe}")
 
             # Configurar alerta automático
             trading_bot.active_alerts[user_id] = {
@@ -1816,84 +1715,103 @@ def screening_auto_command(message):
                 'chat_id': message.chat.id
             }
 
-            # Fazer primeira verificação
-            safe_bot_reply(message, f"🔄 Configurando alerta automático...\n📊 {len(symbols_list)} símbolos via {source.upper()}\n⏰ Intervalo: {timeframe}")
-
-            current_states, changes = trading_bot.perform_automated_screening(
-                user_id, symbols_list, source, model_type, strategy_formatted, timeframe
-            )
+            # Fazer primeira verificação com tratamento de erro robusto
+            try:
+                current_states, changes = trading_bot.perform_automated_screening(
+                    user_id, symbols_list, source, model_type, strategy_formatted, timeframe
+                )
+            except Exception as screening_error:
+                logger.error(f"Erro na primeira verificação do screening_auto para usuário {user_id}: {str(screening_error)}")
+                # Limpar configuração em caso de erro
+                if user_id in trading_bot.active_alerts:
+                    del trading_bot.active_alerts[user_id]
+                
+                safe_bot_reply(message, f"❌ **Erro na configuração inicial**\n\n🔍 Problema: {str(screening_error)}\n\n💡 **Soluções:**\n• Verifique se os símbolos estão no formato correto\n• Tente com menos símbolos\n• Use uma fonte diferente\n• Tente um timeframe maior", 'Markdown')
+                return
 
             # Verificar se conseguiu analisar pelo menos um símbolo
-            if not current_states:
+            if not current_states or len(current_states) == 0:
+                # Limpar configuração se nenhum símbolo foi analisado
+                if user_id in trading_bot.active_alerts:
+                    del trading_bot.active_alerts[user_id]
+
                 format_examples = {
-                    '12data': 'BTC/USD, ETH/USD, AAPL',
-                    'yahoo': 'BTC-USD, ETH-USD, PETR4.SA, AAPL',
+                    '12data': 'BTC/USD,ETH/USD,AAPL',
+                    'yahoo': 'BTC-USD,ETH-USD,PETR4.SA,AAPL'
                 }
 
                 error_message = f"""❌ **ERRO AO CONFIGURAR ALERTA**
 
-                🔍 **Problema:** Nenhum dos símbolos pôde ser analisado via {source.upper()}.
+🔍 **Problema:** Nenhum símbolo pôde ser analisado via {source.upper()}
 
-                🔧 **Possíveis causas:**
-                • Símbolos inválidos para a fonte {source.upper()}
-                • Problemas de conectividade com a API
-                • Timeframe {timeframe} não suportado para alguns símbolos
+🔧 **Possíveis causas:**
+• Símbolos inválidos para {source.upper()}
+• Problemas temporários da API
+• Timeframe {timeframe} não disponível
 
-                💡 **Formato correto para {source.upper()}:**
-                {format_examples.get(source, 'Verifique a documentação')}
+💡 **Formato correto para {source.upper()}:**
+`[{format_examples.get(source, 'SYMBOL1,SYMBOL2')}]`
 
-                📝 **Exemplo correto:**
-                `/screening_auto {source} [{format_examples.get(source, 'SYMBOL1,SYMBOL2').replace(', ', ',')}] {model_type} {strategy} {timeframe}`
+📝 **Exemplo que funciona:**
+`/screening_auto {source} [{format_examples.get(source, 'SYMBOL1,SYMBOL2')}] {strategy} {timeframe}`
 
-                🔄 **Tente novamente** com símbolos válidos para a fonte escolhida."""
+🔄 **Tente novamente** com símbolos válidos"""
+
                 safe_bot_reply(message, error_message, 'Markdown')
                 return
 
             # Programar alertas baseado no timeframe
-            schedule_alerts_for_user(user_id, timeframe)
+            try:
+                schedule_alerts_for_user(user_id, timeframe)
+            except Exception as schedule_error:
+                logger.error(f"Erro ao programar alertas para usuário {user_id}: {str(schedule_error)}")
 
             # Contar símbolos com sucesso e erro
             success_count = len(current_states)
             error_count = len(symbols_list) - success_count
 
-            # Enviar confirmação
-            confirmation_message = f"""✅ *ALERTA AUTOMÁTICO CONFIGURADO*
+            # Enviar confirmação detalhada
+            confirmation_message = f"""✅ **ALERTA AUTOMÁTICO CONFIGURADO**
 
-                📊 **Configuração:**
-                🔗 Fonte: {source.upper()}
-                🎯 Estratégia: {strategy}
-                🤖 Modelo: {model_type.upper()}
-                ⏰ Intervalo: {timeframe}
+📊 **Configuração:**
+🔗 Fonte: {source.upper()}
+🎯 Estratégia: {strategy_formatted}
+🤖 Modelo: OVELHA V2
+⏰ Intervalo: {timeframe}
 
-                📈 **Resultado:** {success_count}/{len(symbols_list)} símbolos válidos
+📈 **Resultado:** {success_count}/{len(symbols_list)} símbolos válidos
 
-                📊 **Símbolos monitorados:**
-                """
+📊 **Símbolos monitorados:**"""
+
             for symbol in symbols_list:
                 if symbol in current_states:
                     state = current_states[symbol]['state']
                     price = current_states[symbol]['price']
                     state_icon = "🔵" if state == "Buy" else "🔴" if state == "Sell" else "⚫"
-                    confirmation_message += f"• {symbol}: {state_icon} {state} ({price:.4f})\n"
+                    confirmation_message += f"\n• {symbol}: {state_icon} {state} ({price:.4f})"
                 else:
-                    confirmation_message += f"• {symbol}: ❌ Erro nos dados\n"
+                    confirmation_message += f"\n• {symbol}: ❌ Erro nos dados"
 
             if error_count > 0:
-                confirmation_message += f"\n⚠️ **{error_count} símbolos com erro** - verifique os nomes"
+                confirmation_message += f"\n\n⚠️ **{error_count} símbolos com erro** - verifique os nomes"
 
-            confirmation_message += f"\n🔔 Próximo alerta em: {timeframe}"
-            confirmation_message += f"\n\n💡 **Dica:** Os símbolos são convertidos automaticamente para o formato da API (BTC/USD → btc-usd)"
+            confirmation_message += f"\n\n🔔 Próximo alerta em: {timeframe}"
+            confirmation_message += f"\n\n💡 Use `/list_alerts` para ver status e `/stop_alerts` para parar"
 
             safe_bot_reply(message, confirmation_message, 'Markdown')
-            logger.info(f"Alerta automático configurado para {user_name}: {len(symbols_list)} símbolos via {source}, {timeframe}")
+            logger.info(f"Alerta automático configurado para {user_name}: {success_count}/{len(symbols_list)} símbolos via {source}, {timeframe}")
 
+        except ValueError as ve:
+            logger.error(f"Erro de valor no screening_auto para usuário {user_id}: {str(ve)}")
+            safe_bot_reply(message, f"❌ **Erro nos parâmetros:** {str(ve)}\n\nUse `/screening_auto` sem parâmetros para ver a ajuda completa.", 'Markdown')
+        
         except Exception as e:
-            logger.error(f"Erro ao processar argumentos: {str(e)}")
-            safe_bot_reply(message, "❌ Erro ao processar comando. Verifique a sintaxe.")
+            logger.error(f"Erro ao processar argumentos do screening_auto para usuário {user_id}: {str(e)}")
+            safe_bot_reply(message, f"❌ **Erro ao processar comando**\n\n🔍 Detalhes: {str(e)}\n\n💡 Use `/screening_auto` sem parâmetros para ver exemplos de uso.", 'Markdown')
 
     except Exception as e:
-        logger.error(f"Erro no comando /screening_auto: {str(e)}")
-        safe_bot_reply(message, "❌ Erro interno. Tente novamente.")
+        logger.error(f"Erro geral no comando /screening_auto para usuário {user_id}: {str(e)}")
+        safe_bot_reply(message, "❌ **Erro interno no sistema**\n\nTente novamente em alguns segundos ou use `/restart` para limpar estados.")
 
 @bot.message_handler(commands=['stop_alerts'])
 def stop_alerts_command(message):
@@ -2096,11 +2014,6 @@ def help_command(message):
 
                         📋 COMANDOS DISPONÍVEIS:
 
-                        ⚡ /quick [ativo] [timeframe] [estrategia] [fonte]
-                          📝 ANÁLISE RÁPIDA DE ATIVO
-                          • Gera um gráfico simplificado do ativo
-                          • Útil para uma visão rápida de tendências
-
                         📊 /analise [fonte] [estrategia] [ativo] [timeframe] [data_inicio] [data_fim]
                           📝 ANÁLISE INDIVIDUAL COM GRÁFICO COMPLETO
                           • Gera gráfico completo do ativo escolhido
@@ -2180,13 +2093,11 @@ def help_command(message):
                         • commodities - Commodities
 
                         ⏰ TIMEFRAMES POR COMANDO:
-                        • /quick: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
                         • /analise: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1wk
                         • /screening: 1d fixo
-                        • /screening_auto: 1m, 5m, 15m, 1h, 4h, 1d (12Data apenas)
+                        • /screening_auto: 1m, 5m, 15m, 1h, 4h, 1d (12Data)
 
                         💡 EXEMPLOS PRÁTICOS:
-                        • Análise rápida: /quick PETR4.SA 1d balanceada
                         • Análise completa: /analise yahoo balanceada PETR4.SA 1d
                         • Análise cripto ML: /analise 12data agressiva BTCUSDT 4h
                         • Screening geral: /screening balanceada açõesBR
@@ -2232,18 +2143,16 @@ def handle_message(message):
                 screening_command(message)
             elif command == 'help':
                 help_command(message)
-            elif command == 'quick':
-                quick_command(message)
             return
 
         # Mensagens de saudação
         user_message_lower = user_message.lower()
         if any(word in user_message_lower for word in ['oi', 'olá', 'hello', 'hi']):
-            safe_bot_reply(message, "👋 Olá! Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /quick - Análise rápida\n• /analise - Análise individual completa\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
+            safe_bot_reply(message, "👋 Olá! Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /analise - Análise individual completa\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
         elif any(word in user_message_lower for word in ['ajuda', 'help']):
             help_command(message)
         else:
-            safe_bot_reply(message, "🤖 Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /quick - Análise rápida\n• /analise - Análise individual completa\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
+            safe_bot_reply(message, "🤖 Use /help para ver os comandos disponíveis.\n\n📊 Comandos principais:\n• /analise - Análise individual completa\n• /screening - Screening múltiplos ativos\n• /screening_auto - Alertas automáticos\n• /list_alerts - Ver alertas ativos\n• /stop_alerts - Parar alertas")
 
     except telebot.apihelper.ApiException as e:
         logger.error(f"Erro da API Telegram no handler de mensagem: {str(e)}")
@@ -2455,7 +2364,6 @@ def run_bot():
             # Configurar comandos do bot
             try:
                 bot.set_my_commands([
-                    telebot.types.BotCommand("quick", "Análise rápida de ativo"),
                     telebot.types.BotCommand("analise", "Análise individual completa"),
                     telebot.types.BotCommand("screening", "Screening de múltiplos ativos"),
                     telebot.types.BotCommand("screening_auto", "Alertas automáticos de screening"),
