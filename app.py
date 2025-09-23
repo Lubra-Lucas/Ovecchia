@@ -1804,7 +1804,7 @@ with tab3:
                 "FLOKI-USD","NEXO-USD","ONT-USD","GLM-USD","STORJ-USD","ILV-USD","SKL-USD","BAL-USD","RLC-USD","TRAC-USD",
 
                 # Ações brasileiras - principais 100 do IBOVESPA (formato .SA no Yahoo Finance)
-                "ABEV3.SA","ALOS3.SA","AMER3.SA","ASAI3.SA","AZUL4.SA","B3SA3.SA","BBAS3.SA","BBDC3.SA","BBDC4.SA","BBSE3.SA",
+                "ABEV3.SA","GMAT3.SA","ALOS3.SA","AMER3.SA","ASAI3.SA","AZUL4.SA","B3SA3.SA","BBAS3.SA","BBDC3.SA","BBDC4.SA","BBSE3.SA",
                 "BEEF3.SA","BPAC11.SA","BRAP4.SA","BRFS3.SA","BRKM5.SA","BRML3.SA","CASH3.SA","CCRO3.SA","CIEL3.SA","CMIN3.SA",
                 "CMIG4.SA","COGN3.SA","CPFE3.SA","CPLE6.SA","CRFB3.SA","CSAN3.SA","CSNA3.SA","CVCB3.SA","CYRE3.SA","DXCO3.SA",
                 "ELET3.SA","ELET6.SA","EMBR3.SA","VAMO3.SA","ENGI11.SA","ENEV3.SA","EQTL3.SA","EZTC3.SA","GGBR4.SA","GOAU4.SA","GOLL4.SA",
