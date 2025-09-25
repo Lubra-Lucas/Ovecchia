@@ -48,10 +48,23 @@ def get_twelvedata_data(symbol, interval, outputsize=5000):
         df['datetime'] = pd.to_datetime(df['datetime'])
         df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
 
-        # Ajustar timezone: TwelveData vem em UTC, converter para São Paulo (UTC-3)
-        df['datetime'] = df['datetime'].dt.tz_localize('UTC').dt.tz_convert('America/Sao_Paulo')
-        # Remover informação de timezone para compatibilidade
-        df['datetime'] = df['datetime'].dt.tz_localize(None)
+        # Ajustar timezone: TwelveData vem em UTC, converter para São Paulo
+        try:
+            # Verificar se já tem timezone
+            if df['datetime'].dt.tz is None:
+                # Se não tem timezone, assumir UTC
+                df['datetime'] = df['datetime'].dt.tz_localize('UTC')
+
+            # Converter para horário de São Paulo (UTC-3)
+            df['datetime'] = df['datetime'].dt.tz_convert('America/Sao_Paulo')
+            # Remover informação de timezone para compatibilidade
+            df['datetime'] = df['datetime'].dt.tz_localize(None)
+
+            logger.info(f"Timezone ajustado para São Paulo para {symbol}")
+        except Exception as tz_error:
+            logger.warning(f"Erro ao ajustar timezone para {symbol}: {str(tz_error)}")
+            # Em caso de erro, manter dados originais
+            pass
 
         # Ordena do mais antigo para o mais recente
         df = df.sort_values(by='datetime').reset_index(drop=True)
@@ -1115,7 +1128,7 @@ with tab1:
         st.markdown("""
         <div class="metric-card">
             <p><strong>🤖 Potencialize seus investimentos com Machine Learning</strong><br>
-            Descubra oportunidades únicas no mercado com o modelo proprietário <strong>OVELHA V2</strong>, que utiliza Inteligência Artificial de última geração para identificar, em tempo real, os sinais mais importantes: <strong>Compra (Buy)</strong>, <strong>Venda (Sell)</strong> e <strong>Ficar de Fora (Stay Out)</strong>.</p>
+            Descubra oportunidades únicas no mercado com o modelo proprietário <strong>OVELHA V2</strong>, que utiliza Inteligência Artificial de última geração para identificar, em tempo real, os melhores pontos de entrada e saída do mercado.</p>
             <ul>
                 <li>🔥 <strong>Dados em Tempo Real:</strong> Criptomoedas, Forex, Metais, Ações e Índices, com histórico de até 5.000 candles</li>
                 <li>⚡ <strong>Múltiplos Timeframes:</strong> 1m, 5m, 15m, 30m, 1h, 4h, 1d — flexibilidade total para qualquer estratégia</li>
@@ -1131,7 +1144,7 @@ with tab1:
         st.markdown("""
         <div class="metric-card">
             <p><strong>Monitore Múltiplos Ativos Simultaneamente</strong><br>
-            Identifique rapidamente mudanças de estado em uma lista de ativos para detectar oportunidades de trading.</p>
+            Identifique rapidamente mudanças de estado nos sinais de trading para detectar oportunidades em diferentes mercados ao mesmo tempo.</p>
             <ul>
                 <li><strong>Yahoo Finance:</strong> Timeframe fixo diário com 2 anos de dados</li>
                 <li><strong>TwelveData:</strong> Timeframes flexíveis (1m a 1d) com 2000 registros</li>
@@ -1733,7 +1746,6 @@ with tab2:
         st.info("**💡 Dicas para Evitar Problemas**")
         st.write("• Use timeframe 1d para análises históricas longas")
         st.write("• Verifique se o ticker está correto antes de analisar")
-        st.write("• Para timeframes menores, use períodos recentes (última semana)")
         st.write("• Se encontrar erros, tente ticker alternativo ou período menor")
 
 with tab3:
