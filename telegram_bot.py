@@ -401,7 +401,8 @@ class OvecchiaTradingBot:
             df['datetime'] = pd.to_datetime(df['datetime'])
             df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
 
-            # TwelveData já fornece dados no timezone local correto, não precisa converter
+            # Ajustar timezone: Subtrair 13 horas dos dados do TwelveData
+            df['datetime'] = df['datetime'] - timedelta(hours=13)
 
             # Adicionar coluna volume se não existir
             if 'volume' not in df.columns:

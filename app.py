@@ -48,7 +48,8 @@ def get_twelvedata_data(symbol, interval, outputsize=5000):
         df['datetime'] = pd.to_datetime(df['datetime'])
         df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
 
-        # TwelveData já fornece dados no timezone local correto, não precisa converter
+        # Ajustar timezone: Subtrair 13 horas dos dados do TwelveData
+        df['datetime'] = df['datetime'] - timedelta(hours=13)
 
         # Ordena do mais antigo para o mais recente
         df = df.sort_values(by='datetime').reset_index(drop=True)
