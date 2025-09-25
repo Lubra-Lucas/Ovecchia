@@ -401,23 +401,10 @@ class OvecchiaTradingBot:
             df['datetime'] = pd.to_datetime(df['datetime'])
             df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
 
-            # Ajustar timezone: TwelveData vem em UTC, converter para São Paulo
-            try:
-                # Verificar se já tem timezone
-                if df['datetime'].dt.tz is None:
-                    # Se não tem timezone, assumir UTC
-                    df['datetime'] = df['datetime'].dt.tz_localize('UTC')
-                
-                # Converter para horário de São Paulo (UTC-3)
-                df['datetime'] = df['datetime'].dt.tz_convert('America/Sao_Paulo')
-                # Remover informação de timezone para compatibilidade
-                df['datetime'] = df['datetime'].dt.tz_localize(None)
-                
-                logger.info(f"Timezone ajustado para São Paulo para {symbol}")
-            except Exception as tz_error:
-                logger.warning(f"Erro ao ajustar timezone para {symbol}: {str(tz_error)}")
-                # Em caso de erro, manter dados originais
-                pass
+            # Ajustar timezone: TwelveData vem em UTC, converter para São Paulo (UTC-3)
+            df['datetime'] = df['datetime'].dt.tz_localize('UTC').dt.tz_convert('America/Sao_Paulo')
+            # Remover informação de timezone para compatibilidade
+            df['datetime'] = df['datetime'].dt.tz_localize(None)
 
             # Adicionar coluna volume se não existir
             if 'volume' not in df.columns:
@@ -978,19 +965,6 @@ class OvecchiaTradingBot:
                 df = self.get_ccxt_data(symbol, timeframe, 1000)
             elif data_source == "twelvedata":
                 df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), timeframe, 2000)
-                
-                # Aplicar correção adicional de timezone para TwelveData se necessário
-                if not df.empty and 'time' in df.columns:
-                    try:
-                        df['time'] = pd.to_datetime(df['time'])
-                        if df['time'].dt.tz is None:
-                            df['time'] = df['time'].dt.tz_localize('UTC')
-                        df['time'] = df['time'].dt.tz_convert('America/Sao_Paulo')
-                        df['time'] = df['time'].dt.tz_localize(None)
-                        logger.info(f"Timezone do gráfico ajustado para São Paulo para {symbol}")
-                    except Exception as tz_error:
-                        logger.warning(f"Erro ao ajustar timezone do gráfico para {symbol}: {str(tz_error)}")
-                        
             else: # Yahoo
                 yf_interval_map = {
                     '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m',
