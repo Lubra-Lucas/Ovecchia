@@ -349,32 +349,16 @@ class OvecchiaTradingBot:
             return pd.DataFrame()
 
     def get_twelve_data_data(self, symbol, start_date, end_date, interval="1d", limit=2000):
-        """Função para coletar dados usando TwelveData API com melhor tratamento de erros"""
+        """Função para coletar dados usando TwelveData API"""
         try:
             logger.info(f"Coletando dados para {symbol} via 12Data com intervalo {interval}")
 
             # Sua chave da Twelve Data
             API_KEY = "8745d2a910c841e4913afc40a6368dcb"
 
-            # Normalizar símbolo para 12Data (alguns símbolos precisam de formatação específica)
-            processed_symbol = symbol.strip().upper()
-            
-            # Mapear símbolos problemáticos
-            symbol_mapping = {
-                'XRP/USD': 'XRPUSD',
-                'ADA/USD': 'ADAUSD', 
-                'BTC/USD': 'BTCUSD',
-                'ETH/USD': 'ETHUSD',
-                'LTC/USD': 'LTCUSD',
-                'DOT/USD': 'DOTUSD',
-                'LINK/USD': 'LINKUSD',
-                'UNI/USD': 'UNIUSD'
-            }
-            
-            # Usar mapeamento se disponível, senão usar símbolo original
-            if processed_symbol in symbol_mapping:
-                processed_symbol = symbol_mapping[processed_symbol]
-                logger.info(f"Símbolo mapeado: {symbol} -> {processed_symbol}")
+            # Usar o símbolo exatamente como o usuário digitou
+            # TwelveData espera o formato "BTC/USD", "ETH/USD", etc.
+            processed_symbol = symbol
 
             # Mapear timeframes do Telegram para 12Data
             twelve_interval_map = {
@@ -397,70 +381,25 @@ class OvecchiaTradingBot:
 
             logger.info(f"Fazendo requisição para 12Data: {url}")
 
-            # Faz a requisição com timeout mais longo
-            try:
-                response = requests.get(url, timeout=45)
-                response.raise_for_status()  # Lança exceção para códigos de erro HTTP
-                data = response.json()
-            except requests.exceptions.Timeout:
-                logger.error(f"Timeout na requisição para {symbol}")
-                return pd.DataFrame()
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Erro na requisição HTTP para {symbol}: {str(e)}")
-                return pd.DataFrame()
-            except ValueError as e:
-                logger.error(f"Erro ao decodificar JSON para {symbol}: {str(e)}")
-                return pd.DataFrame()
+            # Faz a requisição
+            response = requests.get(url, timeout=30).json()
 
-            # Verificar resposta da API
-            if not isinstance(data, dict):
-                logger.error(f"Resposta inválida da API para {symbol}: {type(data)}")
-                return pd.DataFrame()
-
-            # Verificar se houve erro específico da API
-            if "status" in data and data["status"] == "error":
-                error_msg = data.get('message', 'Erro desconhecido da API')
-                logger.error(f"Erro na API TwelveData para {symbol}: {error_msg}")
-                return pd.DataFrame()
-
-            if "values" not in data:
-                error_msg = data.get('message', f'Campo "values" não encontrado na resposta')
-                logger.error(f"Erro na estrutura da resposta TwelveData para {symbol}: {error_msg}")
+            # Verifica se houve erro
+            if "values" not in response:
+                error_msg = response.get('message', 'Erro desconhecido')
+                logger.error(f"Erro na API TwelveData: {error_msg}")
                 return pd.DataFrame()
 
             # Cria o DataFrame
-            df = pd.DataFrame(data['values'])
+            df = pd.DataFrame(response['values'])
 
             if df.empty:
                 logger.warning(f"Nenhum dado retornado pela TwelveData para {symbol}")
                 return pd.DataFrame()
 
-            # Verificar se as colunas necessárias existem
-            required_cols = ['datetime', 'open', 'high', 'low', 'close']
-            missing_cols = [col for col in required_cols if col not in df.columns]
-            if missing_cols:
-                logger.error(f"Colunas faltando para {symbol}: {missing_cols}")
-                return pd.DataFrame()
-
-            # Converte colunas com tratamento de erro
-            try:
-                df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
-                df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].apply(pd.to_numeric, errors='coerce')
-            except Exception as e:
-                logger.error(f"Erro na conversão de tipos para {symbol}: {str(e)}")
-                return pd.DataFrame()
-
-            # Verificar se há dados válidos após conversão
-            if df['datetime'].isna().all() or df['close'].isna().all():
-                logger.error(f"Dados inválidos após conversão para {symbol}")
-                return pd.DataFrame()
-
-            # Remover linhas com dados inválidos
-            df = df.dropna(subset=['datetime', 'close'])
-            
-            if df.empty:
-                logger.warning(f"Nenhum dado válido após limpeza para {symbol}")
-                return pd.DataFrame()
+            # Converte colunas
+            df['datetime'] = pd.to_datetime(df['datetime'])
+            df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
 
             # Ajustar timezone: Subtrair 13 horas dos dados do TwelveData
             df['datetime'] = df['datetime'] - timedelta(hours=13)
@@ -477,16 +416,16 @@ class OvecchiaTradingBot:
             # Padronizar nomes das colunas
             df.rename(columns={'datetime': 'time'}, inplace=True)
 
-            # Verificação final de qualidade dos dados
-            if len(df) < 50:  # Mínimo para análise
-                logger.warning(f"Dados insuficientes para {symbol}: {len(df)} registros")
+            # Verificar se há dados válidos
+            if df['close'].isna().all():
+                logger.error(f"Todos os preços de fechamento são NaN para {symbol}")
                 return pd.DataFrame()
 
             logger.info(f"Dados 12Data coletados com sucesso para {symbol}: {len(df)} registros de {df['time'].iloc[0].strftime('%Y-%m-%d %H:%M')} até {df['time'].iloc[-1].strftime('%Y-%m-%d %H:%M')}")
             return df
 
         except Exception as e:
-            logger.error(f"Erro crítico ao buscar dados via TwelveData para {symbol}: {str(e)}")
+            logger.error(f"Erro ao buscar dados via TwelveData para {symbol}: {str(e)}")
             return pd.DataFrame()
 
     def get_market_data(self, symbol, start_date, end_date, interval="1d", data_source="yahoo"):
@@ -853,13 +792,12 @@ class OvecchiaTradingBot:
         return results
 
     def perform_automated_screening(self, user_id, symbols_list, source, model_type, strategy_type, timeframe):
-        """Realiza screening automático e detecta mudanças de estado - VERSÃO ROBUSTA COM RETRY"""
+        """Realiza screening automático e detecta mudanças de estado - VERSÃO ROBUSTA"""
         try:
             current_states = {}
             changes_detected = []
             successful_analyses = 0
             failed_symbols = []
-            retry_symbols = []
 
             # Validar lista de símbolos
             if not symbols_list or len(symbols_list) == 0:
@@ -873,19 +811,16 @@ class OvecchiaTradingBot:
                     # Validar símbolo antes de processar
                     if not symbol or len(symbol.strip()) == 0:
                         logger.warning(f"Símbolo vazio na posição {i}: '{symbol}'")
-                        failed_symbols.append(f"{symbol} (vazio)")
+                        failed_symbols.append(symbol)
                         continue
 
-                    original_symbol = symbol
                     symbol = symbol.strip().upper()
                     logger.info(f"Analisando {symbol} ({i+1}/{len(symbols_list)}) para usuário {user_id}")
 
-                    # Tentar coletar dados com timeout e retry
+                    # Tentar coletar dados com timeout
                     df = pd.DataFrame()
                     data_collection_success = False
-                    error_details = None
 
-                    # Primeira tentativa
                     try:
                         if source == "12data" or source == "twelvedata":
                             end_date = datetime.now().date()
@@ -900,33 +835,13 @@ class OvecchiaTradingBot:
                         if not df.empty and len(df) >= 50:
                             data_collection_success = True
                         else:
-                            error_details = f"Dados insuficientes: {len(df)} registros"
                             logger.warning(f"Dados insuficientes para {symbol}: {len(df)} registros")
                             
                     except Exception as data_error:
-                        error_details = f"Erro coleta: {str(data_error)[:100]}"
                         logger.error(f"Erro na coleta de dados para {symbol}: {str(data_error)}")
 
-                    # Se primeira tentativa falhou, tentar com formato alternativo
-                    if not data_collection_success and source in ["12data", "twelvedata"]:
-                        try:
-                            # Tentar formato alternativo para símbolos de cripto
-                            alt_symbol = symbol.replace("/", "")  # XRP/USD -> XRPUSD
-                            if alt_symbol != symbol:
-                                logger.info(f"Tentando formato alternativo para {symbol}: {alt_symbol}")
-                                end_date = datetime.now().date()
-                                start_date = end_date - timedelta(days=365)
-                                df = self.get_twelve_data_data(alt_symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), timeframe, 2000)
-                                
-                                if not df.empty and len(df) >= 50:
-                                    data_collection_success = True
-                                    symbol = alt_symbol  # Usar formato que funcionou
-                                    logger.info(f"Sucesso com formato alternativo: {symbol}")
-                        except Exception as alt_error:
-                            logger.error(f"Erro com formato alternativo para {symbol}: {str(alt_error)}")
-
                     if not data_collection_success:
-                        failed_symbols.append(f"{original_symbol} ({error_details or 'erro desconhecido'})")
+                        failed_symbols.append(symbol)
                         continue
 
                     # Aplicar modelo OVELHA V2 com tratamento de erro
@@ -936,11 +851,11 @@ class OvecchiaTradingBot:
                             df = df_with_signals
                         else:
                             logger.warning(f"Falha ao aplicar OVELHA V2 para {symbol}")
-                            failed_symbols.append(f"{original_symbol} (modelo falhou)")
+                            failed_symbols.append(symbol)
                             continue
                     except Exception as model_error:
                         logger.error(f"Erro no modelo para {symbol}: {str(model_error)}")
-                        failed_symbols.append(f"{original_symbol} (erro modelo: {str(model_error)[:50]})")
+                        failed_symbols.append(symbol)
                         continue
 
                     # Extrair estado e preço atual
@@ -951,45 +866,45 @@ class OvecchiaTradingBot:
                         # Validar estado
                         if current_state not in ['Buy', 'Sell', 'Stay Out']:
                             logger.warning(f"Estado inválido para {symbol}: {current_state}")
-                            failed_symbols.append(f"{original_symbol} (estado inválido: {current_state})")
+                            failed_symbols.append(symbol)
                             continue
 
                         # Validar preço
                         if pd.isna(current_price) or current_price <= 0:
                             logger.warning(f"Preço inválido para {symbol}: {current_price}")
-                            failed_symbols.append(f"{original_symbol} (preço inválido: {current_price})")
+                            failed_symbols.append(symbol)
                             continue
 
-                        # Salvar estado atual (usar símbolo original para consistência)
-                        current_states[original_symbol] = {
+                        # Salvar estado atual
+                        current_states[symbol] = {
                             'state': current_state,
                             'price': float(current_price)
                         }
                         successful_analyses += 1
 
                         # Verificar mudança de estado
-                        if user_id in self.alert_states and original_symbol in self.alert_states[user_id]:
+                        if user_id in self.alert_states and symbol in self.alert_states[user_id]:
                             try:
-                                previous_state = self.alert_states[user_id][original_symbol].get('state', 'Stay Out')
+                                previous_state = self.alert_states[user_id][symbol].get('state', 'Stay Out')
                                 if current_state != previous_state:
                                     changes_detected.append({
-                                        'symbol': original_symbol,
+                                        'symbol': symbol,
                                         'previous_state': previous_state,
                                         'current_state': current_state,
                                         'current_price': float(current_price)
                                     })
-                                    logger.info(f"Mudança detectada em {original_symbol}: {previous_state} -> {current_state}")
+                                    logger.info(f"Mudança detectada em {symbol}: {previous_state} -> {current_state}")
                             except Exception as change_error:
                                 logger.error(f"Erro ao verificar mudança para {symbol}: {str(change_error)}")
 
                     except Exception as state_error:
                         logger.error(f"Erro ao extrair estado para {symbol}: {str(state_error)}")
-                        failed_symbols.append(f"{original_symbol} (erro extração: {str(state_error)[:50]})")
+                        failed_symbols.append(symbol)
                         continue
 
                 except Exception as e:
                     logger.error(f"Erro crítico ao analisar {symbol}: {str(e)}")
-                    failed_symbols.append(f"{original_symbol} (erro crítico: {str(e)[:50]})")
+                    failed_symbols.append(symbol)
                     continue
 
             # Atualizar estados salvos (apenas símbolos com sucesso)
@@ -1000,12 +915,12 @@ class OvecchiaTradingBot:
             for symbol, state_data in current_states.items():
                 self.alert_states[user_id][symbol] = state_data
 
-            # Log de resultado detalhado
+            # Log de resultado
             success_rate = (successful_analyses / len(symbols_list)) * 100 if len(symbols_list) > 0 else 0
             logger.info(f"Screening para usuário {user_id} completado: {successful_analyses}/{len(symbols_list)} símbolos ({success_rate:.1f}% sucesso)")
             
             if failed_symbols:
-                logger.warning(f"Símbolos com falha para usuário {user_id}: {', '.join(failed_symbols[:5])}{'...' if len(failed_symbols) > 5 else ''}")
+                logger.warning(f"Símbolos com falha para usuário {user_id}: {', '.join(failed_symbols)}")
 
             return current_states, changes_detected
 
@@ -2268,7 +2183,7 @@ def schedule_alerts_for_user(user_id, timeframe):
         logger.error(f"Erro ao programar alerta para usuário {user_id}: {str(e)}")
 
 def send_scheduled_alert(user_id):
-    """Envia alerta programado para um usuário específico - VERSÃO CONSOLIDADA COM DETALHES DE ERRO"""
+    """Envia alerta programado para um usuário específico - VERSÃO CONSOLIDADA"""
     try:
         if user_id not in trading_bot.active_alerts:
             logger.info(f"Alerta cancelado para usuário {user_id} - configuração removida")
@@ -2285,17 +2200,8 @@ def send_scheduled_alert(user_id):
         changes = []
         successful_analyses = 0
         failed_analyses = 0
-        detailed_errors = []
 
         try:
-            # Capturar erros detalhados do screening
-            import io
-            import sys
-            from contextlib import redirect_stderr
-
-            # Capturar logs de erro durante o screening
-            stderr_capture = io.StringIO()
-            
             current_states, changes = trading_bot.perform_automated_screening(
                 user_id,
                 symbols_list,
@@ -2306,12 +2212,6 @@ def send_scheduled_alert(user_id):
             )
             successful_analyses = len(current_states)
             failed_analyses = len(symbols_list) - successful_analyses
-            
-            # Analisar símbolos que falharam para criar lista detalhada
-            for symbol in symbols_list:
-                if symbol not in current_states:
-                    detailed_errors.append(symbol)
-                    
         except Exception as e:
             logger.error(f"Erro no screening automático para usuário {user_id}: {str(e)}")
             # Tentar continuar mesmo com erro
@@ -2370,33 +2270,28 @@ def send_scheduled_alert(user_id):
         if stay_out_symbols:
             message += f"⚫ **FICAR DE FORA ({len(stay_out_symbols)}):** {', '.join(stay_out_symbols)}\n"
 
-        # Mostrar símbolos que falharam com mais detalhes
-        if detailed_errors:
-            message += f"\n❌ **ERRO NA ANÁLISE ({len(detailed_errors)}):**\n"
-            # Mostrar apenas os primeiros 5 para não sobrecarregar a mensagem
-            error_symbols_to_show = detailed_errors[:5]
-            message += f"{', '.join(error_symbols_to_show)}"
-            if len(detailed_errors) > 5:
-                message += f" e mais {len(detailed_errors) - 5} símbolos"
-            message += "\n"
-            
-            # Adicionar dica de solução
-            if any('XRP' in symbol.upper() or 'ADA' in symbol.upper() for symbol in detailed_errors):
-                message += f"💡 **Dica:** Alguns símbolos crypto podem ter problemas de formatação. Tente o formato sem '/' (ex: XRPUSD em vez de XRP/USD)\n"
+        # Mostrar símbolos que falharam (se houver)
+        failed_symbols = []
+        for symbol in symbols_list:
+            if symbol not in current_states:
+                failed_symbols.append(symbol)
+        
+        if failed_symbols:
+            message += f"❌ **ERRO NA ANÁLISE:** {', '.join(failed_symbols)}\n"
 
         # RODAPÉ
         message += f"\n⏰ **Próximo alerta em:** {alert_config.get('timeframe', 'N/A')}"
 
         # Verificar se a mensagem não está muito longa (limite do Telegram é 4096 caracteres)
         if len(message) > 4000:
-            # Se muito longa, encurtar removendo detalhes menos importantes
+            # Se muito longa, encurtar
             message = message[:3950] + "\n\n... (mensagem truncada)"
             logger.warning(f"Mensagem de alerta truncada para usuário {user_id} (muito longa)")
 
         # Enviar APENAS UMA mensagem consolidada
         try:
             bot.send_message(alert_config['chat_id'], message, parse_mode='Markdown')
-            logger.info(f"Alerta consolidado enviado para usuário {user_id}: {successful_analyses} símbolos, {len(changes)} mudanças, {len(detailed_errors)} erros")
+            logger.info(f"Alerta consolidado enviado para usuário {user_id}: {successful_analyses} símbolos, {len(changes)} mudanças")
         except Exception as send_error:
             logger.error(f"Erro ao enviar mensagem consolidada: {str(send_error)}")
             # Tentar enviar sem markdown como fallback
@@ -2412,7 +2307,7 @@ def send_scheduled_alert(user_id):
         logger.error(f"Erro geral ao enviar alerta programado para usuário {user_id}: {str(e)}")
         # Tentar enviar mensagem de erro
         try:
-            error_message = f"❌ Erro no screening automático ({datetime.now().strftime('%H:%M')})\n\nPossíveis causas:\n• Problemas de conectividade\n• Símbolos inválidos\n• Limite de API atingido\n\nUse /list_alerts para ver configuração ou /stop_alerts para parar"
+            error_message = f"❌ Erro no screening automático ({datetime.now().strftime('%H:%M')})\nVerifique a configuração ou use /restart"
             bot.send_message(trading_bot.active_alerts[user_id]['chat_id'], error_message)
         except:
             logger.error(f"Não foi possível notificar erro para usuário {user_id}")
