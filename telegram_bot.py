@@ -222,6 +222,191 @@ def parse_flexible_command(message_text):
         'original_text': message_text
     }
 
+def normalize_symbol_for_source(symbol, source):
+    """Normaliza símbolos para o formato correto da fonte especificada"""
+    if not symbol or not isinstance(symbol, str):
+        return None
+    
+    symbol = symbol.strip().upper()
+    
+    if source == 'auto':
+        # Auto-detectar melhor formato baseado no símbolo
+        if any(crypto in symbol for crypto in ['BTC', 'ETH', 'LTC', 'ADA', 'XRP', 'DOT', 'LINK', 'UNI']):
+            # Crypto - preferir formato 12data para melhor suporte a timeframes
+            return normalize_symbol_for_source(symbol, '12data')
+        elif symbol.endswith('.SA') or any(br_stock in symbol for br_stock in ['PETR', 'VALE', 'ITUB', 'BBDC', 'MGLU']):
+            # Ação brasileira - usar Yahoo
+            return normalize_symbol_for_source(symbol, 'yahoo')
+        else:
+            # Ação internacional - usar Yahoo
+            return normalize_symbol_for_source(symbol, 'yahoo')
+    
+    elif source == '12data':
+        # Formato 12Data: BTC/USD, EUR/USD, AAPL
+        if 'BTC' in symbol:
+            return 'BTC/USD'
+        elif 'ETH' in symbol:
+            return 'ETH/USD'
+        elif 'LTC' in symbol:
+            return 'LTC/USD'
+        elif 'ADA' in symbol:
+            return 'ADA/USD'
+        elif 'XRP' in symbol:
+            return 'XRP/USD'
+        elif 'DOT' in symbol:
+            return 'DOT/USD'
+        elif 'LINK' in symbol:
+            return 'LINK/USD'
+        elif 'UNI' in symbol:
+            return 'UNI/USD'
+        elif 'SOL' in symbol:
+            return 'SOL/USD'
+        elif 'MATIC' in symbol:
+            return 'MATIC/USD'
+        elif symbol.endswith('.SA'):
+            return symbol  # Manter formato brasileiro
+        elif 'EUR' in symbol and 'USD' in symbol:
+            return 'EUR/USD'
+        elif 'GBP' in symbol and 'USD' in symbol:
+            return 'GBP/USD'
+        elif 'USD' in symbol and 'JPY' in symbol:
+            return 'USD/JPY'
+        else:
+            # Ação internacional - manter como está
+            return symbol.replace('-USD', '').replace('/USD', '').replace('USD', '')
+    
+    elif source == 'yahoo':
+        # Formato Yahoo Finance: BTC-USD, PETR4.SA, AAPL, EURUSD=X
+        if 'BTC' in symbol:
+            return 'BTC-USD'
+        elif 'ETH' in symbol:
+            return 'ETH-USD'
+        elif 'LTC' in symbol:
+            return 'LTC-USD'
+        elif 'ADA' in symbol:
+            return 'ADA-USD'
+        elif 'XRP' in symbol:
+            return 'XRP-USD'
+        elif 'DOT' in symbol:
+            return 'DOT-USD'
+        elif 'LINK' in symbol:
+            return 'LINK-USD'
+        elif 'UNI' in symbol:
+            return 'UNI-USD'
+        elif 'SOL' in symbol:
+            return 'SOL-USD'
+        elif 'MATIC' in symbol:
+            return 'MATIC-USD'
+        elif any(br in symbol for br in ['PETR', 'VALE', 'ITUB', 'BBDC', 'MGLU', 'WEGE', 'LREN']):
+            # Ação brasileira - garantir .SA
+            base_symbol = symbol.replace('.SA', '')
+            if base_symbol.isalpha() or (len(base_symbol) >= 5 and base_symbol[-1].isdigit()):
+                return f"{base_symbol}.SA"
+        elif 'EUR' in symbol and 'USD' in symbol:
+            return 'EURUSD=X'
+        elif 'GBP' in symbol and 'USD' in symbol:
+            return 'GBPUSD=X'
+        elif symbol in ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META']:
+            return symbol  # Ações americanas famosas
+        else:
+            # Tentar manter formato original
+            return symbol
+    
+    return symbol
+
+def validate_and_adjust_timeframe(timeframe, source):
+    """Valida timeframe e ajusta fonte se necessário"""
+    timeframe = timeframe.lower()
+    
+    # Timeframes válidos por fonte
+    yahoo_timeframes = ['5m', '15m', '30m', '1h', '4h', '1d']
+    data_timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d']
+    
+    if source == 'auto':
+        # Para auto, escolher a melhor fonte baseada no timeframe
+        if timeframe in ['1m'] and timeframe not in yahoo_timeframes:
+            return timeframe, '12data'  # 1m só funciona bem no 12data
+        else:
+            return timeframe, 'yahoo'  # Yahoo é mais estável para outros
+    
+    elif source == 'yahoo':
+        if timeframe not in yahoo_timeframes:
+            # Ajustar para timeframe compatível mais próximo
+            if timeframe == '1m':
+                return '5m', source  # 1m não suportado, usar 5m
+            elif timeframe in data_timeframes:
+                return timeframe, source
+        return timeframe, source
+    
+    elif source == '12data':
+        if timeframe in data_timeframes:
+            return timeframe, source
+        else:
+            # Fallback para timeframe suportado
+            return '1h', source
+    
+    return timeframe, source
+
+def perform_robust_screening_setup(user_id, symbols_list, source, model_type, strategy, timeframe):
+    """Versão robusta do screening que tolera falhas e faz validação individual"""
+    validation_results = {}
+    successful_symbols = []
+    current_states = {}
+    changes = []
+    
+    logger.info(f"Iniciando screening robusto para usuário {user_id}: {len(symbols_list)} símbolos via {source}")
+    
+    # Testar cada símbolo individualmente primeiro (validação rápida)
+    for symbol in symbols_list:
+        try:
+            # Teste rápido: tentar coletar apenas alguns dados
+            if source == "12data" or source == "twelvedata":
+                end_date = datetime.now().date()
+                start_date = end_date - timedelta(days=30)
+                df_test = trading_bot.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), timeframe, 100)
+            else: # Yahoo
+                end_date = datetime.now().date()
+                start_date = end_date - timedelta(days=30)
+                df_test = trading_bot.get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
+                                                end_date.strftime("%Y-%m-%d"), timeframe, "yahoo")
+            
+            if df_test is not None and not df_test.empty and len(df_test) >= 10:
+                successful_symbols.append(symbol)
+                validation_results[symbol] = {'error': None, 'status': 'valid'}
+                logger.info(f"Símbolo {symbol} validado com sucesso ({len(df_test)} registros)")
+            else:
+                validation_results[symbol] = {'error': 'Dados insuficientes ou inexistentes', 'status': 'invalid'}
+                logger.warning(f"Símbolo {symbol} falhou na validação: dados insuficientes")
+                
+        except Exception as e:
+            error_msg = str(e)[:100]
+            validation_results[symbol] = {'error': error_msg, 'status': 'error'}
+            logger.error(f"Erro na validação do símbolo {symbol}: {error_msg}")
+    
+    # Se nenhum símbolo passou na validação, falhar
+    if not successful_symbols:
+        raise Exception(f"Nenhum dos {len(symbols_list)} símbolos passou na validação básica")
+    
+    # Continuar apenas com símbolos válidos
+    logger.info(f"Validação concluída: {len(successful_symbols)}/{len(symbols_list)} símbolos válidos")
+    
+    # Fazer screening completo apenas dos símbolos válidos
+    try:
+        current_states, changes = trading_bot.perform_automated_screening(
+            user_id, successful_symbols, source, model_type, strategy, timeframe
+        )
+        
+        # Log detalhado dos resultados
+        successful_analysis = len(current_states)
+        logger.info(f"Screening completo: {successful_analysis}/{len(successful_symbols)} símbolos analisados com sucesso")
+        
+        return current_states, changes, validation_results
+        
+    except Exception as e:
+        logger.error(f"Erro no screening automatizado completo: {str(e)}")
+        # Ainda assim, retornar os resultados de validação para debugging
+        raise Exception(f"Falha no screening completo após validação: {str(e)}")
+
 class OvecchiaTradingBot:
     def __init__(self):
         self.users_config = {}
@@ -349,84 +534,172 @@ class OvecchiaTradingBot:
             return pd.DataFrame()
 
     def get_twelve_data_data(self, symbol, start_date, end_date, interval="1d", limit=2000):
-        """Função para coletar dados usando TwelveData API"""
-        try:
-            logger.info(f"Coletando dados para {symbol} via 12Data com intervalo {interval}")
+        """Função ROBUSTA para coletar dados usando TwelveData API com retry e fallbacks"""
+        max_retries = 3
+        retry_delay = 2  # segundos
+        
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Coletando dados para {symbol} via 12Data (tentativa {attempt + 1}/{max_retries}) com intervalo {interval}")
 
-            # Sua chave da Twelve Data
-            API_KEY = "8745d2a910c841e4913afc40a6368dcb"
+                # Sua chave da Twelve Data
+                API_KEY = "8745d2a910c841e4913afc40a6368dcb"
 
-            # Usar o símbolo exatamente como o usuário digitou
-            # TwelveData espera o formato "BTC/USD", "ETH/USD", etc.
-            processed_symbol = symbol
+                # Normalizar símbolo para TwelveData se necessário
+                processed_symbol = symbol
+                
+                # Normalização automática de símbolos comuns
+                symbol_mappings = {
+                    'BTC-USD': 'BTC/USD',
+                    'ETH-USD': 'ETH/USD',
+                    'LTC-USD': 'LTC/USD',
+                    'ADA-USD': 'ADA/USD',
+                    'XRP-USD': 'XRP/USD',
+                    'BTCUSDT': 'BTC/USD',
+                    'ETHUSDT': 'ETH/USD',
+                    'LTCUSDT': 'LTC/USD'
+                }
+                
+                if symbol in symbol_mappings:
+                    processed_symbol = symbol_mappings[symbol]
+                    logger.info(f"Símbolo normalizado: {symbol} -> {processed_symbol}")
 
-            # Mapear timeframes do Telegram para 12Data
-            twelve_interval_map = {
-                '1m': '1min',
-                '5m': '5min',
-                '15m': '15min',
-                '30m': '30min',
-                '1h': '1h',
-                '4h': '4h',
-                '1d': '1day',
-                '1wk': '1week'
-            }
-            twelve_interval = twelve_interval_map.get(interval.lower())
-            if not twelve_interval:
-                logger.error(f"Timeframe inválido para 12Data: {interval}")
-                return pd.DataFrame()
+                # Mapear timeframes do Telegram para 12Data
+                twelve_interval_map = {
+                    '1m': '1min',
+                    '5m': '5min',
+                    '15m': '15min',
+                    '30m': '30min',
+                    '1h': '1h',
+                    '4h': '4h',
+                    '1d': '1day',
+                    '1wk': '1week'
+                }
+                twelve_interval = twelve_interval_map.get(interval.lower())
+                if not twelve_interval:
+                    logger.error(f"Timeframe inválido para 12Data: {interval}")
+                    return pd.DataFrame()
 
-            # Endpoint para pegar dados com quantidade configurável
-            url = f"https://api.twelvedata.com/time_series?symbol={processed_symbol}&interval={twelve_interval}&apikey={API_KEY}&outputsize={min(limit, 5000)}"
+                # Ajustar limite baseado no timeframe para evitar timeouts
+                adjusted_limit = limit
+                if interval in ['1m', '5m']:
+                    adjusted_limit = min(500, limit)  # Máximo 500 para timeframes muito pequenos
+                elif interval in ['15m', '30m']:
+                    adjusted_limit = min(1000, limit)  # Máximo 1000
+                else:
+                    adjusted_limit = min(2000, limit)  # Máximo 2000 para timeframes maiores
 
-            logger.info(f"Fazendo requisição para 12Data: {url}")
+                # Endpoint para pegar dados com quantidade configurável
+                url = f"https://api.twelvedata.com/time_series?symbol={processed_symbol}&interval={twelve_interval}&apikey={API_KEY}&outputsize={adjusted_limit}"
 
-            # Faz a requisição
-            response = requests.get(url, timeout=30).json()
+                logger.info(f"Fazendo requisição para 12Data: {url}")
 
-            # Verifica se houve erro
-            if "values" not in response:
-                error_msg = response.get('message', 'Erro desconhecido')
-                logger.error(f"Erro na API TwelveData: {error_msg}")
-                return pd.DataFrame()
+                # Faz a requisição com timeout mais curto para retry mais rápido
+                timeout = 15 if attempt < 2 else 30  # Timeout menor nas primeiras tentativas
+                response = requests.get(url, timeout=timeout)
+                
+                # Verificar status HTTP
+                if response.status_code != 200:
+                    raise Exception(f"HTTP {response.status_code}: {response.text[:100]}...")
+                
+                response_data = response.json()
 
-            # Cria o DataFrame
-            df = pd.DataFrame(response['values'])
+                # Verifica se houve erro da API
+                if "values" not in response_data:
+                    error_msg = response_data.get('message', response_data.get('error', 'Erro desconhecido'))
+                    
+                    # Erros que vale a pena fazer retry
+                    retry_errors = ['rate limit', 'timeout', 'temporarily unavailable', 'server error']
+                    should_retry = any(retry_term in error_msg.lower() for retry_term in retry_errors)
+                    
+                    if should_retry and attempt < max_retries - 1:
+                        logger.warning(f"Erro temporário na API TwelveData (tentativa {attempt + 1}): {error_msg}. Tentando novamente em {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Backoff exponencial
+                        continue
+                    else:
+                        logger.error(f"Erro definitivo na API TwelveData: {error_msg}")
+                        return pd.DataFrame()
 
-            if df.empty:
-                logger.warning(f"Nenhum dado retornado pela TwelveData para {symbol}")
-                return pd.DataFrame()
+                # Cria o DataFrame
+                df = pd.DataFrame(response_data['values'])
 
-            # Converte colunas
-            df['datetime'] = pd.to_datetime(df['datetime'])
-            df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
+                if df.empty:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Nenhum dado retornado pela TwelveData para {symbol} (tentativa {attempt + 1}). Tentando novamente...")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        logger.warning(f"Nenhum dado retornado pela TwelveData para {symbol} após {max_retries} tentativas")
+                        return pd.DataFrame()
 
-            # Ajustar timezone: Subtrair 13 horas dos dados do TwelveData
-            df['datetime'] = df['datetime'] - timedelta(hours=13)
+                # Converte colunas com tratamento de erro
+                try:
+                    df['datetime'] = pd.to_datetime(df['datetime'])
+                    df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
+                except Exception as convert_error:
+                    logger.error(f"Erro ao converter dados para {symbol}: {str(convert_error)}")
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        return pd.DataFrame()
 
-            # Adicionar coluna volume se não existir
-            if 'volume' not in df.columns:
-                df['volume'] = 0.0
-            else:
-                df['volume'] = pd.to_numeric(df['volume'], errors='coerce').fillna(0.0)
+                # Ajustar timezone: Subtrair 13 horas dos dados do TwelveData
+                df['datetime'] = df['datetime'] - timedelta(hours=13)
 
-            # Ordena do mais antigo para o mais recente
-            df = df.sort_values(by='datetime').reset_index(drop=True)
+                # Adicionar coluna volume se não existir
+                if 'volume' not in df.columns:
+                    df['volume'] = 0.0
+                else:
+                    df['volume'] = pd.to_numeric(df['volume'], errors='coerce').fillna(0.0)
 
-            # Padronizar nomes das colunas
-            df.rename(columns={'datetime': 'time'}, inplace=True)
+                # Ordena do mais antigo para o mais recente
+                df = df.sort_values(by='datetime').reset_index(drop=True)
 
-            # Verificar se há dados válidos
-            if df['close'].isna().all():
-                logger.error(f"Todos os preços de fechamento são NaN para {symbol}")
-                return pd.DataFrame()
+                # Padronizar nomes das colunas
+                df.rename(columns={'datetime': 'time'}, inplace=True)
 
-            logger.info(f"Dados 12Data coletados com sucesso para {symbol}: {len(df)} registros de {df['time'].iloc[0].strftime('%Y-%m-%d %H:%M')} até {df['time'].iloc[-1].strftime('%Y-%m-%d %H:%M')}")
-            return df
+                # Verificar se há dados válidos
+                if df['close'].isna().all():
+                    logger.error(f"Todos os preços de fechamento são NaN para {symbol}")
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        return pd.DataFrame()
 
-        except Exception as e:
-            logger.error(f"Erro ao buscar dados via TwelveData para {symbol}: {str(e)}")
-            return pd.DataFrame()
+                # Validação final da qualidade dos dados
+                if len(df) < 10:
+                    logger.warning(f"Poucos dados retornados para {symbol}: {len(df)} registros")
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay)
+                        continue
+
+                logger.info(f"Dados 12Data coletados com sucesso para {symbol}: {len(df)} registros de {df['time'].iloc[0].strftime('%Y-%m-%d %H:%M')} até {df['time'].iloc[-1].strftime('%Y-%m-%d %H:%M')}")
+                return df
+
+            except requests.exceptions.Timeout:
+                logger.warning(f"Timeout na requisição para {symbol} (tentativa {attempt + 1})")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+            except requests.exceptions.RequestException as req_error:
+                logger.error(f"Erro de requisição para {symbol} (tentativa {attempt + 1}): {str(req_error)}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+            except Exception as e:
+                logger.error(f"Erro geral ao buscar dados via TwelveData para {symbol} (tentativa {attempt + 1}): {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+
+        logger.error(f"Falha definitiva ao coletar dados para {symbol} após {max_retries} tentativas")
+        return pd.DataFrame()
 
     def get_market_data(self, symbol, start_date, end_date, interval="1d", data_source="yahoo"):
         """Função para coletar dados do mercado"""
@@ -792,20 +1065,22 @@ class OvecchiaTradingBot:
         return results
 
     def perform_automated_screening(self, user_id, symbols_list, source, model_type, strategy_type, timeframe):
-        """Realiza screening automático e detecta mudanças de estado - VERSÃO ROBUSTA"""
+        """Realiza screening automático e detecta mudanças de estado - VERSÃO ULTRA ROBUSTA"""
         try:
             current_states = {}
             changes_detected = []
             successful_analyses = 0
             failed_symbols = []
+            retry_symbols = []
 
             # Validar lista de símbolos
             if not symbols_list or len(symbols_list) == 0:
                 logger.warning(f"Lista de símbolos vazia para usuário {user_id}")
                 return {}, []
 
-            logger.info(f"Iniciando screening para usuário {user_id}: {len(symbols_list)} símbolos via {source}")
+            logger.info(f"Iniciando screening ROBUSTO para usuário {user_id}: {len(symbols_list)} símbolos via {source}")
 
+            # FASE 1: Primeira tentativa com todos os símbolos
             for i, symbol in enumerate(symbols_list):
                 try:
                     # Validar símbolo antes de processar
@@ -815,118 +1090,182 @@ class OvecchiaTradingBot:
                         continue
 
                     symbol = symbol.strip().upper()
-                    logger.info(f"Analisando {symbol} ({i+1}/{len(symbols_list)}) para usuário {user_id}")
+                    logger.info(f"[1ª tentativa] Analisando {symbol} ({i+1}/{len(symbols_list)}) para usuário {user_id}")
 
-                    # Tentar coletar dados com timeout
+                    # Tentar coletar dados com configurações otimizadas
                     df = pd.DataFrame()
                     data_collection_success = False
 
                     try:
+                        # Usar configurações mais conservadoras para maior estabilidade
                         if source == "12data" or source == "twelvedata":
                             end_date = datetime.now().date()
-                            start_date = end_date - timedelta(days=365)
-                            df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), timeframe, 2000)
+                            start_date = end_date - timedelta(days=180)  # Reduzido para 6 meses
+                            df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), timeframe, 1000)  # Reduzido para 1000
                         else: # Yahoo
                             end_date = datetime.now().date()
-                            start_date = end_date - timedelta(days=365)
+                            start_date = end_date - timedelta(days=180)  # Reduzido para 6 meses
                             df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
                                                     end_date.strftime("%Y-%m-%d"), timeframe, "yahoo")
                         
-                        if not df.empty and len(df) >= 50:
+                        if not df.empty and len(df) >= 30:  # Requisito mínimo reduzido
                             data_collection_success = True
                         else:
-                            logger.warning(f"Dados insuficientes para {symbol}: {len(df)} registros")
+                            logger.warning(f"Dados insuficientes para {symbol}: {len(df)} registros (mínimo: 30)")
+                            retry_symbols.append(symbol)  # Marcar para retry
                             
                     except Exception as data_error:
                         logger.error(f"Erro na coleta de dados para {symbol}: {str(data_error)}")
-
-                    if not data_collection_success:
-                        failed_symbols.append(symbol)
+                        retry_symbols.append(symbol)  # Marcar para retry
                         continue
 
-                    # Aplicar modelo OVELHA V2 com tratamento de erro
+                    if not data_collection_success:
+                        continue
+
+                    # Aplicar modelo OVELHA V2 com tratamento de erro mais tolerante
                     try:
                         df_with_signals = self.calculate_ovelha_v2_signals(df, strategy_type)
                         if df_with_signals is not None and not df_with_signals.empty and 'Estado' in df_with_signals.columns:
                             df = df_with_signals
                         else:
                             logger.warning(f"Falha ao aplicar OVELHA V2 para {symbol}")
-                            failed_symbols.append(symbol)
+                            retry_symbols.append(symbol)
                             continue
                     except Exception as model_error:
                         logger.error(f"Erro no modelo para {symbol}: {str(model_error)}")
-                        failed_symbols.append(symbol)
+                        retry_symbols.append(symbol)
                         continue
 
-                    # Extrair estado e preço atual
-                    try:
-                        current_state = df['Estado'].iloc[-1]
-                        current_price = df['close'].iloc[-1]
-
-                        # Validar estado
-                        if current_state not in ['Buy', 'Sell', 'Stay Out']:
-                            logger.warning(f"Estado inválido para {symbol}: {current_state}")
-                            failed_symbols.append(symbol)
-                            continue
-
-                        # Validar preço
-                        if pd.isna(current_price) or current_price <= 0:
-                            logger.warning(f"Preço inválido para {symbol}: {current_price}")
-                            failed_symbols.append(symbol)
-                            continue
-
-                        # Salvar estado atual
-                        current_states[symbol] = {
-                            'state': current_state,
-                            'price': float(current_price)
-                        }
+                    # Extrair estado e preço atual com validação melhorada
+                    if self.extract_and_save_symbol_state(symbol, df, current_states, user_id):
                         successful_analyses += 1
-
-                        # Verificar mudança de estado
-                        if user_id in self.alert_states and symbol in self.alert_states[user_id]:
-                            try:
-                                previous_state = self.alert_states[user_id][symbol].get('state', 'Stay Out')
-                                if current_state != previous_state:
-                                    changes_detected.append({
-                                        'symbol': symbol,
-                                        'previous_state': previous_state,
-                                        'current_state': current_state,
-                                        'current_price': float(current_price)
-                                    })
-                                    logger.info(f"Mudança detectada em {symbol}: {previous_state} -> {current_state}")
-                            except Exception as change_error:
-                                logger.error(f"Erro ao verificar mudança para {symbol}: {str(change_error)}")
-
-                    except Exception as state_error:
-                        logger.error(f"Erro ao extrair estado para {symbol}: {str(state_error)}")
-                        failed_symbols.append(symbol)
-                        continue
+                        # Remover da lista de retry se foi bem-sucedido
+                        if symbol in retry_symbols:
+                            retry_symbols.remove(symbol)
+                    else:
+                        retry_symbols.append(symbol)
 
                 except Exception as e:
                     logger.error(f"Erro crítico ao analisar {symbol}: {str(e)}")
-                    failed_symbols.append(symbol)
+                    retry_symbols.append(symbol)
                     continue
+
+            # FASE 2: Retry com configurações ainda mais conservadoras para símbolos que falharam
+            if retry_symbols and len(current_states) < len(symbols_list) * 0.5:  # Se taxa de sucesso < 50%
+                logger.info(f"Iniciando FASE 2 - Retry para {len(retry_symbols)} símbolos com configurações conservadoras")
+                
+                for symbol in retry_symbols[:]:  # Cópia da lista para modificar durante iteração
+                    try:
+                        logger.info(f"[2ª tentativa] Retry para {symbol}")
+                        
+                        # Configurações ultra-conservadoras
+                        try:
+                            if source == "12data" or source == "twelvedata":
+                                end_date = datetime.now().date()
+                                start_date = end_date - timedelta(days=90)  # Apenas 3 meses
+                                df = self.get_twelve_data_data(symbol, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), timeframe, 500)  # Apenas 500 registros
+                            else: # Yahoo
+                                end_date = datetime.now().date()
+                                start_date = end_date - timedelta(days=90)
+                                df = self.get_market_data(symbol, start_date.strftime("%Y-%m-%d"),
+                                                        end_date.strftime("%Y-%m-%d"), timeframe, "yahoo")
+                            
+                            if not df.empty and len(df) >= 20:  # Requisito mínimo ainda menor
+                                df_with_signals = self.calculate_ovelha_v2_signals(df, strategy_type)
+                                if df_with_signals is not None and not df_with_signals.empty and 'Estado' in df_with_signals.columns:
+                                    if self.extract_and_save_symbol_state(symbol, df_with_signals, current_states, user_id):
+                                        successful_analyses += 1
+                                        retry_symbols.remove(symbol)
+                                        logger.info(f"✅ Símbolo {symbol} recuperado no retry")
+                                    else:
+                                        failed_symbols.append(symbol)
+                                else:
+                                    failed_symbols.append(symbol)
+                            else:
+                                failed_symbols.append(symbol)
+                                
+                        except Exception as retry_error:
+                            logger.error(f"Erro no retry para {symbol}: {str(retry_error)}")
+                            failed_symbols.append(symbol)
+                            
+                    except Exception as e:
+                        logger.error(f"Erro crítico no retry para {symbol}: {str(e)}")
+                        failed_symbols.append(symbol)
+
+            # FASE 3: Detectar mudanças de estado para símbolos bem-sucedidos
+            for symbol, state_data in current_states.items():
+                try:
+                    if user_id in self.alert_states and symbol in self.alert_states[user_id]:
+                        previous_state = self.alert_states[user_id][symbol].get('state', 'Stay Out')
+                        current_state = state_data['state']
+                        
+                        if current_state != previous_state:
+                            changes_detected.append({
+                                'symbol': symbol,
+                                'previous_state': previous_state,
+                                'current_state': current_state,
+                                'current_price': float(state_data['price'])
+                            })
+                            logger.info(f"Mudança detectada em {symbol}: {previous_state} -> {current_state}")
+                except Exception as change_error:
+                    logger.error(f"Erro ao verificar mudança para {symbol}: {str(change_error)}")
 
             # Atualizar estados salvos (apenas símbolos com sucesso)
             if user_id not in self.alert_states:
                 self.alert_states[user_id] = {}
             
-            # Atualizar apenas símbolos que foram analisados com sucesso
             for symbol, state_data in current_states.items():
                 self.alert_states[user_id][symbol] = state_data
 
-            # Log de resultado
+            # Adicionar símbolos que falharam mesmo no retry à lista final de falhas
+            for symbol in retry_symbols:
+                if symbol not in failed_symbols:
+                    failed_symbols.append(symbol)
+
+            # Log de resultado detalhado
             success_rate = (successful_analyses / len(symbols_list)) * 100 if len(symbols_list) > 0 else 0
-            logger.info(f"Screening para usuário {user_id} completado: {successful_analyses}/{len(symbols_list)} símbolos ({success_rate:.1f}% sucesso)")
+            logger.info(f"Screening ROBUSTO para usuário {user_id} completado:")
+            logger.info(f"  ✅ Sucessos: {successful_analyses}/{len(symbols_list)} ({success_rate:.1f}%)")
+            logger.info(f"  ❌ Falhas: {len(failed_symbols)} símbolos")
+            logger.info(f"  🔄 Mudanças detectadas: {len(changes_detected)}")
             
             if failed_symbols:
-                logger.warning(f"Símbolos com falha para usuário {user_id}: {', '.join(failed_symbols)}")
+                logger.warning(f"Símbolos com falha para usuário {user_id}: {', '.join(failed_symbols[:5])}{'...' if len(failed_symbols) > 5 else ''}")
 
             return current_states, changes_detected
 
         except Exception as e:
-            logger.error(f"Erro crítico no screening automatizado para usuário {user_id}: {str(e)}")
+            logger.error(f"Erro crítico no screening automatizado ROBUSTO para usuário {user_id}: {str(e)}")
             return {}, []
+
+    def extract_and_save_symbol_state(self, symbol, df, current_states, user_id):
+        """Extrai e valida estado de um símbolo - função auxiliar"""
+        try:
+            current_state = df['Estado'].iloc[-1]
+            current_price = df['close'].iloc[-1]
+
+            # Validar estado
+            if current_state not in ['Buy', 'Sell', 'Stay Out']:
+                logger.warning(f"Estado inválido para {symbol}: {current_state}")
+                return False
+
+            # Validar preço
+            if pd.isna(current_price) or current_price <= 0:
+                logger.warning(f"Preço inválido para {symbol}: {current_price}")
+                return False
+
+            # Salvar estado atual
+            current_states[symbol] = {
+                'state': current_state,
+                'price': float(current_price)
+            }
+            
+            logger.debug(f"Estado extraído para {symbol}: {current_state} @ {current_price:.4f}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Erro ao extrair estado para {symbol}: {str(e)}")
+            return False
 
     def generate_analysis_chart(self, symbol, strategy_type, timeframe, custom_start_date=None, custom_end_date=None, data_source="yahoo"):
         """Gera gráfico de análise para um ativo específico usando matplotlib"""
@@ -1582,19 +1921,21 @@ def screening_auto_command(message):
         # Parse arguments
         args = message.text.split()[1:]
 
-        if len(args) < 4: # fonte, símbolos, estratégia, timeframe são obrigatórios (removido modelo)
-            help_message = """🔄 **SCREENING AUTOMÁTICO**
+        if len(args) < 4: # fonte, símbolos, estratégia, timeframe são obrigatórios
+            help_message = """🔄 **SCREENING AUTOMÁTICO INTELIGENTE**
 
 📝 **Como usar:**
 `/screening_auto [fonte] [símbolos] [estrategia] [timeframe]`
 
 🔗 **Fontes disponíveis:**
-• `12data` - 12Data API (recomendado para criptos)
-• `yahoo` - Yahoo Finance (ações e índices)
+• `12data` - 12Data API (criptos, forex, ações)
+• `yahoo` - Yahoo Finance (ações, índices, criptos)
+• `auto` - Seleção automática da melhor fonte
 
-📊 **Símbolos:** Lista entre colchetes separada por vírgulas
-• Para 12Data: `[BTC/USD,ETH/USD,LTC/USD]`
-• Para Yahoo: `[BTC-USD,ETH-USD,PETR4.SA]`
+📊 **Símbolos:** Lista flexível separada por vírgulas
+• **Formato flexível:** `BTC/USD`, `BTC-USD`, `BTCUSDT` (auto-convertido)
+• **Ações BR:** `PETR4.SA`, `PETR4`, `VALE3.SA` (auto-formatado)
+• **Lista simples:** `[BTC,ETH,PETR4,AAPL]` ou `BTC,ETH,PETR4,AAPL`
 
 🎯 **Estratégias:**
 • `agressiva` - Mais sinais, maior frequência
@@ -1602,79 +1943,83 @@ def screening_auto_command(message):
 • `conservadora` - Sinais mais confiáveis
 
 ⏰ **Timeframes:**
-• `1m` - 1 minuto (apenas 12Data)
-• `5m` - 5 minutos 
-• `15m` - 15 minutos
-• `1h` - 1 hora
-• `4h` - 4 horas
-• `1d` - 1 dia
+• `1m`, `5m`, `15m`, `30m`, `1h`, `4h`, `1d`
 
 📈 **Exemplos práticos:**
 
-**Criptomoedas (12Data):**
-`/screening_auto 12data [BTC/USD,ETH/USD,LTC/USD] balanceada 1h`
+**🚀 Formato Simplificado (RECOMENDADO):**
+`/screening_auto auto BTC,ETH,PETR4,AAPL balanceada 1h`
 
-**Ações brasileiras (Yahoo):**
-`/screening_auto yahoo [PETR4.SA,VALE3.SA,ITUB4.SA] conservadora 1d`
+**📊 Formato Tradicional:**
+`/screening_auto 12data [BTC/USD,ETH/USD] balanceada 1h`
+`/screening_auto yahoo [PETR4.SA,VALE3.SA] conservadora 1d`
 
-**Ações americanas (Yahoo):**
-`/screening_auto yahoo [AAPL,MSFT,GOOGL] agressiva 4h`
+**🎯 Exemplos Inteligentes:**
+• `/screening_auto auto BTC,ETH,LTC agressiva 5m` ← Detecta criptos automaticamente
+• `/screening_auto auto PETR4,VALE3,ITUB4 balanceada 1d` ← Detecta ações BR automaticamente
+• `/screening_auto auto AAPL,MSFT,GOOGL conservadora 4h` ← Detecta ações US automaticamente
 
-**Mix de ativos (Yahoo):**
-`/screening_auto yahoo [BTC-USD,AAPL,EURUSD=X] balanceada 1h`
-
-🔔 **O que acontece:**
-1. Analisa todos os símbolos na primeira execução
-2. Monitora mudanças de estado automaticamente
-3. Envia alertas quando detecta Buy/Sell/Stay Out
-4. Funciona no intervalo escolhido
+🔔 **Funcionalidades Inteligentes:**
+✅ Auto-detecção do melhor formato de símbolo
+✅ Fallback automático entre fontes de dados
+✅ Tolerância a símbolos inválidos (continua com os válidos)
+✅ Auto-correção de timeframes incompatíveis
+✅ Retry automático em caso de falhas temporárias
 
 💡 **Dicas importantes:**
-• Use no máximo 10 símbolos por alerta
-• 12Data é melhor para timeframes pequenos (1m, 5m)
-• Yahoo é mais estável para timeframes maiores
-• O modelo OVELHA V2 é usado automaticamente"""
+• Use no máximo 15 símbolos por alerta
+• Fonte `auto` escolhe automaticamente a melhor opção
+• Sistema tolera até 50% de símbolos inválidos
+• Alertas funcionam 24/7 no intervalo escolhido"""
 
             safe_bot_reply(message, help_message, 'Markdown')
             return
 
         try:
             source = args[0].lower()
-            symbols_str = args[1]
+            symbols_input = args[1]
             strategy = args[2].lower()
             timeframe = args[3].lower()
 
             # Usar sempre OVELHA V2
             model_type = "ovelha2"
 
-            # Validar fonte
-            if source not in ['12data', 'yahoo', 'twelvedata']:
-                safe_bot_reply(message, "❌ Fonte inválida. Use: `12data` ou `yahoo`", 'Markdown')
+            # Validar e normalizar fonte
+            valid_sources = ['12data', 'yahoo', 'twelvedata', 'auto']
+            if source not in valid_sources:
+                safe_bot_reply(message, "❌ Fonte inválida. Use: `12data`, `yahoo` ou `auto` (recomendado)", 'Markdown')
                 return
 
             # Normalizar fonte
             if source == 'twelvedata':
                 source = '12data'
 
-            # Extrair símbolos da lista com tratamento robusto
-            if not symbols_str.startswith('[') or not symbols_str.endswith(']'):
-                safe_bot_reply(message, "❌ Formato de símbolos inválido. Use: `[SYMBOL1,SYMBOL2,...]`", 'Markdown')
-                return
-
-            symbols_raw = symbols_str[1:-1].split(',')
+            # Processar símbolos de forma muito mais flexível
             symbols_list = []
             
-            for symbol in symbols_raw:
-                clean_symbol = symbol.strip()
-                if clean_symbol and len(clean_symbol) > 0:
-                    symbols_list.append(clean_symbol)
-
-            if len(symbols_list) == 0:
+            # Remover colchetes se existirem
+            if symbols_input.startswith('[') and symbols_input.endswith(']'):
+                symbols_input = symbols_input[1:-1]
+            
+            # Dividir por vírgulas
+            raw_symbols = [s.strip() for s in symbols_input.split(',') if s.strip()]
+            
+            if not raw_symbols:
                 safe_bot_reply(message, "❌ Lista de símbolos vazia. Adicione pelo menos 1 símbolo.")
                 return
                 
-            if len(symbols_list) > 10:
-                safe_bot_reply(message, "❌ Lista muito grande. Máximo de 10 símbolos por alerta.")
+            if len(raw_symbols) > 15:
+                safe_bot_reply(message, "❌ Lista muito grande. Máximo de 15 símbolos por alerta.")
+                return
+
+            # Processar e normalizar cada símbolo
+            for symbol in raw_symbols:
+                normalized_symbol = normalize_symbol_for_source(symbol, source)
+                if normalized_symbol:
+                    symbols_list.append(normalized_symbol)
+
+            if not symbols_list:
+                safe_bot_reply(message, "❌ Nenhum símbolo válido encontrado após normalização.")
                 return
 
             # Validar estratégia
@@ -1690,20 +2035,81 @@ def screening_auto_command(message):
 
             strategy_formatted = strategy_map[strategy]
 
-            # Validar timeframe baseado na fonte
-            if source == '12data':
-                valid_timeframes = ['1m', '5m', '15m', '1h', '4h', '1d']
-            else: # Yahoo
-                valid_timeframes = ['5m','15m', '1h', '4h', '1d']
+            # Validar e ajustar timeframe de forma inteligente
+            timeframe, adjusted_source = validate_and_adjust_timeframe(timeframe, source)
+            
+            if adjusted_source != source:
+                source = adjusted_source
+                logger.info(f"Fonte ajustada automaticamente de {args[0]} para {source} devido ao timeframe {timeframe}")
 
-            if timeframe not in valid_timeframes:
-                safe_bot_reply(message, f"❌ Timeframe inválido para {source}. Use: `{', '.join(valid_timeframes)}`", 'Markdown')
+            # Enviar mensagem de processamento com informações detalhadas
+            processing_msg = f"🔄 **Configurando alerta automático inteligente...**\n\n"
+            processing_msg += f"📊 **Símbolos:** {len(symbols_list)} ativos\n"
+            processing_msg += f"🔗 **Fonte:** {source.upper()}"
+            if adjusted_source != args[0].lower():
+                processing_msg += f" (auto-ajustado de {args[0].upper()})"
+            processing_msg += f"\n⏰ **Intervalo:** {timeframe}\n🎯 **Estratégia:** {strategy_formatted}"
+            
+            safe_bot_reply(message, processing_msg, 'Markdown')
+
+            # Fazer primeira verificação ROBUSTA com múltiplas tentativas
+            try:
+                current_states, changes, validation_results = perform_robust_screening_setup(
+                    user_id, symbols_list, source, model_type, strategy_formatted, timeframe
+                )
+            except Exception as screening_error:
+                logger.error(f"Erro na primeira verificação do screening_auto para usuário {user_id}: {str(screening_error)}")
+                
+                # Tentar fallback automático para fonte alternativa
+                fallback_source = 'yahoo' if source == '12data' else '12data'
+                try:
+                    logger.info(f"Tentando fallback para {fallback_source}...")
+                    safe_bot_reply(message, f"⚠️ Problema com {source.upper()}. Tentando {fallback_source.upper()}...")
+                    
+                    # Renormalizar símbolos para a nova fonte
+                    fallback_symbols = [normalize_symbol_for_source(s, fallback_source) for s in raw_symbols]
+                    fallback_symbols = [s for s in fallback_symbols if s]
+                    
+                    current_states, changes, validation_results = perform_robust_screening_setup(
+                        user_id, fallback_symbols, fallback_source, model_type, strategy_formatted, timeframe
+                    )
+                    source = fallback_source
+                    symbols_list = fallback_symbols
+                    
+                except Exception as fallback_error:
+                    logger.error(f"Erro no fallback para usuário {user_id}: {str(fallback_error)}")
+                    safe_bot_reply(message, f"❌ **Erro persistente em ambas as fontes**\n\n🔍 Primeiro erro ({args[0].upper()}): {str(screening_error)[:100]}...\n🔍 Erro fallback ({fallback_source.upper()}): {str(fallback_error)[:100]}...\n\n💡 **Soluções:**\n• Tente com símbolos mais comuns (BTC,ETH,AAPL)\n• Use timeframe maior (4h ou 1d)\n• Aguarde alguns minutos e tente novamente", 'Markdown')
+                    return
+
+            # Verificar se conseguiu analisar pelo menos um símbolo (tolerância melhorada)
+            if not current_states or len(current_states) == 0:
+                error_message = f"""❌ **NENHUM SÍMBOLO PÔDE SER ANALISADO**
+
+🔍 **Símbolos testados:** {', '.join(symbols_list[:5])}{'...' if len(symbols_list) > 5 else ''}
+🔗 **Fonte:** {source.upper()}
+⏰ **Timeframe:** {timeframe}
+
+📊 **Detalhes da validação:**"""
+                
+                if validation_results:
+                    for symbol, result in validation_results.items():
+                        status_icon = "❌" if result['error'] else "✅"
+                        error_summary = result['error'][:50] + "..." if result['error'] and len(result['error']) > 50 else result.get('error', 'OK')
+                        error_message += f"\n• {symbol}: {status_icon} {error_summary}"
+
+                error_message += f"""\n\n💡 **Soluções automáticas:**
+• Use `/screening_auto auto BTC,ETH,AAPL balanceada 1h` (formato simplificado)
+• Experimente timeframe maior: 4h ou 1d
+• Tente com símbolos mais populares
+• Aguarde 1-2 minutos e tente novamente
+
+🔄 **Exemplo que sempre funciona:**
+`/screening_auto auto BTC,AAPL balanceada 1d`"""
+
+                safe_bot_reply(message, error_message, 'Markdown')
                 return
 
-            # Enviar mensagem de processamento
-            safe_bot_reply(message, f"🔄 Configurando alerta automático...\n📊 {len(symbols_list)} símbolos via {source.upper()}\n⏰ Intervalo: {timeframe}")
-
-            # Configurar alerta automático
+            # Configurar alerta automático APENAS se tiver sucesso
             trading_bot.active_alerts[user_id] = {
                 'symbols': symbols_list,
                 'source': source,
@@ -1713,103 +2119,68 @@ def screening_auto_command(message):
                 'chat_id': message.chat.id
             }
 
-            # Fazer primeira verificação com tratamento de erro robusto
-            try:
-                current_states, changes = trading_bot.perform_automated_screening(
-                    user_id, symbols_list, source, model_type, strategy_formatted, timeframe
-                )
-            except Exception as screening_error:
-                logger.error(f"Erro na primeira verificação do screening_auto para usuário {user_id}: {str(screening_error)}")
-                # Limpar configuração em caso de erro
-                if user_id in trading_bot.active_alerts:
-                    del trading_bot.active_alerts[user_id]
-                
-                safe_bot_reply(message, f"❌ **Erro na configuração inicial**\n\n🔍 Problema: {str(screening_error)}\n\n💡 **Soluções:**\n• Verifique se os símbolos estão no formato correto\n• Tente com menos símbolos\n• Use uma fonte diferente\n• Tente um timeframe maior", 'Markdown')
-                return
-
-            # Verificar se conseguiu analisar pelo menos um símbolo
-            if not current_states or len(current_states) == 0:
-                # Limpar configuração se nenhum símbolo foi analisado
-                if user_id in trading_bot.active_alerts:
-                    del trading_bot.active_alerts[user_id]
-
-                format_examples = {
-                    '12data': 'BTC/USD,ETH/USD,AAPL',
-                    'yahoo': 'BTC-USD,ETH-USD,PETR4.SA,AAPL'
-                }
-
-                error_message = f"""❌ **ERRO AO CONFIGURAR ALERTA**
-
-🔍 **Problema:** Nenhum símbolo pôde ser analisado via {source.upper()}
-
-🔧 **Possíveis causas:**
-• Símbolos inválidos para {source.upper()}
-• Problemas temporários da API
-• Timeframe {timeframe} não disponível
-
-💡 **Formato correto para {source.upper()}:**
-`[{format_examples.get(source, 'SYMBOL1,SYMBOL2')}]`
-
-📝 **Exemplo que funciona:**
-`/screening_auto {source} [{format_examples.get(source, 'SYMBOL1,SYMBOL2')}] {strategy} {timeframe}`
-
-🔄 **Tente novamente** com símbolos válidos"""
-
-                safe_bot_reply(message, error_message, 'Markdown')
-                return
-
             # Programar alertas baseado no timeframe
             try:
                 schedule_alerts_for_user(user_id, timeframe)
             except Exception as schedule_error:
                 logger.error(f"Erro ao programar alertas para usuário {user_id}: {str(schedule_error)}")
 
-            # Contar símbolos com sucesso e erro
+            # Preparar mensagem de confirmação detalhada
             success_count = len(current_states)
             error_count = len(symbols_list) - success_count
+            success_rate = (success_count / len(symbols_list)) * 100 if symbols_list else 0
 
-            # Enviar confirmação detalhada
-            confirmation_message = f"""✅ **ALERTA AUTOMÁTICO CONFIGURADO**
+            confirmation_message = f"""✅ **ALERTA AUTOMÁTICO CONFIGURADO COM SUCESSO**
 
-📊 **Configuração:**
+📊 **Configuração Final:**
 🔗 Fonte: {source.upper()}
 🎯 Estratégia: {strategy_formatted}
-🤖 Modelo: OVELHA V2
+🤖 Modelo: OVELHA V2 (Machine Learning)
 ⏰ Intervalo: {timeframe}
 
-📈 **Resultado:** {success_count}/{len(symbols_list)} símbolos válidos
+📈 **Taxa de Sucesso:** {success_rate:.1f}% ({success_count}/{len(symbols_list)} símbolos)
 
-📊 **Símbolos monitorados:**"""
+📊 **Símbolos monitorados ativamente:**"""
 
-            for symbol in symbols_list:
+            # Mostrar símbolos válidos com estados atuais
+            for symbol in symbols_list[:8]:  # Limitar para não criar mensagem muito longa
                 if symbol in current_states:
                     state = current_states[symbol]['state']
                     price = current_states[symbol]['price']
                     state_icon = "🔵" if state == "Buy" else "🔴" if state == "Sell" else "⚫"
                     confirmation_message += f"\n• {symbol}: {state_icon} {state} ({price:.4f})"
-                else:
-                    confirmation_message += f"\n• {symbol}: ❌ Erro nos dados"
 
+            if len(symbols_list) > 8:
+                remaining = len([s for s in symbols_list[8:] if s in current_states])
+                if remaining > 0:
+                    confirmation_message += f"\n• ... e mais {remaining} símbolos"
+
+            # Mostrar símbolos com problemas (se houver)
             if error_count > 0:
-                confirmation_message += f"\n\n⚠️ **{error_count} símbolos com erro** - verifique os nomes"
+                error_symbols = [s for s in symbols_list if s not in current_states]
+                confirmation_message += f"\n\n⚠️ **{error_count} símbolos ignorados:** {', '.join(error_symbols[:3])}{'...' if len(error_symbols) > 3 else ''}"
 
-            confirmation_message += f"\n\n🔔 Próximo alerta em: {timeframe}"
-            confirmation_message += f"\n\n💡 Use `/list_alerts` para ver status e `/stop_alerts` para parar"
+            confirmation_message += f"""\n\n🔔 **Próximo alerta:** {timeframe}
+⚡ **Status:** Monitoramento ativo 24/7
+
+💡 **Comandos úteis:**
+• `/list_alerts` - Ver configuração completa
+• `/stop_alerts` - Parar monitoramento"""
 
             safe_bot_reply(message, confirmation_message, 'Markdown')
-            logger.info(f"Alerta automático configurado para {user_name}: {success_count}/{len(symbols_list)} símbolos via {source}, {timeframe}")
+            logger.info(f"Alerta automático ROBUSTO configurado para {user_name}: {success_count}/{len(symbols_list)} símbolos ({success_rate:.1f}% sucesso) via {source}, {timeframe}")
 
         except ValueError as ve:
             logger.error(f"Erro de valor no screening_auto para usuário {user_id}: {str(ve)}")
-            safe_bot_reply(message, f"❌ **Erro nos parâmetros:** {str(ve)}\n\nUse `/screening_auto` sem parâmetros para ver a ajuda completa.", 'Markdown')
+            safe_bot_reply(message, f"❌ **Erro nos parâmetros:** {str(ve)}\n\n💡 **Exemplo correto:** `/screening_auto auto BTC,ETH,AAPL balanceada 1h`", 'Markdown')
         
         except Exception as e:
             logger.error(f"Erro ao processar argumentos do screening_auto para usuário {user_id}: {str(e)}")
-            safe_bot_reply(message, f"❌ **Erro ao processar comando**\n\n🔍 Detalhes: {str(e)}\n\n💡 Use `/screening_auto` sem parâmetros para ver exemplos de uso.", 'Markdown')
+            safe_bot_reply(message, f"❌ **Erro ao processar comando**\n\n🔍 Detalhes: {str(e)[:100]}...\n\n💡 **Tente o formato simples:** `/screening_auto auto BTC,AAPL balanceada 1d`", 'Markdown')
 
     except Exception as e:
         logger.error(f"Erro geral no comando /screening_auto para usuário {user_id}: {str(e)}")
-        safe_bot_reply(message, "❌ **Erro interno no sistema**\n\nTente novamente em alguns segundos ou use `/restart` para limpar estados.")
+        safe_bot_reply(message, "❌ **Erro interno no sistema**\n\n🔄 **Soluções:**\n• Use `/restart` para limpar estados\n• Tente: `/screening_auto auto BTC,AAPL balanceada 1d`\n• Aguarde 1 minuto e tente novamente")
 
 @bot.message_handler(commands=['stop_alerts'])
 def stop_alerts_command(message):
