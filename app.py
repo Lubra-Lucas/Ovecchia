@@ -1092,7 +1092,7 @@ st.markdown("""
 
 # Main title with custom styling
 st.markdown('<h1 class="main-title">OVECCHIA TRADING</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Sinais de Investimento </p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #666; font-size: 1.2rem; margin-bottom: 2rem;">Sistema Avançado de Sinais de Investimento (By Ovelha) </p>', unsafe_allow_html=True)
 
 # Create main navigation tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Home", "Guia de Utilização", "Análise Individual", "Screening Multi-Ativos", "Bot Telegram", "Sobre"])
