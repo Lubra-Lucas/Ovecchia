@@ -49,6 +49,7 @@ def estrutura(df, n):
     eh_topo, eh_fundo = pivos(c, n)
 
     tendencia = np.zeros(N, np.int8)
+    seq_bos = np.zeros(N, np.int16)      # BOS seguidos na tendência atual (CHoCH zera)
     evento = np.zeros(N, np.int8)
     origem_idx = np.full(N, -1, np.int64)
     extremo = np.full(N, np.nan)
@@ -57,6 +58,7 @@ def estrutura(df, n):
     idx_rompido = np.full(N, -1, np.int64)
 
     trend = 0
+    seq = 0
     nivel_cima, idx_cima = np.nan, -1      # fechar acima -> quebra de alta
     nivel_baixo, idx_baixo = np.nan, -1    # fechar abaixo -> quebra de baixa
     ultima_quebra = -1
@@ -75,6 +77,7 @@ def estrutura(df, n):
             nivel_rompido[t], idx_rompido[t] = nivel_baixo, idx_baixo
             j = idx_baixo + 1 + int(np.argmax(c[idx_baixo + 1:t + 1]))
             orig, ext = j, h[idx_baixo + 1:t + 1].max()
+            seq = seq + 1 if ev == -1 else 0
             trend, ultima_quebra = -1, t
             nivel_cima, idx_cima = c[j], j
             nivel_baixo, idx_baixo = np.nan, -1
@@ -84,17 +87,19 @@ def estrutura(df, n):
             nivel_rompido[t], idx_rompido[t] = nivel_cima, idx_cima
             j = idx_cima + 1 + int(np.argmin(c[idx_cima + 1:t + 1]))
             orig, ext = j, l[idx_cima + 1:t + 1].min()
+            seq = seq + 1 if ev == 1 else 0
             trend, ultima_quebra = 1, t
             nivel_baixo, idx_baixo = c[j], j
             nivel_cima, idx_cima = np.nan, -1
             evento[t] = ev
 
         tendencia[t] = trend
+        seq_bos[t] = seq
         origem_idx[t] = orig
         extremo[t] = ext
         nivel_choch[t] = nivel_cima if trend == -1 else (nivel_baixo if trend == 1 else np.nan)
 
-    return {'tendencia': tendencia, 'evento': evento, 'origem_idx': origem_idx,
+    return {'tendencia': tendencia, 'seq_bos': seq_bos, 'evento': evento, 'origem_idx': origem_idx,
             'extremo': extremo, 'nivel_choch': nivel_choch, 'nivel_rompido': nivel_rompido,
             'idx_rompido': idx_rompido, 'pivo_topo': eh_topo, 'pivo_fundo': eh_fundo}
 
@@ -188,7 +193,7 @@ def montar_setups(df, est, atr, espera_quebra=30, validade=240, folga_atr=0.1, e
                        'zona_base': base, 'zona_topo': topo, 'origem': int(o_idx),
                        'extremo_perna': extremo_perna, 'posicao_perna': posicao,
                        'stop_estrutura': stop_estrutura, 'stop_fvg': stop_fvg,
-                       'via_quebra': via_quebra, 'tam_fvg_atr': (topo - base) / atr[i] if atr[i] > 0 else np.nan})
+                       'via_quebra': via_quebra, 't_ref': int(t_ref), 'tam_fvg_atr': (topo - base) / atr[i] if atr[i] > 0 else np.nan})
     return pd.DataFrame(setups)
 
 
@@ -249,4 +254,19 @@ def sessao(tempos):
         minuto = loc.hour * 60 + loc.minute
         dentro = (minuto >= ini) & (minuto < ini + 180) & (loc.dayofweek < 5)
         rot[np.asarray(dentro) & (rot == 'fora')] = nome
+    return rot
+
+
+def sessao_sao_paulo(tempos):
+    """
+    Aberturas no horário de São Paulo (dias úteis): Ásia 22h–01h, Londres 03h–07h, Nova York 10h30–13h30.
+    Devolve 'Ásia', 'Londres', 'Nova York' ou 'fora'.
+    """
+    t = pd.DatetimeIndex(tempos).tz_convert('America/Sao_Paulo')
+    m = np.asarray(t.hour * 60 + t.minute)
+    dia = np.asarray(t.dayofweek)                  # 0 = segunda ... 6 = domingo
+    rot = np.full(len(t), 'fora', dtype=object)
+    rot[((m >= 22 * 60) & ((dia <= 3) | (dia == 6))) | ((m < 60) & (dia <= 4))] = 'Ásia'
+    rot[(m >= 3 * 60) & (m < 7 * 60) & (dia <= 4)] = 'Londres'
+    rot[(m >= 10 * 60 + 30) & (m < 13 * 60 + 30) & (dia <= 4)] = 'Nova York'
     return rot

@@ -75,7 +75,12 @@ select, input[type="date"] {
 .principal { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
 @media (max-width: 900px) { .principal { grid-template-columns: minmax(0, 1fr); } }
 .painel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; min-width: 0; overflow: hidden; }
-.area { position: relative; height: min(66vh, 600px); min-height: 360px; background: #ffffff; }
+.area { position: relative; height: min(80vh, 820px); min-height: 460px; background: #ffffff; }
+.area.cheia {
+  position: fixed; z-index: 50; height: auto; min-height: 0;
+  inset: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.sair-cheia { position: absolute; top: 10px; left: 10px; z-index: 6; }
 #grafico { position: absolute; inset: 0; }
 #camada { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; }
 .aviso { position: absolute; inset: 0; display: grid; place-items: center; color: #4b5563; background: #ffffff; z-index: 5; font-size: 14px; }
@@ -139,6 +144,7 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     <div class="grupo"><span class="rotulo">R da estrutura ≥</span><div class="seg" id="seg-rmin"></div></div>
     <div class="grupo"><span class="rotulo">Médias 13 · 26 · 50</span><div class="seg texto" id="seg-medias"></div></div>
     <button class="acao" id="centralizar" title="Volta o gráfico para a operação atual e ajusta a escala de preço (tecla C)">Centralizar</button>
+    <button class="acao" id="tela-cheia" title="Gráfico ocupando a tela inteira (tecla F; Esc sai)">Tela cheia</button>
   </div>
 
   <div class="metricas" id="metricas"></div>
@@ -149,6 +155,7 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
         <div id="grafico"></div>
         <canvas id="camada"></canvas>
         <div class="aviso" id="aviso">Carregando…</div>
+        <button class="acao sair-cheia" id="sair-cheia" hidden>Sair da tela cheia (Esc)</button>
       </div>
       <div class="legenda">
         <span><span class="sw" style="background:#4f6bed"></span>Candle de alta</span>
@@ -184,9 +191,9 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
         <select id="f-ses" aria-label="Sessão">
           <option value="todas">Todas as horas</option>
           <option value="sessoes">Só aberturas</option>
-          <option value="1">Ásia (3h)</option>
-          <option value="2">Londres (3h)</option>
-          <option value="3">Nova York (3h)</option>
+          <option value="1">Ásia (22h–01h)</option>
+          <option value="2">Londres (03h–07h)</option>
+          <option value="3">Nova York (10h30–13h30)</option>
         </select>
         <input type="date" id="f-data" aria-label="Ir para a data">
       </div>
@@ -213,7 +220,7 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     extremo da pernada + 0,1 ATR, ou 3 × ATR(14) do M1 a partir da entrada. "Chegou antes do stop" usa máximas e mínimas;
     no candle da entrada só o stop conta, e alvo e stop no mesmo candle contam como stop. Líquido: 0,02% na entrada + 0,05% na saída.
     No estudo de 3 anos, entradas aleatórias com o mesmo R acertam 1R em cerca de 49%; com 3 × ATR e alvo 2R, o líquido ficou
-    entre +0,24R e +0,38R em todos os anos. Horários em UTC. Use ← e → para navegar e C (ou o botão Centralizar) para voltar à operação.
+    entre +0,24R e +0,38R em todos os anos. Horários de São Paulo; aberturas: Ásia 22h–01h, Londres 03h–07h, Nova York 10h30–13h30 (dias úteis). Use ← e → para navegar e C (ou o botão Centralizar) para voltar à operação.
   </p>
 </div>
 
@@ -238,7 +245,15 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
   const pctSem = (x, d = 0) => x == null || Number.isNaN(x) ? '–' : (x * 100).toLocaleString('pt-BR', nf(d)) + '%';
   const preco = x => x.toLocaleString('pt-BR', nf(2));
   const rr = x => (x >= 0 ? '+' : '') + x.toLocaleString('pt-BR', nf(2)) + 'R';
-  const dataHora = t => new Date(t * 1000).toLocaleString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  // todos os horários exibidos no fuso de São Paulo
+  const FUSO = 'America/Sao_Paulo';
+  const dataHora = t => new Date(t * 1000).toLocaleString('pt-BR', { timeZone: FUSO, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const fmtEixo = {
+    hora: new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, hour: '2-digit', minute: '2-digit' }),
+    dia: new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, day: '2-digit', month: 'short' }),
+    mes: new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, month: 'short', year: 'numeric' }),
+    cruz: new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+  };
   const mesDe = t => new Date(t * 1000).toISOString().slice(0, 7);
   const minutos = m => m < 0 ? 'não chegou' : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
   const aviso = document.getElementById('aviso');
@@ -249,9 +264,12 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     layout: { background: { type: 'solid', color: '#ffffff' }, textColor: COR.texto, fontFamily: 'IBM Plex Mono, ui-monospace, monospace', fontSize: 11 },
     grid: { vertLines: { color: COR.grade }, horzLines: { color: COR.grade } },
     rightPriceScale: { borderColor: COR.borda },
-    timeScale: { borderColor: COR.borda, timeVisible: true, secondsVisible: false, rightOffset: 8 },
+    timeScale: {
+      borderColor: COR.borda, timeVisible: true, secondsVisible: false, rightOffset: 8,
+      tickMarkFormatter: (t, tipo) => fmtEixo[tipo <= 1 ? 'mes' : tipo === 2 ? 'dia' : 'hora'].format(new Date(t * 1000)),
+    },
     crosshair: { mode: LC.CrosshairMode.Normal },
-    localization: { locale: 'pt-BR', priceFormatter: p => preco(p) },
+    localization: { locale: 'pt-BR', priceFormatter: p => preco(p), timeFormatter: t => fmtEixo.cruz.format(new Date(t * 1000)) },
   });
   const velas = chart.addCandlestickSeries({
     upColor: COR.alta, downColor: COR.baixa, borderUpColor: COR.alta, borderDownColor: COR.baixa,
@@ -482,7 +500,7 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     document.getElementById('cab').innerHTML =
       `<span class="pill ${op.dir === 1 ? 'compra' : 'venda'}">${op.dir === 1 ? 'COMPRA' : 'VENDA'}</span>` +
       `<span class="pill neutra">${ses === 'fora' ? 'fora das aberturas' : ses}</span>` +
-      `<span class="sub num">${dataHora(op.t_exec)} UTC</span>`;
+      `<span class="sub num">${dataHora(op.t_exec)}</span>`;
     const r = op.resultado;
     document.getElementById('resultado').innerHTML =
       `<span class="${r >= 0 ? 'pos-v' : 'neg-v'}">${rr(r)}</span> <span class="sub num">líquido ${rr(op.liq)}</span>`;
@@ -576,7 +594,14 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     estado.medias = v; atualizarMedias();
   });
   for (const id of ['f-dir', 'f-res', 'f-ses']) document.getElementById(id).onchange = () => aplicarFiltros().catch(falha);
-  document.getElementById('f-data').onchange = e => { if (e.target.value) irPara(Date.parse(e.target.value + 'T23:59:59Z') / 1000); };
+  document.getElementById('f-data').onchange = e => { if (e.target.value) irPara(Date.parse(e.target.value + 'T23:59:59-03:00') / 1000); };
+  const telaCheia = liga => {
+    area.classList.toggle('cheia', liga);
+    document.getElementById('sair-cheia').hidden = !liga;
+    requestAnimationFrame(() => { centralizar(); redesenhar(); });
+  };
+  document.getElementById('tela-cheia').onclick = () => telaCheia(true);
+  document.getElementById('sair-cheia').onclick = () => telaCheia(false);
   const mover = d => { if (!estado.lista.length) return; estado.pos = Math.min(Math.max(estado.pos + d, 0), estado.lista.length - 1); mostrar().catch(falha); };
   document.getElementById('ant').onclick = () => mover(-1);
   document.getElementById('prox').onclick = () => mover(1);
@@ -585,6 +610,8 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     if (ev.key === 'ArrowLeft') mover(-1);
     if (ev.key === 'ArrowRight') mover(1);
     if (ev.key === 'c' || ev.key === 'C') centralizar();
+    if (ev.key === 'f' || ev.key === 'F') telaCheia(!area.classList.contains('cheia'));
+    if (ev.key === 'Escape') telaCheia(false);
   });
 
   await carregarOps();
