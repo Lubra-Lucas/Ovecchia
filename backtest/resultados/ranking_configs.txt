@@ -1,0 +1,54 @@
+540 configurações · 240 positivas (R bruto por operação) nos 2 ativos e nas 2 metades
+
+R BRUTO ACUMULADO POR ANO — todas as operações (média BTC/ETH)
+ pivo entrada r_estr_min    stop  alvo horario ops_ano acerto r_por_op liq_por_op r_bruto_ano uma_vez_ops_ano uma_vez_r_bruto_ano uma_vez_r_liq_ano   R%
+    3  1º FVG       0.0% 2 × ATR     3   todas   34350    32%    +0.27      -0.63       +9115           13417               +4752             -8306 0.12
+    5  1º FVG       0.0% 2 × ATR     3   todas   22891    33%    +0.34      -0.56       +7754           11580               +4657             -6499 0.12
+    3  1º FVG       0.0% 2 × ATR     2   todas   34350    40%    +0.21      -0.69       +7225           18726               +5094            -12733 0.12
+    3  1º FVG       0.0% 3 × ATR     3   todas   34350    30%    +0.20      -0.40       +6813            6543               +1840             -2553 0.18
+    5  1º FVG       0.0% 3 × ATR     3   todas   22891    32%    +0.27      -0.33       +6099            6083               +2037             -1942 0.18
+    3  1º FVG       0.2% 2 × ATR     3   todas   12012    38%    +0.52      +0.11       +6068            6418               +3792              +985 0.20
+    5  1º FVG       0.0% 2 × ATR     2   todas   22891    42%    +0.26      -0.64       +5978           15346               +4719             -9792 0.12
+    3  1º FVG       0.0% 3 × ATR     2   todas   34350    39%    +0.17      -0.43       +5905            9982               +2411             -4178 0.18
+    5  1º FVG       0.2% 2 × ATR     3   todas    9996    40%    +0.58      +0.14       +5704            6092               +3956             +1112 0.19
+    3  1º FVG       0.2% 2 × ATR     2   todas   12012    48%    +0.45      +0.05       +5344            8269               +4176              +640 0.20
+
+R BRUTO POR ANO — operando uma por vez
+ pivo entrada r_estr_min    stop  alvo horario ops_ano acerto r_por_op liq_por_op r_bruto_ano uma_vez_ops_ano uma_vez_r_bruto_ano uma_vez_r_liq_ano   R%
+    3  1º FVG       0.0% 2 × ATR     2   todas   34350    40%    +0.21      -0.69       +7225           18726               +5094            -12733 0.12
+    3  1º FVG       0.0% 2 × ATR     3   todas   34350    32%    +0.27      -0.63       +9115           13417               +4752             -8306 0.12
+    5  1º FVG       0.0% 2 × ATR     2   todas   22891    42%    +0.26      -0.64       +5978           15346               +4719             -9792 0.12
+    5  1º FVG       0.0% 2 × ATR     3   todas   22891    33%    +0.34      -0.56       +7754           11580               +4657             -6499 0.12
+    3  1º FVG       0.2% 2 × ATR     2   todas   12012    48%    +0.45      +0.05       +5344            8269               +4176              +640 0.20
+    5  1º FVG       0.2% 2 × ATR     2   todas    9996    50%    +0.49      +0.05       +4813            7610               +4057              +581 0.19
+    5  1º FVG       0.2% 2 × ATR     3   todas    9996    40%    +0.58      +0.14       +5704            6092               +3956             +1112 0.19
+    3  1º FVG       0.2% 2 × ATR     3   todas   12012    38%    +0.52      +0.11       +6068            6418               +3792              +985 0.20
+    3  1º FVG       0.2% 2 × ATR     1   todas   12012    66%    +0.31      -0.09       +3659           10681               +3428              -940 0.20
+    3  1º FVG       0.0% 2 × ATR     1   todas   34350    55%    +0.10      -0.80       +3316           27192               +3166            -21665 0.12
+
+R LÍQUIDO POR ANO — operando uma por vez (0,02% + 0,05%)
+ pivo entrada r_estr_min    stop  alvo horario ops_ano acerto r_por_op liq_por_op r_bruto_ano uma_vez_ops_ano uma_vez_r_bruto_ano uma_vez_r_liq_ano   R%
+    5  1º FVG       0.4% 2 × ATR     3   todas    3679    43%    +0.73      +0.42       +2630            2680               +2047             +1172 0.26
+    5  1º FVG       0.2% 2 × ATR     3   todas    9996    40%    +0.58      +0.14       +5704            6092               +3956             +1112 0.19
+    5  1º FVG       0.4% 2 × ATR     2   todas    3679    55%    +0.64      +0.32       +2302            3123               +2061             +1064 0.26
+    3  1º FVG       0.2% 2 × ATR     3   todas   12012    38%    +0.52      +0.11       +6068            6418               +3792              +985 0.20
+    3  1º FVG       0.4% 2 × ATR     3   todas    3919    41%    +0.63      +0.34       +2428            2652               +1750              +955 0.28
+    3  1º FVG       0.4% 2 × ATR     2   todas    3919    52%    +0.57      +0.29       +2192            3158               +1877              +954 0.28
+    5  1º FVG       0.2% 3 × ATR     3   todas    9996    36%    +0.45      +0.16       +4426            3671               +1980              +819 0.28
+    5  1º FVG       0.4% 3 × ATR     2   todas    3679    50%    +0.52      +0.31       +1868            2372               +1308              +786 0.39
+    5  1º FVG       0.2% 3 × ATR     2   todas    9996    47%    +0.41      +0.11       +3992            5088               +2388              +783 0.28
+    5  1º FVG       0.4% 3 × ATR     3   todas    3679    39%    +0.56      +0.35       +2024            1879               +1163              +746 0.39
+
+MAIOR ACERTO NO ALVO (≥ 1 operação por dia em cada ativo)
+ pivo                   entrada r_estr_min    stop  alvo   horario ops_ano acerto r_por_op liq_por_op r_bruto_ano uma_vez_ops_ano uma_vez_r_bruto_ano uma_vez_r_liq_ano   R%
+    5                    1º FVG       0.4% 2 × ATR     1     todas    3679    71%    +0.41      +0.10       +1503            3536               +1470              +371 0.26
+    5                    1º FVG       0.4% 2 × ATR     1 aberturas    1476    71%    +0.41      +0.12        +606            1424                +594              +182 0.28
+    3                    1º FVG       0.4% 2 × ATR     1     todas    3919    70%    +0.41      +0.12       +1579            3685               +1521              +479 0.28
+    3                    1º FVG       0.4% 2 × ATR     1 aberturas    1596    70%    +0.40      +0.14        +639            1505                +619              +221 0.30
+    5                    1º FVG       0.4% 3 × ATR     1 aberturas    1476    70%    +0.40      +0.20        +577            1300                +532              +275 0.42
+    5                    1º FVG       0.4% 3 × ATR     1     todas    3679    70%    +0.39      +0.18       +1414            3149               +1276              +607 0.39
+    3                    1º FVG       0.4% 3 × ATR     1 aberturas    1596    68%    +0.36      +0.18        +566            1329                +502              +260 0.45
+    3                    1º FVG       0.4% 3 × ATR     1     todas    3919    68%    +0.36      +0.17       +1382            3169               +1195              +579 0.42
+    3 1º FVG + média 50 + 2 BOS       0.4% 2 × ATR     1     todas     707    67%    +0.34      +0.12        +229             688                +222               +75 0.35
+    3                    1º FVG       0.2% 2 × ATR     1     todas   12012    66%    +0.31      -0.09       +3659           10681               +3428              -940 0.20
+

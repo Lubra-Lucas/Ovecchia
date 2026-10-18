@@ -217,10 +217,10 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     Estrutura: pivôs nos fechamentos (5 de cada lado, usados só depois de confirmados). BOS = fechamento além do último pivô;
     CHoCH = fechamento além da origem da pernada (o topo que gerou o último fundo, ou o espelho). Entrada: ordem limitada na
     borda do 1º FVG da pernada, só quando a distância até o extremo da pernada é de pelo menos o R mínimo escolhido. Stop: além do
-    extremo da pernada + 0,1 ATR, ou 3 × ATR(14) do M1 a partir da entrada. "Chegou antes do stop" usa máximas e mínimas;
+    extremo da pernada + 0,1 ATR, ou 2 ou 3 × ATR(14) do M1 a partir da entrada. "Chegou antes do stop" usa máximas e mínimas;
     no candle da entrada só o stop conta, e alvo e stop no mesmo candle contam como stop. Líquido: 0,02% na entrada + 0,05% na saída.
-    No estudo de 3 anos, entradas aleatórias com o mesmo R acertam 1R em cerca de 49%; com 3 × ATR e alvo 2R, o líquido ficou
-    entre +0,24R e +0,38R em todos os anos. Horários de São Paulo; aberturas: Ásia 22h–01h, Londres 03h–07h, Nova York 10h30–13h30 (dias úteis). Use ← e → para navegar e C (ou o botão Centralizar) para voltar à operação.
+    No estudo de 3 anos (BTC e ETH), entradas aleatórias com o mesmo R acertam 1R em cerca de 49%. A configuração com mais R
+    líquido acumulado foi pivô 5, 1º FVG, R da estrutura ≥ 0,4%, stop 2 × ATR e alvo 3R (+0,42R líquido por operação). Horários de São Paulo; aberturas: Ásia 22h–01h, Londres 03h–07h, Nova York 10h30–13h30 (dias úteis). Use ← e → para navegar e C (ou o botão Centralizar) para voltar à operação.
   </p>
 </div>
 
@@ -235,8 +235,8 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     m13: '#7b83eb', m26: '#f0a742', m50: '#9cc3f5',
     compra: '#2563eb', venda: '#dc2626', alvo: '#15803d', stop: '#dc2626', tinta: '#111827', meio: '#6b7280',
   };
-  const estado = { ativo: 'BTCUSDT', stop: 'atr3', alvo: 2, rmin: 0.004, medias: true, ops: [], lista: [], pos: 0, dados: null, meses: [] };
-  const NOME_STOP = { estrutura: 'além da pernada', atr3: '3 × ATR' };
+  const estado = { ativo: 'BTCUSDT', stop: 'atr2', alvo: 3, rmin: 0.004, medias: true, ops: [], lista: [], pos: 0, dados: null, meses: [] };
+  const NOME_STOP = { estrutura: 'além da pernada', atr2: '2 × ATR', atr3: '3 × ATR' };
   const cacheOps = {}, cacheMes = {};
   let barras = [], eventos = [], tempos = [];
 
@@ -388,9 +388,9 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
       const risco = o.dir * (o.entrada - o.stop);
       o.risco = risco;
       o.alvo = [1, 2, 3].map(x => o.entrada + o.dir * x * risco);
-      o.acerto = estado.alvo === 1 ? o.a1 : o.a2;
-      o.resultado = estado.alvo === 1 ? o.resultado_1r : o.resultado_2r;
-      o.t_alvo = estado.alvo === 1 ? o.t_1r : o.t_2r;
+      o.acerto = [o.a1, o.a2, o.a3][estado.alvo - 1];
+      o.resultado = [o.resultado_1r, o.resultado_2r, o.resultado_3r][estado.alvo - 1];
+      o.t_alvo = [o.t_1r, o.t_2r, o.t_3r][estado.alvo - 1];
       const fins = [o.t_stop, o.t_alvo].filter(v => v >= 0);
       o.t_res = fins.length ? Math.min(...fins) : -1;
       o.t_saida = o.t_exec + 60 * (o.t_res >= 0 ? Math.max(o.t_res, 1) : 240);
@@ -585,8 +585,8 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     carregarOps().then(() => aplicarFiltros(false)).catch(falha);
   });
   const trocarVariante = () => carregarOps().then(() => aplicarFiltros()).catch(falha);
-  botoesSeg('seg-stop', ['estrutura', 'atr3'], () => estado.stop, v => v === 'atr3' ? '3 × ATR' : 'Estrutura', v => { estado.stop = v; trocarVariante(); });
-  botoesSeg('seg-alvo', [1, 2], () => estado.alvo, v => `${v}R`, v => { estado.alvo = v; trocarVariante(); });
+  botoesSeg('seg-stop', ['estrutura', 'atr2', 'atr3'], () => estado.stop, v => v === 'estrutura' ? 'Estrutura' : NOME_STOP[v], v => { estado.stop = v; trocarVariante(); });
+  botoesSeg('seg-alvo', [1, 2, 3], () => estado.alvo, v => `${v}R`, v => { estado.alvo = v; trocarVariante(); });
   botoesSeg('seg-rmin', [0, 0.002, 0.004, 0.006], () => estado.rmin, v => v ? `≥ ${(v * 100).toLocaleString('pt-BR', nf(1))}%` : 'todos', v => {
     estado.rmin = v; aplicarFiltros().catch(falha);
   });

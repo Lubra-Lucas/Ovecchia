@@ -1,7 +1,8 @@
 """
 Exporta os dados do visualizador de operações de FVG (M1).
 
-Duas variantes de stop para as mesmas entradas: estrutura (além do extremo da pernada) e 3 × ATR(14).
+Três variantes de stop para as mesmas entradas: estrutura (além do extremo da pernada), 2 × ATR(14) e 3 × ATR(14).
+Sessões no horário de São Paulo (smc.sessao_sao_paulo).
 A estrutura e os setups são calculados no histórico inteiro (para o estado da estrutura ser o
 mesmo do estudo); só os últimos meses vão para a página. Candles saem em um arquivo por mês,
 carregado sob demanda.
@@ -37,7 +38,7 @@ def exportar(ativo, inicio):
     e = smc.estrutura(df, PIVO)
     setups = smc.montar_setups(df, e, atr)
     setups = setups[~setups.duplicated(['dir', 'origem'])]           # 1º FVG executado da pernada
-    sessoes = smc.sessao(df['time'])
+    sessoes = smc.sessao_sao_paulo(df['time'])
 
     i0 = int(df['time'].searchsorted(pd.Timestamp(inicio, tz='UTC')))
     destino = SAIDA / ativo
@@ -60,12 +61,13 @@ def exportar(ativo, inicio):
 
     # ---- operações: mesmas entradas, duas variantes de stop ----
     sel = setups[setups['i_exec'] >= i0].copy()          # setups ainda não avaliados: cada variante é avaliada do zero
-    sel['stop_atr3'] = sel['entrada'] - sel['dir'] * 3 * atr[sel['i_fvg'].to_numpy()]
+    for mult in (2, 3):
+        sel[f'stop_atr{mult}'] = sel['entrada'] - sel['dir'] * mult * atr[sel['i_fvg'].to_numpy()]
     r_estrutura = (sel['dir'] * (sel['entrada'] - sel['stop_estrutura']) / sel['entrada']).to_numpy()
     h, l = df['high'].to_numpy(), df['low'].to_numpy()
     inf = lambda v: -1 if v == np.inf else int(v)
     variantes = {}
-    for nome, col in (('estrutura', 'stop_estrutura'), ('atr3', 'stop_atr3')):
+    for nome, col in (('estrutura', 'stop_estrutura'), ('atr2', 'stop_atr2'), ('atr3', 'stop_atr3')):
         av = smc.avaliar(df, sel.reset_index(drop=True), col)
         assert len(av) == len(sel)
         ops = []
@@ -79,7 +81,7 @@ def exportar(ativo, inicio):
                         round(float(s.posicao_perna), 3), round(float(s.risco_pct), 5),
                         int(s.acerto_1r), int(s.acerto_2r), int(s.acerto_3r),
                         inf(s.t_stop), inf(s.t_1r), inf(s.t_2r), inf(s.t_3r),
-                        round(float(s.resultado_1r), 3), round(float(s.resultado_2r), 3),
+                        round(float(s.resultado_1r), 3), round(float(s.resultado_2r), 3), round(float(s.resultado_3r), 3),
                         SESSOES.index(sessoes[s.i_exec]), _t(df, s.origem), round(float(topo), casas),
                         round(float(fundo), casas), round(float(r_estrutura[k]), 5)])
         variantes[nome] = ops
@@ -87,7 +89,7 @@ def exportar(ativo, inicio):
               'inicio': _t(df, i0), 'fim': _t(df, len(df) - 1), 'sessoes': SESSOES,
               'campos': ['t_fvg', 't_exec', 'dir', 'entrada', 'stop', 'zona_base', 'zona_topo', 'posicao',
                          'risco_pct', 'a1', 'a2', 'a3', 't_stop', 't_1r', 't_2r', 't_3r', 'resultado_1r',
-                         'resultado_2r', 'sessao', 't_origem', 'topo_perna', 'fundo_perna', 'r_estrutura'],
+                         'resultado_2r', 'resultado_3r', 'sessao', 't_origem', 'topo_perna', 'fundo_perna', 'r_estrutura'],
               'variantes': variantes}
     (destino / 'operacoes.json').write_text(json.dumps(resumo, separators=(',', ':')))
     tam = sum(f.stat().st_size for f in destino.iterdir()) / 1e6

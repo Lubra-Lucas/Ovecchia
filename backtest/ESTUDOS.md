@@ -173,6 +173,34 @@ Aleatório com o mesmo R: ~49% em 1R em todas as linhas. Taxas: 0,02% + 0,05%.
 - Correção: o exportador do visualizador reaproveitava setups já avaliados ao calcular a variante
   em ATR (colunas duplicadas); corrigido antes de publicar. O estudo não tinha esse problema.
 
+## 10. Grade de configurações do FVG (M1, BTC + ETH) — `resultados/estudo_configs_1m.csv`, `resultados/ranking_configs.txt`
+
+540 combinações por ativo: pivô (3, 5) × entrada (1º FVG; 1º FVG + média 50 + 2 BOS; todos + média 50 + 2 BOS;
+todos + médias alinhadas + 2 BOS; todos os FVGs) × R da estrutura mínimo (0; 0,2%; 0,4%) × stop (estrutura,
+2 × ATR, 3 × ATR) × alvo (1R, 2R, 3R) × horário (todas; aberturas em São Paulo: Ásia 22h–01h, Londres 03h–07h,
+NY 10h30–13h30). Código: `estudo_configs.py` e `ranking_configs.py`. Ranking só com configurações de R bruto
+por operação positivo nos dois ativos e nas duas metades (2023–2024 e 2025–2026): 240 de 540.
+
+Resultados (média BTC/ETH, por ativo):
+
+| Objetivo | Configuração | Acerto | R bruto/op | R líquido/op | R por ano |
+|---|---|---|---|---|---|
+| Mais R bruto acumulado | pivô 3, 1º FVG, sem R mínimo, 2 × ATR, alvo 3R | 32% | +0,27 | **−0,63** | +9.115 bruto (~94 ops/dia) |
+| Mais R líquido, uma por vez | **pivô 5, 1º FVG, R ≥ 0,4%, 2 × ATR, alvo 3R** | 43% | **+0,73** | **+0,42** | +1.172 líquido (~7 ops/dia) |
+| Mesmo, alvo 2R | pivô 5, 1º FVG, R ≥ 0,4%, 2 × ATR, alvo 2R | 55% | +0,64 | +0,32 | +1.064 líquido |
+| Maior acerto | pivô 5, 1º FVG, R ≥ 0,4%, 2 × ATR, alvo 1R | **71%** | +0,41 | +0,10 | +371 líquido |
+
+- O R bruto acumulado máximo vem de volume: ~94 operações/dia com R de 0,12%. As taxas passam de 0,6R
+  por operação e o líquido é muito negativo. Em mercado com custo por contrato (ex.: MNQ, custo ~1% do R)
+  essa seria a configuração mais interessante; em cripto não.
+- **Entrar em mais FVGs piora**: "todos + média 50 + 2 BOS" e "todos + médias alinhadas + 2 BOS" ficam com
+  ~30% de acerto em 2R e R bruto negativo (−0,06 a −0,13R). Os FVGs depois do 1º na mesma pernada têm 42%
+  em 1R e −0,17R por operação.
+- Exigir média 50 + 2 BOS no 1º FVG também piora (+0,42 a +0,50R contra +0,59 a +0,69R sem o filtro).
+- Aberturas de São Paulo: mesmo R por operação que todas as horas (+0,66 contra +0,64), com 40% das operações.
+- Correção feita no caminho: a primeira versão da grade aplicava o filtro de R antes de escolher o 1º FVG,
+  o que misturava FVGs posteriores da pernada. Corrigido antes do ranking final.
+
 ## Próximos passos (em aberto)
 
 ### A. Estratégia de fair value gap (SMC) — feita no M1 (seção 8); próximos testes abaixo
