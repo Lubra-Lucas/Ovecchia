@@ -322,6 +322,22 @@ anteriores do outro lado das médias). 128 configurações.
 
 Conclusão: o sinal é objetivo e honesto, mas sozinho não tem vantagem estatística relevante em cripto.
 
+## 15. Recuo a favor da tendência com saída na média de 5 — `resultados/estudo_recuo.csv`, `resultados/estudo_recuo.txt`
+
+Regra (`recuo.py`): com o fechamento acima da média de 200, compra quando o RSI(2) < 10 ou após 3 fechamentos
+seguidos em queda; entra na abertura seguinte e sai no primeiro fechamento acima da média de 5 (ou em 10 candles).
+Stop: nenhum, 2 ATR ou 3 ATR. Venda é o espelho. BTC, ETH, SOL e ADA, H1/H4/D1, desde 2017 (SOL 2020, ADA 2018).
+Aleatório: entradas sorteadas em qualquer recuo (mesma tendência, preço do lado errado da média de 5), mesmas saídas.
+
+- **Acerto alto, mas igual ao aleatório:** 65–72% de acerto. O aleatório com a mesma saída também dá 66–72%.
+  Em média, o gatilho fica 1,8 ponto **abaixo** do aleatório. O acerto alto vem da forma da saída
+  (ganho médio ~+0,22R, perda média ~−0,45R), não do gatilho.
+- **R bruto:** +0,02 a +0,04 no H1 e em torno de 0 no H4. No D1, de 0 a +0,10, mas são só 8–10 operações por ano
+  por ativo, e o aleatório também fica positivo (alta das criptos no período). Líquido ≈ 0.
+- Filtro de tendência ajuda pouco (compra: mediana 68% × 66% sem filtro). Vendas são piores que compras.
+- **Conclusão:** acerto de ~70% de verdade, mas sem vantagem: qualquer compra em recuo com essa saída faz o mesmo,
+  e o R por operação fica perto de zero.
+
 ## Estratégia de FVG: arquivada
 
 Parada por decisão do usuário: a marcação de pernadas e fractais ainda depende de interpretação (o operador consideraria
