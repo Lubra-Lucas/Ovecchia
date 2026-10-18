@@ -11,6 +11,8 @@ Dimensões:
   alvo           1R, 2R, 3R
   horário        todas as horas | aberturas (São Paulo: Ásia 22h–01h, Londres 03h–07h, NY 10h30–13h30)
 
+"1º FVG" = o primeiro FVG executado da pernada; se ele não passar nos filtros, a pernada não é operada
+(os FVGs seguintes da mesma pernada perdem dinheiro: 42% de acerto em 1R, −0,17R por operação).
 "Média 50" = fechamento do lado da operação em relação à SMA 50 (acima na compra, abaixo na venda).
 "2 BOS" = pelo menos dois BOS seguidos na tendência quando a ordem é ativada.
 Métricas: R bruto acumulado por ano (todas as operações e uma por vez), R por operação,
@@ -100,11 +102,11 @@ def grupos(ativo):
 
 
 def selecionar(g, entrada):
+    """g já vem com o filtro de R e de horário. Nas entradas '1º FVG', g já contém só o 1º FVG da pernada."""
     if entrada == '1º FVG':
-        return g[~g.duplicated(['dir', 'origem'])]
+        return g
     if entrada == '1º FVG + média 50 + 2 BOS':
-        x = g[g['lado_m50'] & g['bos2']]
-        return x[~x.duplicated(['dir', 'origem'])]
+        return g[g['lado_m50'] & g['bos2']]
     if entrada == 'todos + média 50 + 2 BOS':
         return g[g['lado_m50'] & g['bos2']]
     if entrada == 'todos + médias alinhadas + 2 BOS':
@@ -143,8 +145,10 @@ def main(ativos):
     linhas = []
     for ativo in ativos:
         for n, stop, g, anos in grupos(ativo):
+            primeiro = g[~g.duplicated(['dir', 'origem'])]      # 1º FVG executado da pernada, antes de qualquer filtro
             for entrada, rmin, horario in itertools.product(ENTRADAS, R_MIN, HORARIOS):
-                x = g[g['r_estrutura'] >= rmin]
+                x = primeiro if entrada.startswith('1º FVG') else g
+                x = x[x['r_estrutura'] >= rmin]
                 if horario == 'aberturas':
                     x = x[x['abertura']]
                 x = selecionar(x, entrada)
