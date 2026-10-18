@@ -34,6 +34,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 14px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -47,30 +48,31 @@ h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
 .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 
 .controles { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
-.grupo { display: flex; align-items: center; gap: 8px; }
+.grupo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .rotulo { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
 .seg button {
   border: 0; background: transparent; color: var(--ink-2); font: inherit; font-family: var(--font-num);
   padding: 6px 11px; cursor: pointer; border-right: 1px solid var(--line);
 }
 .seg button:last-child { border-right: 0; }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.seg.texto button { font-family: var(--font-ui); }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--compra); outline-offset: 2px; }
 
 .metricas {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
 }
-.metrica { padding: 10px 14px; border-right: 1px solid var(--line); min-width: 0; }
-.metrica:last-child { border-right: 0; }
+.metrica { padding: 10px 14px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; margin: 0 -1px -1px 0; }
 .metrica .v { font-family: var(--font-num); font-size: 17px; font-weight: 500; margin-top: 3px; }
 .metrica .c { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+.metrica.destaque { background: color-mix(in srgb, var(--alvo) 7%, var(--surface)); }
 
 .principal { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
 @media (max-width: 900px) { .principal { grid-template-columns: minmax(0, 1fr); } }
 .painel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
-#grafico { height: min(62vh, 560px); min-height: 340px; }
+#grafico { height: min(62vh, 560px); min-height: 340px; position: relative; }
 .legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-2); }
 .legenda span { display: inline-flex; align-items: center; gap: 6px; }
 .tra { width: 18px; border-top: 2px dashed currentColor; display: inline-block; }
@@ -93,7 +95,7 @@ select, input[type="date"] {
 .pill { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 4px; color: #fff; }
 .pill.compra { background: var(--compra); }
 .pill.venda { background: var(--venda); }
-.pill.aberto { background: transparent; color: var(--ink-2); border: 1px solid var(--line); font-weight: 500; }
+.pill.neutra { background: transparent; color: var(--ink-2); border: 1px solid var(--line); font-weight: 500; letter-spacing: 0.02em; }
 .cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .resultado { font-family: var(--font-num); font-size: 26px; font-weight: 500; }
 .pos-v { color: var(--ganho); } .neg-v { color: var(--perda); }
@@ -101,6 +103,10 @@ dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; f
 dt { color: var(--ink-3); }
 dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .sep { border-top: 1px solid var(--line); }
+.chips { display: flex; gap: 6px; }
+.chip { font-family: var(--font-num); font-size: 12px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--line); color: var(--ink-3); }
+.chip.sim { border-color: var(--ganho); color: var(--ganho); }
+.chip.nao { border-color: var(--line); color: var(--ink-3); text-decoration: line-through; }
 .ultimos { display: flex; gap: 4px; flex-wrap: wrap; }
 .ultimos button {
   width: 26px; height: 26px; border-radius: 4px; border: 1px solid var(--line); cursor: pointer;
@@ -109,17 +115,19 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
 .ultimos button.g { border-color: var(--ganho); color: var(--ganho); }
 .ultimos button.p { border-color: var(--perda); color: var(--perda); }
 .ultimos button[aria-current="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-.nota { font-size: 12px; color: var(--ink-3); line-height: 1.5; max-width: 80ch; }
-#carregando { padding: 40px; color: var(--ink-2); }
+.nota { font-size: 12px; color: var(--ink-3); line-height: 1.5; max-width: 90ch; margin: 0; }
+.aviso { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-2); background: var(--surface); z-index: 5; }
 </style>
 
 <div class="wrap">
   <header>
     <h1>Ovelha V3 · <span id="ativo">BTCUSDT H1</span></h1>
-    <span class="sub">Média + faixa de ATR com histerese · sempre posicionado · execução na abertura do candle seguinte · custo <span id="custo">0,1%</span> por lado</span>
+    <span class="sub">Média + faixa de ATR com histerese · execução na abertura do candle seguinte · custo <span id="custo">0,05%</span> por lado</span>
   </header>
 
   <div class="controles">
+    <div class="grupo"><span class="rotulo">Ativo</span><div class="seg" id="seg-ativo"></div></div>
+    <div class="grupo"><span class="rotulo">Saída</span><div class="seg texto" id="seg-modo"></div></div>
     <div class="grupo"><span class="rotulo">Média</span><div class="seg" id="seg-media"></div></div>
     <div class="grupo"><span class="rotulo">k (largura da faixa)</span><div class="seg" id="seg-k"></div></div>
   </div>
@@ -128,11 +136,12 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
 
   <div class="principal">
     <div class="painel">
-      <div id="grafico"><div id="carregando">Carregando 75 mil candles…</div></div>
+      <div id="grafico"><div class="aviso" id="aviso">Carregando candles…</div></div>
       <div class="legenda">
         <span style="color:var(--compra)"><span class="tra"></span>Entrada compra</span>
         <span style="color:var(--venda)"><span class="tra"></span>Entrada venda</span>
         <span style="color:var(--stop)"><span class="tra"></span>Stop inicial</span>
+        <span style="color:var(--stop)" id="leg-movel"><span class="sol"></span>Stop móvel</span>
         <span style="color:var(--alvo)"><span class="tra"></span>1R · 2R · 3R</span>
         <span style="color:var(--ink-3)"><span class="sol"></span>Média</span>
         <span style="color:var(--ink-3)"><span class="pon"></span>Faixas ± k·ATR</span>
@@ -157,20 +166,25 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
       </div>
       <div class="cab" id="cab"></div>
       <div class="resultado" id="resultado"></div>
+      <div>
+        <div class="rotulo" style="margin-bottom:6px">Chegou antes do stop inicial</div>
+        <div class="chips" id="chips"></div>
+      </div>
       <dl id="detalhes"></dl>
       <div class="sep"></div>
       <div>
-        <div class="rotulo" style="margin-bottom:6px">Últimos 10 sinais fechados</div>
+        <div class="rotulo" style="margin-bottom:6px">Últimos 10 trades fechados</div>
         <div class="ultimos" id="ultimos"></div>
-        <div class="nota" id="ultimos-resumo" style="margin-top:6px"></div>
+        <p class="nota" id="ultimos-resumo" style="margin-top:6px"></p>
       </div>
     </aside>
   </div>
 
+  <p class="nota" id="nota-modo"></p>
   <p class="nota">
-    R é a distância entre o preço de entrada e a faixa oposta no candle do sinal (o stop natural da estratégia).
-    A saída acontece quando o sinal vira, que pode ficar acima ou abaixo do stop inicial porque a faixa acompanha a média.
-    "1R antes do stop" conta como não quando os dois são tocados no mesmo candle. Use ← e → no teclado para navegar.
+    R é a distância entre a entrada e o stop inicial (a faixa oposta no candle do sinal). "Chegou a XR antes do stop" usa máximas e mínimas
+    dos candles, só dentro da vida do sinal, e conta como não quando alvo e stop são tocados no mesmo candle. A referência "aleatório" usa entradas
+    sorteadas com o mesmo risco, direção e janela de tempo: é o número a vencer. Use ← e → no teclado para navegar.
   </p>
 </div>
 
@@ -178,38 +192,49 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
 <script>
 (async function () {
   const LC = LightweightCharts;
-  const dados = await (await fetch('dados.json')).json();
-  const C = dados.candles;           // [t, o, h, l, c]
-  const n = C.length;
-  document.getElementById('ativo').textContent = `${dados.simbolo} ${dados.timeframe.toUpperCase()}`;
-  document.getElementById('custo').textContent = (dados.custo_lado * 100).toLocaleString('pt-BR') + '%';
+  const ATIVOS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'ADAUSDT', 'ETHBTC'];
+  const TF = '1h';
+  // acerto de entradas aleatórias com o mesmo risco, direção e janela do sinal (mediana das 12 combinações; experimento_saidas.py)
+  const ALEATORIO = {"BTCUSDT": [0.378, 0.201, 0.117], "ETHUSDT": [0.386, 0.207, 0.124], "SOLUSDT": [0.382, 0.203, 0.125], "ADAUSDT": [0.394, 0.211, 0.128], "ETHBTC": [0.382, 0.206, 0.127]};
+  const NOTAS_MODO = {
+    virada: 'Saída na virada do sinal: a estratégia fica sempre posicionada e só troca de lado quando o preço fecha além da faixa oposta.',
+    stop_movel: 'Stop móvel: o stop começa na faixa oposta e só anda a favor (sobe na compra, desce na venda). Se for tocado, a estratégia fica fora até a próxima virada do sinal.',
+    alvo1: 'Alvo 1R: sai no alvo de 1R ou no stop inicial, o que vier primeiro. Se nenhum for tocado, sai na virada do sinal.',
+    alvo2: 'Alvo 2R: sai no alvo de 2R ou no stop inicial, o que vier primeiro. Se nenhum for tocado, sai na virada do sinal.',
+    alvo3: 'Alvo 3R: sai no alvo de 3R ou no stop inicial, o que vier primeiro. Se nenhum for tocado, sai na virada do sinal.',
+  };
+  const cache = {};
+  const estado = { ativo: 'BTCUSDT', modo: 'virada', media: 100, k: 1, dados: null, combo: null, trades: [], lista: [], pos: 0 };
+  let C = [], n = 0, atr = [], media = [], casas = 2;
 
-  const pct = (x, d = 0) => (x >= 0 ? '+' : '') + (x * 100).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) + '%';
-  const preco = x => x.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const rr = x => (x >= 0 ? '+' : '') + x.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'R';
+  const nf = (d) => ({ minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = (x, d = 0) => x == null ? '–' : (x >= 0 ? '+' : '') + (x * 100).toLocaleString('pt-BR', nf(d)) + '%';
+  const pctSem = (x, d = 0) => x == null ? '–' : (x * 100).toLocaleString('pt-BR', nf(d)) + '%';
+  const preco = x => x.toLocaleString('pt-BR', nf(casas));
+  const rr = x => x == null ? '–' : (x >= 0 ? '+' : '') + x.toLocaleString('pt-BR', nf(2)) + 'R';
   const dataHora = t => new Date(t * 1000).toLocaleString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' UTC';
   const cor = nome => getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
+  const aviso = document.getElementById('aviso');
 
   // ---------- gráfico ----------
-  const el = document.getElementById('grafico');
-  el.innerHTML = '';
-  const chart = LC.createChart(el, {
+  const chart = LC.createChart(document.getElementById('grafico'), {
     autoSize: true,
     timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 12 },
     crosshair: { mode: LC.CrosshairMode.Normal },
     localization: { locale: 'pt-BR', priceFormatter: p => preco(p) },
   });
+  const semRotulo = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
   const velas = chart.addCandlestickSeries({ priceLineVisible: false, lastValueVisible: false });
-  velas.setData(C.map(c => ({ time: c[0], open: c[1], high: c[2], low: c[3], close: c[4] })));
-  const linhaMedia = chart.addLineSeries({ lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-  const faixaSup = chart.addLineSeries({ lineWidth: 1, lineStyle: LC.LineStyle.Dotted, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-  const faixaInf = chart.addLineSeries({ lineWidth: 1, lineStyle: LC.LineStyle.Dotted, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  const linhaMedia = chart.addLineSeries({ lineWidth: 1.5, ...semRotulo });
+  const faixaSup = chart.addLineSeries({ lineWidth: 1, lineStyle: LC.LineStyle.Dotted, ...semRotulo });
+  const faixaInf = chart.addLineSeries({ lineWidth: 1, lineStyle: LC.LineStyle.Dotted, ...semRotulo });
+  const stopMovel = chart.addLineSeries({ title: 'Stop móvel', lineWidth: 2, lineType: LC.LineType.WithSteps, priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false });
   const niveis = ['Entrada', 'Stop', '1R', '2R', '3R'].map(titulo => chart.addLineSeries({
     title: titulo, lineStyle: LC.LineStyle.Dashed, priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false,
   }));
 
   function aplicarTema() {
-    const ink = cor('--ink'), ink2 = cor('--ink-2'), ink3 = cor('--ink-3'), line = cor('--line'), surf = cor('--surface');
+    const ink2 = cor('--ink-2'), ink3 = cor('--ink-3'), line = cor('--line'), surf = cor('--surface');
     chart.applyOptions({
       layout: { background: { type: 'solid', color: surf }, textColor: ink2, fontFamily: 'IBM Plex Mono, ui-monospace, monospace', fontSize: 11 },
       grid: { vertLines: { color: line }, horzLines: { color: line } },
@@ -219,73 +244,119 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     linhaMedia.applyOptions({ color: ink2 });
     faixaSup.applyOptions({ color: ink3 });
     faixaInf.applyOptions({ color: ink3 });
-    niveis[1].applyOptions({ color: cor('--stop'), lineWidth: 2 });
+    stopMovel.applyOptions({ color: cor('--stop') });
+    niveis[1].applyOptions({ color: cor('--stop'), lineWidth: 1 });
     niveis[2].applyOptions({ color: cor('--alvo'), lineWidth: 2 });
     niveis[3].applyOptions({ color: cor('--alvo'), lineWidth: 1 });
     niveis[4].applyOptions({ color: cor('--alvo'), lineWidth: 1 });
     if (estado.combo) { desenharMarcadores(); mostrarTrade(); }
   }
 
-  // ---------- indicadores (mesmas fórmulas do Python: SMA do fechamento, ATR = média simples de 14 TRs) ----------
-  const atr = (() => {
+  // ---------- indicadores (mesmas fórmulas do Python) ----------
+  function calcularAtr() {
     const tr = C.map((c, i) => i === 0 ? c[2] - c[3] : Math.max(c[2] - c[3], Math.abs(c[2] - C[i - 1][4]), Math.abs(c[3] - C[i - 1][4])));
     const out = new Array(n).fill(NaN); let soma = 0;
     for (let i = 0; i < n; i++) { soma += tr[i]; if (i >= 14) soma -= tr[i - 14]; if (i >= 13) out[i] = soma / 14; }
     return out;
-  })();
+  }
   function sma(p) {
     const out = new Array(n).fill(NaN); let soma = 0;
     for (let i = 0; i < n; i++) { soma += C[i][4]; if (i >= p) soma -= C[i - p][4]; if (i >= p - 1) out[i] = soma / p; }
     return out;
   }
   const serie = arr => arr.map((v, i) => Number.isNaN(v) ? { time: C[i][0] } : { time: C[i][0], value: v });
+  const faixa = (i, lado) => media[i] + lado * estado.k * atr[i];
 
-  // ---------- estado ----------
-  const MEDIAS = [...new Set(Object.values(dados.combos).map(c => c.media))];
-  const KS = [...new Set(Object.values(dados.combos).map(c => c.k))];
-  const estado = { media: 100, k: 1.0, combo: null, lista: [], pos: 0 };
-  // trade: [e, s, dir, entrada, saida, stop, ret, ret_r, mfe_r, mae_r, r1_antes_stop, aberto]
-
-  function botoesSeg(id, valores, chave, fmt) {
+  // ---------- controles segmentados ----------
+  function botoesSeg(id, valores, chave, fmt, aoMudar) {
     const box = document.getElementById(id);
     box.innerHTML = '';
     valores.forEach(v => {
       const b = document.createElement('button');
       b.textContent = fmt(v);
       b.setAttribute('aria-pressed', String(estado[chave] === v));
-      b.onclick = () => { estado[chave] = v; botoesSeg(id, valores, chave, fmt); carregarCombo(true); };
+      b.onclick = () => { estado[chave] = v; botoesSeg(id, valores, chave, fmt, aoMudar); aoMudar(); };
       box.appendChild(b);
     });
   }
 
+  async function carregarAtivo() {
+    aviso.hidden = false;
+    aviso.textContent = `Carregando ${estado.ativo}…`;
+    if (!cache[estado.ativo]) cache[estado.ativo] = await (await fetch(`dados/${estado.ativo}_${TF}.json`)).json();
+    const d = estado.dados = cache[estado.ativo];
+    C = d.candles; n = C.length; casas = d.casas;
+    chart.applyOptions({ localization: { locale: 'pt-BR', priceFormatter: p => preco(p) } });
+    velas.applyOptions({ priceFormat: { type: 'price', precision: casas, minMove: 1 / 10 ** casas } });
+    velas.setData(C.map(c => ({ time: c[0], open: c[1], high: c[2], low: c[3], close: c[4] })));
+    atr = calcularAtr();
+    document.getElementById('ativo').textContent = `${d.simbolo} ${d.timeframe.toUpperCase()}`;
+    document.getElementById('custo').textContent = (d.custo_lado * 100).toLocaleString('pt-BR') + '%';
+    const campo = document.getElementById('data');
+    campo.min = new Date(C[0][0] * 1000).toISOString().slice(0, 10);
+    campo.max = new Date(C[n - 1][0] * 1000).toISOString().slice(0, 10);
+    aviso.hidden = true;
+    carregarCombo(true, true);
+  }
+
+  // trade combinado: sinal (entrada) + saída do modo escolhido
+  function montarTrades() {
+    const cb = estado.combo, sd = cb.saidas[estado.modo];
+    return cb.sinais.map((g, i) => {
+      const [e, dir, entrada, stop, a1, a2, a3] = g;
+      const [s, saida, ret, mfe, mae, motivo, aberto] = sd[i];
+      const risco = dir * (entrada - stop);
+      return { i, e, dir, entrada, stop, risco, acertos: [a1, a2, a3], s, saida, ret, mfe, mae,
+               retR: dir * (saida - entrada) / risco, motivo: estado.dados.motivos[motivo], aberto: !!aberto };
+    });
+  }
+
+  function carregarCombo(manterData, novoAtivo) {
+    const tAnterior = estado.trades.length && estado.lista.length ? C[Math.min(estado.trades[estado.lista[estado.pos]].e, n - 1)][0] : null;
+    const d = estado.dados;
+    estado.combo = d.combos[`${estado.media}_${estado.k.toFixed(1)}`];
+    estado.trades = montarTrades();
+    media = sma(estado.media);
+    linhaMedia.setData(serie(media));
+    faixaSup.setData(serie(media.map((v, i) => v + estado.k * atr[i])));
+    faixaInf.setData(serie(media.map((v, i) => v - estado.k * atr[i])));
+    filtrar();
+    estado.pos = estado.lista.length - 1;
+    if (manterData && tAnterior != null && !novoAtivo) irPara(tAnterior, false);
+    document.getElementById('leg-movel').hidden = estado.modo !== 'stop_movel';
+    document.getElementById('nota-modo').textContent = NOTAS_MODO[estado.modo];
+    metricas();
+    ultimos();
+    desenharMarcadores();
+    mostrarTrade();
+  }
+
   function metricas() {
-    const r = estado.combo.resumo, bh = dados.buy_hold;
+    const r = estado.combo.resumo[estado.modo], bh = estado.dados.buy_hold;
     const itens = [
-      ['Retorno total', pct(r.retorno_total), `buy & hold ${pct(bh.retorno_total)}`, r.retorno_total],
-      ['Retorno anual', pct(r.retorno_anual), `buy & hold ${pct(bh.retorno_anual)}`, r.retorno_anual],
-      ['Drawdown máx.', pct(r.dd_max), `buy & hold ${pct(bh.dd_max)}`, null],
-      ['Trades', r.trades.toLocaleString('pt-BR'), `duração média ${Math.round(r.duracao_media_h)} h`, null],
-      ['Acerto', pct(r.acerto).replace('+', ''), `profit factor ${r.profit_factor.toFixed(2).replace('.', ',')}`, null],
-      ['Chegaram a 1R / 2R / 3R', `${Math.round(r.pct_1r * 100)} / ${Math.round(r.pct_2r * 100)} / ${Math.round(r.pct_3r * 100)}%`, `1R antes do stop: ${Math.round(r.pct_1r_antes_stop * 100)}%`, null],
-      ['Compras · vendas', `${pct(r.ret_compras)} · ${pct(r.ret_vendas)}`, 'retorno acumulado de cada lado', null],
+      ['Retorno total', pct(r.retorno_total), `buy & hold ${pct(bh.retorno_total)}`, r.retorno_total, ''],
+      ['Retorno anual', pct(r.retorno_anual), `buy & hold ${pct(bh.retorno_anual)}`, r.retorno_anual, ''],
+      ['Drawdown máx.', pct(r.dd_max), `buy & hold ${pct(bh.dd_max)}`, null, ''],
+      ['Acerto antes do stop', `${pctSem(r.acerto_1r)} · ${pctSem(r.acerto_2r)} · ${pctSem(r.acerto_3r)}`, `1R · 2R · 3R · aleatório ${ALEATORIO[estado.ativo].map(x => Math.round(x * 100)).join(' · ')}%`, null, 'destaque'],
+      ['Trades', r.trades.toLocaleString('pt-BR'), `duração média ${Math.round(r.duracao_media_h)} h`, null, ''],
+      ['Trades com lucro', pctSem(r.acerto), `profit factor ${r.profit_factor == null ? '–' : r.profit_factor.toFixed(2).replace('.', ',')}`, null, ''],
+      ['Resultado médio', rr(r.resultado_medio_r), 'por trade, antes dos custos', r.resultado_medio_r, ''],
+      ['Compras · vendas', `${pct(r.ret_compras)} · ${pct(r.ret_vendas)}`, 'retorno acumulado de cada lado', null, ''],
     ];
-    document.getElementById('metricas').innerHTML = itens.map(([t, v, c, s]) =>
-      `<div class="metrica"><div class="rotulo">${t}</div><div class="v ${s == null ? '' : s >= 0 ? 'pos-v' : 'neg-v'}">${v}</div><div class="c">${c}</div></div>`).join('');
+    document.getElementById('metricas').innerHTML = itens.map(([t, v, c, s, cls]) =>
+      `<div class="metrica ${cls}"><div class="rotulo">${t}</div><div class="v ${s == null ? '' : s >= 0 ? 'pos-v' : 'neg-v'}">${v}</div><div class="c">${c}</div></div>`).join('');
   }
 
   function desenharMarcadores() {
-    const tr = estado.combo.trades;
     const atual = estado.lista[estado.pos];
-    const mk = [];
     const corCompra = cor('--compra'), corVenda = cor('--venda');
-    tr.forEach((t, i) => {
-      const compra = t[2] === 1;
-      mk.push({ time: C[t[0]][0], position: compra ? 'belowBar' : 'aboveBar', color: compra ? corCompra : corVenda,
-        shape: compra ? 'arrowUp' : 'arrowDown', size: i === atual ? 2 : 1 });
-    });
+    const mk = estado.trades.map(t => ({
+      time: C[t.e][0], position: t.dir === 1 ? 'belowBar' : 'aboveBar', color: t.dir === 1 ? corCompra : corVenda,
+      shape: t.dir === 1 ? 'arrowUp' : 'arrowDown', size: t.i === atual ? 2 : 1,
+    }));
     if (atual != null) {
-      const t = tr[atual];
-      mk.push({ time: C[t[1]][0], position: t[2] === 1 ? 'aboveBar' : 'belowBar', color: cor('--ink'), shape: 'circle', text: 'saída' });
+      const t = estado.trades[atual];
+      mk.push({ time: C[t.s][0], position: t.dir === 1 ? 'aboveBar' : 'belowBar', color: cor('--ink'), shape: 'circle', text: t.aberto ? 'agora' : 'saída' });
     }
     mk.sort((a, b) => a.time - b.time);
     velas.setMarkers(mk);
@@ -293,103 +364,90 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
 
   function filtrar() {
     const f = document.getElementById('filtro').value;
-    const tr = estado.combo.trades;
-    estado.lista = tr.map((_, i) => i).filter(i => {
-      const t = tr[i];
-      return f === 'todos' || (f === 'compras' && t[2] === 1) || (f === 'vendas' && t[2] === -1)
-        || (f === 'ganhos' && t[6] > 0) || (f === 'perdas' && t[6] <= 0);
-    });
-  }
-
-  function carregarCombo(manterData) {
-    const tAnterior = estado.combo && estado.lista.length ? C[estado.combo.trades[estado.lista[estado.pos]][0]][0] : null;
-    estado.combo = dados.combos[`${estado.media}_${estado.k.toFixed(1)}`] || dados.combos[`${estado.media}_${estado.k}`];
-    const m = sma(estado.media);
-    linhaMedia.setData(serie(m));
-    faixaSup.setData(serie(m.map((v, i) => v + estado.k * atr[i])));
-    faixaInf.setData(serie(m.map((v, i) => v - estado.k * atr[i])));
-    filtrar();
-    estado.pos = estado.lista.length - 1;
-    if (manterData && tAnterior != null) irPara(tAnterior, false);
-    metricas();
-    ultimos();
-    desenharMarcadores();
-    mostrarTrade();
+    estado.lista = estado.trades.filter(t =>
+      f === 'todos' || (f === 'compras' && t.dir === 1) || (f === 'vendas' && t.dir === -1)
+      || (f === 'ganhos' && t.ret > 0) || (f === 'perdas' && t.ret <= 0)).map(t => t.i);
   }
 
   function irPara(tempo, redesenhar = true) {
-    const tr = estado.combo.trades;
     let melhor = 0;
-    estado.lista.forEach((idx, p) => { if (C[tr[idx][0]][0] <= tempo) melhor = p; });
+    estado.lista.forEach((idx, p) => { if (C[estado.trades[idx].e][0] <= tempo) melhor = p; });
     estado.pos = melhor;
     if (redesenhar) { desenharMarcadores(); mostrarTrade(); }
   }
 
   function mostrarTrade() {
-    if (!estado.lista.length) {
-      niveis.forEach(s => s.setData([]));
+    const vazio = !estado.lista.length;
+    if (vazio) {
+      niveis.forEach(s => s.setData([])); stopMovel.setData([]);
       document.getElementById('posicao').textContent = 'nenhum trade';
-      ['cab', 'resultado', 'detalhes'].forEach(id => document.getElementById(id).innerHTML = '');
+      ['cab', 'resultado', 'detalhes', 'chips'].forEach(id => document.getElementById(id).innerHTML = '');
       return;
     }
-    const idx = estado.lista[estado.pos];
-    const t = estado.combo.trades[idx];
-    const [e, s, dir, entrada, saida, stop, ret, retR, mfeR, maeR, r1, aberto] = t;
-    const risco = dir * (entrada - stop);
-    const valores = [entrada, stop, entrada + dir * risco, entrada + 2 * dir * risco, entrada + 3 * dir * risco];
-    const t0 = C[e][0], t1 = C[s][0];
-    niveis[0].applyOptions({ color: cor(dir === 1 ? '--compra' : '--venda'), lineWidth: 2 });
-    niveis.forEach((serieN, i) => serieN.setData([{ time: t0, value: valores[i] }, { time: t1, value: valores[i] }]));
+    const t = estado.trades[estado.lista[estado.pos]];
+    const valores = [t.entrada, t.stop, t.entrada + t.dir * t.risco, t.entrada + 2 * t.dir * t.risco, t.entrada + 3 * t.dir * t.risco];
+    const t0 = C[t.e][0], t1 = C[Math.max(t.s, t.e)][0];
+    niveis[0].applyOptions({ color: cor(t.dir === 1 ? '--compra' : '--venda'), lineWidth: 2 });
+    niveis.forEach((sr, i) => sr.setData(t1 > t0 ? [{ time: t0, value: valores[i] }, { time: t1, value: valores[i] }] : [{ time: t0, value: valores[i] }]));
 
-    const antes = 40, depois = 15;
-    chart.timeScale().setVisibleLogicalRange({ from: Math.max(e - antes, 0), to: Math.min(s + depois, n - 1) + 6 });
+    // stop móvel: nível vigente em cada candle = melhor entre o stop inicial e as faixas opostas já fechadas
+    if (estado.modo === 'stop_movel') {
+      const pts = []; let nivel = t.stop;
+      for (let i = t.e; i <= Math.max(t.s, t.e); i++) {
+        if (i > t.e) { const f = faixa(i - 1, -t.dir); if (!Number.isNaN(f)) nivel = t.dir === 1 ? Math.max(nivel, f) : Math.min(nivel, f); }
+        pts.push({ time: C[i][0], value: nivel });
+      }
+      stopMovel.setData(pts);
+    } else stopMovel.setData([]);
 
-    document.getElementById('posicao').textContent = `trade ${(idx + 1).toLocaleString('pt-BR')} de ${estado.combo.trades.length.toLocaleString('pt-BR')}`
-      + (estado.lista.length !== estado.combo.trades.length ? ` · ${estado.pos + 1}/${estado.lista.length} no filtro` : '');
+    chart.timeScale().setVisibleLogicalRange({ from: Math.max(t.e - 40, 0), to: Math.min(t.s + 15, n - 1) + 6 });
+
+    document.getElementById('posicao').textContent = `trade ${(t.i + 1).toLocaleString('pt-BR')} de ${estado.trades.length.toLocaleString('pt-BR')}`
+      + (estado.lista.length !== estado.trades.length ? ` · ${estado.pos + 1}/${estado.lista.length} no filtro` : '');
     document.getElementById('cab').innerHTML =
-      `<span class="pill ${dir === 1 ? 'compra' : 'venda'}">${dir === 1 ? 'COMPRA' : 'VENDA'}</span>` +
-      (aberto ? '<span class="pill aberto">em aberto</span>' : '') +
+      `<span class="pill ${t.dir === 1 ? 'compra' : 'venda'}">${t.dir === 1 ? 'COMPRA' : 'VENDA'}</span>` +
+      `<span class="pill neutra">${t.aberto ? 'em aberto' : 'saída: ' + t.motivo}</span>` +
       `<span class="sub num">${dataHora(t0)}</span>`;
     document.getElementById('resultado').innerHTML =
-      `<span class="${ret >= 0 ? 'pos-v' : 'neg-v'}">${pct(ret, 2)}</span> <span class="sub num">${rr(retR)}</span>`;
+      `<span class="${t.ret >= 0 ? 'pos-v' : 'neg-v'}">${pct(t.ret, 2)}</span> <span class="sub num">${rr(t.retR)}</span>`;
+    document.getElementById('chips').innerHTML = t.acertos.map((a, i) =>
+      `<span class="chip ${a ? 'sim' : 'nao'}" aria-label="${i + 1}R ${a ? 'atingido' : 'não atingido'} antes do stop">${i + 1}R ${a ? '✓' : '✗'}</span>`).join('');
     const linhas = [
-      ['Entrada', preco(entrada)],
-      ['Stop inicial', preco(stop)],
-      ['R (risco)', `${preco(risco)} · ${pct(risco / entrada, 2).replace('+', '')}`],
-      ['1R', preco(valores[2])], ['2R', preco(valores[3])], ['3R', preco(valores[4])],
-      [aberto ? 'Preço atual' : 'Saída (virada)', preco(saida)],
-      ['Duração', `${s - e} candles`],
-      ['Máx. a favor', rr(mfeR)],
-      ['Máx. contra', rr(maeR)],
-      ['1R antes do stop', r1 ? 'sim' : 'não'],
+      ['Entrada', preco(t.entrada)],
+      ['Stop inicial', preco(t.stop)],
+      ['R (risco)', `${preco(t.risco)} · ${pctSem(t.risco / t.entrada, 2)}`],
+      ['1R · 2R · 3R', `${preco(valores[2])}`], ['', preco(valores[3])], ['', preco(valores[4])],
+      [t.aberto ? 'Preço atual' : 'Saída', preco(t.saida)],
+      ['Duração', `${t.s - t.e} candles`],
+      ['Máx. a favor', rr(t.mfe)],
+      ['Máx. contra', rr(t.mae)],
     ];
     document.getElementById('detalhes').innerHTML = linhas.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
-    document.querySelectorAll('#ultimos button').forEach(b => b.setAttribute('aria-current', String(Number(b.dataset.i) === idx)));
+    document.querySelectorAll('#ultimos button').forEach(b => b.setAttribute('aria-current', String(Number(b.dataset.i) === t.i)));
   }
 
   function ultimos() {
-    const tr = estado.combo.trades;
-    const fechados = tr.map((t, i) => [t, i]).filter(([t]) => !t[11]).slice(-10);
+    const fechados = estado.trades.filter(t => !t.aberto).slice(-10);
     const box = document.getElementById('ultimos');
     box.innerHTML = '';
-    fechados.forEach(([t, i]) => {
+    fechados.forEach(t => {
       const b = document.createElement('button');
-      b.className = t[6] > 0 ? 'g' : 'p';
-      b.textContent = t[2] === 1 ? 'C' : 'V';
-      b.dataset.i = i;
-      b.title = `${t[2] === 1 ? 'Compra' : 'Venda'} ${dataHora(C[t[0]][0])} · ${pct(t[6], 2)}`;
+      b.className = t.ret > 0 ? 'g' : 'p';
+      b.textContent = t.dir === 1 ? 'C' : 'V';
+      b.dataset.i = t.i;
+      b.title = `${t.dir === 1 ? 'Compra' : 'Venda'} ${dataHora(C[t.e][0])} · ${pct(t.ret, 2)}`;
       b.setAttribute('aria-label', b.title);
-      b.onclick = () => { document.getElementById('filtro').value = 'todos'; filtrar(); estado.pos = estado.lista.indexOf(i); desenharMarcadores(); mostrarTrade(); };
+      b.onclick = () => { document.getElementById('filtro').value = 'todos'; filtrar(); estado.pos = estado.lista.indexOf(t.i); desenharMarcadores(); mostrarTrade(); };
       box.appendChild(b);
     });
-    const pos = fechados.filter(([t]) => t[6] > 0).length;
-    const r1 = fechados.filter(([t]) => t[8] >= 1).length;
-    const soma = fechados.reduce((a, [t]) => a * (1 + t[6]), 1) - 1;
+    const pos = fechados.filter(t => t.ret > 0).length;
+    const a1 = fechados.filter(t => t.acertos[0]).length;
+    const soma = fechados.reduce((a, t) => a * (1 + t.ret), 1) - 1;
     document.getElementById('ultimos-resumo').textContent =
-      `${pos} de ${fechados.length} positivos · ${r1} chegaram a 1R · resultado somado ${pct(soma, 1)}. C = compra, V = venda; borda verde = ganho, vermelha = perda.`;
+      `${pos} de ${fechados.length} com lucro · ${a1} chegaram a 1R antes do stop · resultado somado ${pct(soma, 1)}. C = compra, V = venda; borda verde = ganho, vermelha = perda.`;
   }
 
-  // ---------- controles ----------
+  // ---------- eventos ----------
   const mover = d => { if (!estado.lista.length) return; estado.pos = Math.min(Math.max(estado.pos + d, 0), estado.lista.length - 1); desenharMarcadores(); mostrarTrade(); };
   document.getElementById('ant').onclick = () => mover(-1);
   document.getElementById('prox').onclick = () => mover(1);
@@ -399,22 +457,26 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     if (ev.key === 'ArrowRight') mover(1);
   });
   document.getElementById('filtro').onchange = () => {
-    const tempo = C[estado.combo.trades[estado.lista[estado.pos]]?.[0] ?? n - 1][0];
+    const atual = estado.trades[estado.lista[estado.pos]];
+    const tempo = atual ? C[atual.e][0] : C[n - 1][0];
     filtrar(); estado.pos = Math.max(estado.lista.length - 1, 0); irPara(tempo);
   };
   const campoData = document.getElementById('data');
-  campoData.min = new Date(C[0][0] * 1000).toISOString().slice(0, 10);
-  campoData.max = new Date(C[n - 1][0] * 1000).toISOString().slice(0, 10);
   campoData.onchange = () => { if (campoData.value) irPara(Date.parse(campoData.value + 'T23:59:59Z') / 1000); };
 
-  botoesSeg('seg-media', MEDIAS, 'media', v => String(v));
-  botoesSeg('seg-k', KS, 'k', v => v.toLocaleString('pt-BR', { minimumFractionDigits: 1 }));
+  const NOMES_MODO = { virada: 'Virada', stop_movel: 'Stop móvel', alvo1: 'Alvo 1R', alvo2: 'Alvo 2R', alvo3: 'Alvo 3R' };
+  botoesSeg('seg-ativo', ATIVOS, 'ativo', v => v.replace('USDT', ''), () => carregarAtivo().catch(falha));
+  botoesSeg('seg-modo', Object.keys(NOMES_MODO), 'modo', v => NOMES_MODO[v], () => carregarCombo(true));
+  botoesSeg('seg-media', [50, 100, 200], 'media', v => String(v), () => carregarCombo(true));
+  botoesSeg('seg-k', [0.5, 1, 1.5, 2], 'k', v => v.toLocaleString('pt-BR', nf(1)), () => carregarCombo(true));
   aplicarTema();
-  carregarCombo(false);
-
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', aplicarTema);
   new MutationObserver(aplicarTema).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  await carregarAtivo();
+
+  function falha(err) { aviso.hidden = false; aviso.textContent = `Não foi possível carregar os dados: ${err.message}`; }
 })().catch(err => {
-  document.getElementById('grafico').innerHTML = `<div id="carregando">Não foi possível carregar os dados: ${err.message}</div>`;
+  const a = document.getElementById('aviso');
+  a.hidden = false; a.textContent = `Não foi possível carregar os dados: ${err.message}`;
 });
 </script>

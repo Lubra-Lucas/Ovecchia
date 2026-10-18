@@ -4,7 +4,6 @@ Gera as imagens do relatório e os dados do visualizador de trades.
 Uso: python gerar_visuais.py BTCUSDT 1h
 """
 
-import json
 import sys
 from pathlib import Path
 
@@ -133,38 +132,10 @@ def desenhar_trade(s, t, nome_arquivo, titulo):
 
 
 def titulo_trade(t, rotulo):
-    status = 'chegou a 1R antes de tocar o stop inicial' if t.r1_antes_stop else 'não chegou a 1R antes do stop inicial'
+    status = 'chegou a 1R antes de tocar o stop inicial' if t.acerto_1r else 'não chegou a 1R antes do stop inicial'
     return (f'{rotulo} · {t.direcao} em {t.tempo_entrada:%d/%m/%Y %Hh} UTC · durou {t.duracao} h\n'
             f'Resultado {t.retorno:+.2%} ({t.retorno_r:+.2f}R, R = {t.risco_pct:.2%}) · '
             f'máx. a favor {t.mfe_r:+.1f}R · máx. contra {t.mae_r:+.1f}R · {status}')
-
-
-def exportar_visualizador(df, res, bh, simbolo, timeframe):
-    """JSON compacto: candles uma vez + trades de cada combinação (índices nos candles)."""
-    candles = [[int(r.open_time // 1000), r.open, r.high, r.low, r.close] for r in df.itertuples()]
-    combos = {}
-    for mm in MEDIAS:
-        for k in KS:
-            s = est.calcular_sinais(df, mm, k)
-            t = m.extrair_trades(s, CUSTO_LADO)
-            linha = res[(res.media == mm) & (res.k == k)].iloc[0]
-            combos[f'{mm}_{k}'] = {
-                'media': mm, 'k': k,
-                'resumo': {c: (None if pd.isna(linha[c]) else float(linha[c])) for c in
-                           ['retorno_total', 'retorno_anual', 'dd_max', 'trades', 'acerto', 'profit_factor',
-                            'duracao_media_h', 'pct_1r', 'pct_2r', 'pct_3r', 'pct_1r_antes_stop',
-                            'ret_compras', 'ret_vendas']},
-                # e, s, dir, entrada, saida, stop, retorno, retorno_r, mfe_r, mae_r, r1_antes_stop, aberto
-                'trades': [[int(r.i_entrada), int(r.i_saida), int(r.dir), round(r.preco_entrada, 2),
-                            round(r.preco_saida, 2), round(r.stop_inicial, 2), round(r.retorno, 5),
-                            round(r.retorno_r, 3), round(r.mfe_r, 3), round(r.mae_r, 3),
-                            int(r.r1_antes_stop), int(r.aberto)] for r in t.itertuples()],
-            }
-    dados = {'simbolo': simbolo, 'timeframe': timeframe, 'custo_lado': CUSTO_LADO,
-             'buy_hold': {k: float(v) for k, v in bh.items()}, 'candles': candles, 'combos': combos}
-    destino = SAIDA / f'visualizador_{simbolo}_{timeframe}.json'
-    destino.write_text(json.dumps(dados, separators=(',', ':')))
-    return destino
 
 
 def main(simbolo='BTCUSDT', timeframe='1h'):
@@ -189,8 +160,6 @@ def main(simbolo='BTCUSDT', timeframe='1h'):
     for nome, tr in exemplos.items():
         desenhar_trade(s, tr, f'trade_{nome}_{simbolo}_{timeframe}.png',
                        f'Média 100, k 1.0 · {titulo_trade(tr, rotulos[nome])}')
-
-    print('JSON do visualizador:', exportar_visualizador(df, res, bh, simbolo, timeframe))
 
 
 if __name__ == '__main__':

@@ -15,7 +15,7 @@ import motor as m
 MEDIAS = [50, 100, 200]
 KS = [0.5, 1.0, 1.5, 2.0]
 INICIO = '2018-03-01'
-CUSTO_LADO = 0.001
+CUSTO_LADO = 0.0005  # futuros da Binance (taker)
 SAIDA = Path(__file__).parent / 'saida'
 
 
@@ -69,7 +69,8 @@ if __name__ == '__main__':
                                                   'ret_2018_2021', 'ret_2022_2026', 'ret_compras', 'ret_vendas']}
         | {'profit_factor': '{:.2f}'.format, 'duracao_media_h': '{:.0f}'.format}))
     print()
-    print(res[['media', 'k', 'pct_1r', 'pct_2r', 'pct_3r', 'pct_1r_antes_stop', 'risco_mediano', 'mfe_mediano',
+    print(res[['media', 'k', 'acerto_1r', 'acerto_2r', 'acerto_3r', 'resultado_medio_r', 'risco_mediano', 'mfe_mediano',
                'mae_mediano']].to_string(index=False, formatters={c: '{:.0%}'.format for c in
-                                                                  ['pct_1r', 'pct_2r', 'pct_3r', 'pct_1r_antes_stop']}
+                                                                  ['acerto_1r', 'acerto_2r', 'acerto_3r']}
+                                         | {'resultado_medio_r': '{:+.2f}R'.format}
                                          | {c: '{:.2%}'.format for c in ['risco_mediano', 'mfe_mediano', 'mae_mediano']}))
