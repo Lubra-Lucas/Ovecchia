@@ -115,7 +115,8 @@ def fvgs(df):
     return sorted(out)
 
 
-def montar_setups(df, est, atr, espera_quebra=30, validade=240, folga_atr=0.1, entrada='borda', penetracao=0.0):
+def montar_setups(df, est, atr, espera_quebra=30, validade=240, folga_atr=0.1, entrada='borda', penetracao=0.0,
+                  candidatos=None):
     """
     Para cada FVG dentro de uma pernada a favor da tendência, cria a ordem limitada e procura a execução.
     - FVG formado com a tendência já a favor: ativa no candle seguinte.
@@ -126,6 +127,8 @@ def montar_setups(df, est, atr, espera_quebra=30, validade=240, folga_atr=0.1, e
     - A ordem é cancelada se: passar 'validade' candles, um fechamento atravessar a zona,
       ou a tendência mudar antes da execução.
     Dois stops são registrados: acima/abaixo do extremo da pernada (estrutura) e do FVG.
+    candidatos: se for uma lista, recebe todos os FVGs válidos (ativados e não tocados antes da ativação),
+    executados ou não, como (i_fvg, dir, base, topo, origem, i_ativa) — usado para o stop protegido.
     """
     o, h, l, c = (df[x].to_numpy() for x in ('open', 'high', 'low', 'close'))
     N = len(c)
@@ -159,6 +162,8 @@ def montar_setups(df, est, atr, espera_quebra=30, validade=240, folga_atr=0.1, e
         if a > i + 1:
             if (d == -1 and h[i + 1:a].max() >= preco) or (d == 1 and l[i + 1:a].min() <= preco):
                 continue
+        if candidatos is not None:
+            candidatos.append((i, d, base, topo, int(orig[t_ref]), a))
 
         # ---- execução da ordem limitada ----
         fim = min(a + validade, N)
