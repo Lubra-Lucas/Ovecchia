@@ -280,6 +280,30 @@ recupera a vantagem (45–47% em 1R).
 - Lição para o método: toda regra de seleção ("o primeiro", "o melhor", "deduplicar") precisa ser checada contra
   uma simulação candle a candle, que só conhece o passado.
 
+## 13. Stop protegido e "FVG validado" (seleção honesta) — `resultados/estudo_stop_protegido.csv`, `resultados/stop_protegido_robustez.csv`
+
+Regra do operador: entrar no FVG mais próximo do preço (1º executado da pernada) e proteger o stop além do próximo
+FVG válido da mesma pernada (ou do mais distante, ou da média 50). Tudo conhecido no momento da entrada.
+Código: `estudo_stop_protegido.py` (usa `montar_setups(..., candidatos=lista)` para conhecer os FVGs não executados).
+
+- **Onde fica o stop não cria vantagem:** 2 × ATR, FVG próprio, próximo FVG, FVG mais distante e média 50 dão
+  praticamente o mesmo acerto, perto do aleatório, em todos os tempos gráficos.
+- **O filtro "pernada com 2+ FVGs válidos" cria uma vantagem pequena e consistente** (pivô 5, 1º FVG executado):
+
+| TF | Ativo | Acerto 1R (2+ FVGs) | Aleatório | Vantagem 2023–24 | Vantagem 2025–26 | R bruto (2R) | R líquido (2R) |
+|---|---|---|---|---|---|---|---|
+| M5 | BTC | 53–54% | 48% | +4,0 a +4,1 | +5,8 a +7,0 | +0,08 a +0,09 | −0,25 a −0,27 |
+| M5 | ETH | 53% | 48% | +4,6 a +6,3 | +4,6 a +5,1 | +0,09 a +0,12 | −0,11 a −0,12 |
+| M15 | BTC | 54–55% | 49% | +5,8 a +7,3 | +4,2 a +4,9 | +0,10 a +0,12 | −0,04 a −0,06 |
+| M15 | ETH | 54–55% | 48–49% | +7,0 a +8,0 | +3,8 a +6,0 | +0,12 a +0,13 | +0,01 a +0,02 |
+| H1 | BTC | 55% | 51–53% | +3,0 a +6,0 | +0,6 a +4,7 | +0,15 a +0,18 | +0,09 a +0,10 |
+| H1 | ETH | 52–53% | 48–52% | +2,5 a +3,5 | −1,9 a +5,6 | +0,02 | −0,03 |
+
+  Sem o filtro (todas as pernadas), a vantagem é de 0 a +3 pontos. Uma pernada com vários FVGs é um deslocamento
+  forte — a versão objetiva de "FVG validado".
+- **Obstáculo: taxas de cripto.** A vantagem bruta (+0,08 a +0,13R no M5/M15) é menor que a taxa em R no M5 e
+  empata no M15. Num mercado com custo fixo por contrato (MNQ: ~1% do R), o bruto vira praticamente o líquido.
+
 ## Próximos passos (em aberto)
 
 ### A. Estratégia de fair value gap (SMC) — feita no M1 (seção 8); próximos testes abaixo
@@ -322,3 +346,9 @@ na virada. Objetivo: reduzir o drawdown e as perdas do lado vendido no BTC e na 
   estrutura pelos fechamentos, linha dos 50%, destaque do 1º FVG da pernada, R mínimo e alerta
   com entrada, stop e alvo. Usar `barstate.isconfirmed` para não repintar ao vivo.
 - Corrigir no relatório: setups com horizonte incompleto no fim dos dados contam como erro (impacto desprezível).
+
+### E. Depois da seção 13
+- Testar o filtro "2+ FVGs" (e medidas de força do deslocamento: tamanho do impulso em ATR, BOS seguidos) em dados
+  do MNQ (exportados do TradingView) — onde a taxa não come a vantagem bruta.
+- Validar em outros ativos de cripto sem reajustar parâmetros (SOL, BNB, XRP).
+- Acompanhar ao vivo com o indicador (opção "só pernadas com 2+ FVGs") e comparar com o backtest.
