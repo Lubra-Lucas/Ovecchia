@@ -201,6 +201,43 @@ Resultados (média BTC/ETH, por ativo):
 - Correção feita no caminho: a primeira versão da grade aplicava o filtro de R antes de escolher o 1º FVG,
   o que misturava FVGs posteriores da pernada. Corrigido antes do ranking final.
 
+## 11. R da estrutura e outros tempos gráficos — `resultados/estudo_timeframes.csv`, `resultados/ranking_timeframes.txt`
+
+**R da estrutura** = distância da entrada até o extremo da pernada (origem) + folga de 0,1 ATR, em % do preço.
+É o tamanho da pernada que gerou o FVG. Não é o stop quando o stop é em ATR; serve de filtro.
+Desempenho por faixa (M1, 3 anos, pivô 5, 1º FVG, stop 2 × ATR) — `resultados/r_estrutura_faixas.csv`:
+
+| R da estrutura | BTC acerto 1R | BTC R bruto (alvo 3R) | ETH acerto 1R | ETH R bruto (alvo 3R) |
+|---|---|---|---|---|
+| < 0,1% | 43% | +0,06 | 45% | +0,03 |
+| 0,1–0,2% | 54% | +0,30 | 51% | +0,19 |
+| 0,2–0,4% | 64% | +0,57 | 59% | +0,42 |
+| 0,4–0,6% | 70% | +0,78 | 67% | +0,63 |
+| > 0,6% | 74% | +0,80 | 72% | +0,73 |
+
+Imagens: `resultados/r_estrutura_pequena.png`, `_media.png`, `_grande.png`.
+
+**Tempos gráficos** (M5/M15/H1 montados do M1, mesmo período). Adaptação: pernada mínima medida em ATRs do
+próprio tempo gráfico (0, 3, 5, 8, 12) em vez de %; validade da ordem e espera pela quebra ajustadas.
+Melhor por tempo gráfico (positiva nos 2 ativos e nas 2 metades; média por ativo):
+
+| TF | Configuração | Acerto | R líquido/op | Ops/ano (uma por vez) | R líquido/ano |
+|---|---|---|---|---|---|
+| M1 | R estrutura ≥ 0,4% (seção 10), 2 × ATR, 3R | 43% | +0,42 | ~2.680 | +1.172 |
+| M5 | pivô 3, pernada ≥ 3 ATR, 2 × ATR, 3R | 39–40% | +0,28 a +0,30 | ~1.140 | +400 |
+| M5 | pivô 5, pernada ≥ 5 ATR, 2 × ATR, 3R | 43% | +0,45 | ~490 | +225 |
+| M15 | pivô 3/5, pernada ≥ 3 ATR, 2 × ATR, 2R/3R | 37–48% | +0,32 a +0,35 | ~350–410 | +145 |
+| H1 | pivô 5, pernada ≥ 3 ATR, 2 × ATR, 3R | 39% | +0,49 a +0,51 | ~95 | +54 |
+
+- Acerto em 1R com stop 2 × ATR e pernada ≥ 3–5 ATR: M5 73%, M15 70%, H1 68% — e positivo líquido.
+  No M1 chega a 75%, mas o stop fica em ~0,12% e as taxas tornam o líquido negativo.
+- A pernada mínima é o filtro que mais importa em todos os tempos gráficos: R bruto por operação (alvo 2R)
+  sobe de ~0,2 (sem filtro) para ~0,5–0,8 com pernada ≥ 5 ATR.
+- No M1, o filtro em % (R da estrutura ≥ 0,4%) funciona melhor que o filtro em ATR porque também seleciona
+  momentos de volatilidade maior, quando o stop em ATR fica grande o bastante para as taxas não pesarem.
+- Média 50: não muda nada (o 1º FVG depois da quebra quase sempre já está do lado certo da média; 98% das
+  operações são as mesmas com e sem o filtro). As médias são só visuais hoje.
+
 ## Próximos passos (em aberto)
 
 ### A. Estratégia de fair value gap (SMC) — feita no M1 (seção 8); próximos testes abaixo

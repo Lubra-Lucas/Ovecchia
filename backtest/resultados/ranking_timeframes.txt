@@ -1,0 +1,66 @@
+MELHOR POR TEMPO GRÁFICO — maior R líquido por ano operando uma por vez (robusta: + nos 2 ativos e 2 metades)
+ tf  pivo      stop  alvo  pernada_min_atr  media50 ops_ano acerto r_por_op liq_por_op uma_vez_ops_ano uma_vez_r_bruto_ano uma_vez_r_liq_ano   R%
+ 1m     5 estrutura     2                5     True    4281    45%    +0.39      +0.06            1475                +543              +183 0.35
+ 1m     5 estrutura     3                5     True    4281    34%    +0.41      +0.08            1143                +458              +178 0.35
+ 1m     5 estrutura     2                5    False    4369    45%    +0.39      +0.05            1485                +546              +178 0.34
+ 5m     3   2 × ATR     3                3     True    1660    40%    +0.58      +0.30            1108                +688              +405 0.33
+ 5m     3   2 × ATR     3                3    False    1780    39%    +0.56      +0.28            1141                +694              +400 0.33
+ 5m     3   2 × ATR     2                3     True    1660    51%    +0.53      +0.25            1361                +741              +378 0.33
+15m     3   2 × ATR     2                3    False     517    48%    +0.44      +0.32             413                +192              +145 0.69
+15m     5   2 × ATR     3                3    False     531    37%    +0.47      +0.35             354                +185              +144 0.68
+15m     5   2 × ATR     3                3     True     511    37%    +0.47      +0.34             348                +181              +140 0.68
+ 1h     5   2 × ATR     3                0     True     312    34%    +0.35      +0.29             137                 +66               +59 1.46
+ 1h     5   2 × ATR     3                0    False     347    32%    +0.30      +0.24             138                 +62               +55 1.46
+ 1h     5   2 × ATR     2                0    False     347    42%    +0.25      +0.20             189                 +65               +55 1.46
+
+MELHOR POR TEMPO GRÁFICO — maior R líquido por operação (>= 50 operações/ano por ativo)
+ tf  pivo      stop  alvo  pernada_min_atr  media50 ops_ano acerto r_por_op liq_por_op uma_vez_ops_ano uma_vez_r_bruto_ano uma_vez_r_liq_ano   R%
+ 1m     5 estrutura     3                8     True    1141    32%    +0.41      +0.09             566                +220               +82 0.43
+ 1m     5 estrutura     3                5     True    4281    34%    +0.41      +0.08            1143                +458              +178 0.35
+ 1m     5 estrutura     3                8    False    1150    32%    +0.41      +0.07             569                +221               +79 0.42
+ 5m     5   3 × ATR     3                8    False     103    42%    +0.68      +0.45             100                 +68               +44 0.46
+ 5m     5   3 × ATR     3                8     True     103    42%    +0.68      +0.45             100                 +67               +44 0.46
+ 5m     5   2 × ATR     3                5     True     542    43%    +0.74      +0.45             486                +363              +225 0.33
+15m     5   2 × ATR     3                5    False     156    38%    +0.54      +0.41             144                 +75               +56 0.70
+15m     5   2 × ATR     3                5     True     154    38%    +0.53      +0.40             142                 +73               +55 0.70
+15m     5   2 × ATR     2                5     True     154    51%    +0.52      +0.40             148                 +75               +56 0.70
+ 1h     5   2 × ATR     3                3     True     136    39%    +0.56      +0.51              94                 +59               +54 1.52
+ 1h     5   2 × ATR     3                3    False     140    39%    +0.55      +0.49              95                 +57               +52 1.52
+ 1h     3   2 × ATR     3                3     True     131    37%    +0.50      +0.45              92                 +51               +47 1.58
+
+MAIOR ACERTO POR TEMPO GRÁFICO (>= 50 operações/ano por ativo, robusta)
+ tf  pivo    stop  alvo  pernada_min_atr  media50 ops_ano acerto r_por_op liq_por_op uma_vez_ops_ano uma_vez_r_bruto_ano uma_vez_r_liq_ano   R%
+ 1m     5 3 × ATR     1                8     True    1141    75%    +0.51      -0.67            1135                +572              -912 0.12
+ 1m     5 3 × ATR     1                8    False    1150    75%    +0.51      -0.74            1143                +575              -999 0.12
+ 5m     3 2 × ATR     1                5     True     433    73%    +0.46      +0.17             430                +200               +70 0.33
+ 5m     3 2 × ATR     1                5    False     439    73%    +0.46      +0.15             436                +200               +64 0.33
+15m     3 2 × ATR     1                5     True     114    70%    +0.39      +0.27             113                 +45               +31 0.73
+15m     5 2 × ATR     1                5     True     154    70%    +0.39      +0.26             152                 +59               +40 0.70
+ 1h     5 2 × ATR     1                3     True     136    68%    +0.37      +0.32             131                 +51               +44 1.52
+ 1h     5 2 × ATR     1                3    False     140    68%    +0.36      +0.31             135                 +51               +44 1.52
+
+EFEITO DA PERNADA MÍNIMA EM ATR (pivô 5, stop 2 × ATR, alvo 2R, sem média) — R bruto por operação e acerto
+tf                 1m    5m   15m    1h
+pernada_min_atr                        
+0                0.26  0.21  0.20  0.25
+3                0.52  0.48  0.41  0.47
+5                0.77  0.64  0.52  0.65
+8                0.83  0.63  0.33   NaN
+12               0.80  0.57   NaN   NaN
+tf                 1m    5m   15m    1h
+pernada_min_atr                        
+0                0.42  0.40  0.40  0.42
+3                0.51  0.49  0.47  0.49
+5                0.59  0.55  0.51  0.55
+8                0.61  0.54  0.44   NaN
+12               0.60  0.52   NaN   NaN
+
+EFEITO DA MÉDIA 50 (pivô 5, stop 2 × ATR, alvo 2R, pernada >= 5 ATR) — R bruto por operação
+tf         1m    5m   15m    1h
+media50                        
+False    0.77  0.64  0.52  0.65
+True     0.77  0.64  0.52  0.64
+tf           1m     5m    15m    1h
+media50                            
+False    4369.0  544.0  156.0  42.0
+True     4281.0  542.0  154.0  41.0
