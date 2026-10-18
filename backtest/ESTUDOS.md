@@ -304,6 +304,24 @@ Código: `estudo_stop_protegido.py` (usa `montar_setups(..., candidatos=lista)` 
 - **Obstáculo: taxas de cripto.** A vantagem bruta (+0,08 a +0,13R no M5/M15) é menor que a taxa em R no M5 e
   empata no M15. Num mercado com custo fixo por contrato (MNQ: ~1% do R), o bruto vira praticamente o líquido.
 
+## 14. Candle de duplo rompimento das médias 13/20 — `resultados/estudo_duplo.csv`, `resultados/estudo_duplo.txt`
+
+Regra 100% objetiva (`duplo_rompimento.py`): candle abre abaixo das duas médias (13 e 20) e fecha acima das duas →
+compra na abertura seguinte (venda é o espelho). Testado BTC e ETH, M1/M5/M15/H1, ~3 anos, SMA e EMA, 4 stops
+(candle − 0,1 ATR; candle − 0,5 ATR; 1 ATR; mínima de 10 candles − 0,1 ATR), com e sem contexto (5 fechamentos
+anteriores do outro lado das médias). 128 configurações.
+
+- **Mediana de todas as configurações:** acerto em 1R 49–50% contra 46–47% do aleatório; R bruto em 1R ≈ 0,
+  em 2R +0,02 a +0,09. Líquido negativo em todas as medianas (M1: −0,8 a −2,3R por operação).
+- O aleatório fica abaixo de 50% por causa das regras conservadoras (no candle de entrada só vale o stop; empate = stop).
+  A vantagem real de +3pp vem em boa parte de ser comparada a esse número, e não se converte em R bruto.
+- **Melhor caso:** BTC H1, SMA, stop candle − 0,5 ATR, com contexto: 180 operações/ano, acerto 1R 55,4% × 49,5%
+  aleatório (+3,1pp em 2023–24, +7,8pp em 2025–26), bruto +0,11R (1R), +0,12R (2R), +0,21R (3R); líquido +0,02R.
+  **Não se repete no ETH** (mesma configuração: 50,7% × 53,3% aleatório). Melhor de 128 testes → provável sorte.
+- Nenhuma configuração passou de 55,4% em 1:1. **Meta de 65–70% em 1:1 não alcançada.**
+
+Conclusão: o sinal é objetivo e honesto, mas sozinho não tem vantagem estatística relevante em cripto.
+
 ## Estratégia de FVG: arquivada
 
 Parada por decisão do usuário: a marcação de pernadas e fractais ainda depende de interpretação (o operador consideraria
