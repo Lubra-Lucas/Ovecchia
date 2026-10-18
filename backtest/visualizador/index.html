@@ -1,0 +1,420 @@
+<title>Ovelha V3 Trades</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: mesa de operação — barra de controles, faixa de métricas, gráfico grande e ficha do trade ao lado (empilha no celular) */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #111827;
+  --ink-2: #4b5563;
+  --ink-3: #8a93a3;
+  --line: #e3e6eb;
+  --compra: #2563eb;
+  --venda: #dc2626;
+  --alvo: #15803d;
+  --stop: #111827;
+  --ganho: #15803d;
+  --perda: #dc2626;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1218; --surface: #161a22; --ink: #e8ebf0; --ink-2: #b0b7c3; --ink-3: #7b8494; --line: #262c37;
+    --compra: #5b8def; --venda: #f05252; --alvo: #22b8a6; --stop: #e8ebf0; --ganho: #22b8a6; --perda: #f05252;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1218; --surface: #161a22; --ink: #e8ebf0; --ink-2: #b0b7c3; --ink-3: #7b8494; --line: #262c37;
+  --compra: #5b8def; --venda: #f05252; --alvo: #22b8a6; --stop: #e8ebf0; --ganho: #22b8a6; --perda: #f05252;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 32px;
+}
+.wrap { max-width: 1400px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--ink-2); font-size: 13px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+.controles { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.grupo { display: flex; align-items: center; gap: 8px; }
+.rotulo { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.seg button {
+  border: 0; background: transparent; color: var(--ink-2); font: inherit; font-family: var(--font-num);
+  padding: 6px 11px; cursor: pointer; border-right: 1px solid var(--line);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--compra); outline-offset: 2px; }
+
+.metricas {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+}
+.metrica { padding: 10px 14px; border-right: 1px solid var(--line); min-width: 0; }
+.metrica:last-child { border-right: 0; }
+.metrica .v { font-family: var(--font-num); font-size: 17px; font-weight: 500; margin-top: 3px; }
+.metrica .c { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+
+.principal { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
+@media (max-width: 900px) { .principal { grid-template-columns: minmax(0, 1fr); } }
+.painel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+#grafico { height: min(62vh, 560px); min-height: 340px; }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-2); }
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.tra { width: 18px; border-top: 2px dashed currentColor; display: inline-block; }
+.sol { width: 18px; border-top: 2px solid currentColor; display: inline-block; }
+.pon { width: 18px; border-top: 2px dotted currentColor; display: inline-block; }
+
+.ficha { padding: 14px; display: grid; gap: 14px; align-content: start; }
+.nav { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; }
+.nav button {
+  font: inherit; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 6px; padding: 7px 12px; cursor: pointer;
+}
+.nav button:hover { border-color: var(--ink-3); }
+.nav .pos { text-align: center; font-family: var(--font-num); font-size: 13px; color: var(--ink-2); }
+.filtros { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+select, input[type="date"] {
+  font: inherit; font-size: 13px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
+}
+.pill { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 4px; color: #fff; }
+.pill.compra { background: var(--compra); }
+.pill.venda { background: var(--venda); }
+.pill.aberto { background: transparent; color: var(--ink-2); border: 1px solid var(--line); font-weight: 500; }
+.cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.resultado { font-family: var(--font-num); font-size: 26px; font-weight: 500; }
+.pos-v { color: var(--ganho); } .neg-v { color: var(--perda); }
+dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 13px; }
+dt { color: var(--ink-3); }
+dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.sep { border-top: 1px solid var(--line); }
+.ultimos { display: flex; gap: 4px; flex-wrap: wrap; }
+.ultimos button {
+  width: 26px; height: 26px; border-radius: 4px; border: 1px solid var(--line); cursor: pointer;
+  font-family: var(--font-num); font-size: 11px; background: var(--surface); color: var(--ink-2);
+}
+.ultimos button.g { border-color: var(--ganho); color: var(--ganho); }
+.ultimos button.p { border-color: var(--perda); color: var(--perda); }
+.ultimos button[aria-current="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.nota { font-size: 12px; color: var(--ink-3); line-height: 1.5; max-width: 80ch; }
+#carregando { padding: 40px; color: var(--ink-2); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Ovelha V3 · <span id="ativo">BTCUSDT H1</span></h1>
+    <span class="sub">Média + faixa de ATR com histerese · sempre posicionado · execução na abertura do candle seguinte · custo <span id="custo">0,1%</span> por lado</span>
+  </header>
+
+  <div class="controles">
+    <div class="grupo"><span class="rotulo">Média</span><div class="seg" id="seg-media"></div></div>
+    <div class="grupo"><span class="rotulo">k (largura da faixa)</span><div class="seg" id="seg-k"></div></div>
+  </div>
+
+  <div class="metricas" id="metricas"></div>
+
+  <div class="principal">
+    <div class="painel">
+      <div id="grafico"><div id="carregando">Carregando 75 mil candles…</div></div>
+      <div class="legenda">
+        <span style="color:var(--compra)"><span class="tra"></span>Entrada compra</span>
+        <span style="color:var(--venda)"><span class="tra"></span>Entrada venda</span>
+        <span style="color:var(--stop)"><span class="tra"></span>Stop inicial</span>
+        <span style="color:var(--alvo)"><span class="tra"></span>1R · 2R · 3R</span>
+        <span style="color:var(--ink-3)"><span class="sol"></span>Média</span>
+        <span style="color:var(--ink-3)"><span class="pon"></span>Faixas ± k·ATR</span>
+      </div>
+    </div>
+
+    <aside class="painel ficha" aria-live="polite">
+      <div class="nav">
+        <button id="ant" aria-label="Trade anterior">←</button>
+        <div class="pos" id="posicao">–</div>
+        <button id="prox" aria-label="Próximo trade">→</button>
+      </div>
+      <div class="filtros">
+        <select id="filtro" aria-label="Filtrar trades">
+          <option value="todos">Todos os trades</option>
+          <option value="compras">Só compras</option>
+          <option value="vendas">Só vendas</option>
+          <option value="ganhos">Só ganhos</option>
+          <option value="perdas">Só perdas</option>
+        </select>
+        <input type="date" id="data" aria-label="Ir para a data">
+      </div>
+      <div class="cab" id="cab"></div>
+      <div class="resultado" id="resultado"></div>
+      <dl id="detalhes"></dl>
+      <div class="sep"></div>
+      <div>
+        <div class="rotulo" style="margin-bottom:6px">Últimos 10 sinais fechados</div>
+        <div class="ultimos" id="ultimos"></div>
+        <div class="nota" id="ultimos-resumo" style="margin-top:6px"></div>
+      </div>
+    </aside>
+  </div>
+
+  <p class="nota">
+    R é a distância entre o preço de entrada e a faixa oposta no candle do sinal (o stop natural da estratégia).
+    A saída acontece quando o sinal vira, que pode ficar acima ou abaixo do stop inicial porque a faixa acompanha a média.
+    "1R antes do stop" conta como não quando os dois são tocados no mesmo candle. Use ← e → no teclado para navegar.
+  </p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(async function () {
+  const LC = LightweightCharts;
+  const dados = await (await fetch('dados.json')).json();
+  const C = dados.candles;           // [t, o, h, l, c]
+  const n = C.length;
+  document.getElementById('ativo').textContent = `${dados.simbolo} ${dados.timeframe.toUpperCase()}`;
+  document.getElementById('custo').textContent = (dados.custo_lado * 100).toLocaleString('pt-BR') + '%';
+
+  const pct = (x, d = 0) => (x >= 0 ? '+' : '') + (x * 100).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) + '%';
+  const preco = x => x.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const rr = x => (x >= 0 ? '+' : '') + x.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'R';
+  const dataHora = t => new Date(t * 1000).toLocaleString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' UTC';
+  const cor = nome => getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
+
+  // ---------- gráfico ----------
+  const el = document.getElementById('grafico');
+  el.innerHTML = '';
+  const chart = LC.createChart(el, {
+    autoSize: true,
+    timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 12 },
+    crosshair: { mode: LC.CrosshairMode.Normal },
+    localization: { locale: 'pt-BR', priceFormatter: p => preco(p) },
+  });
+  const velas = chart.addCandlestickSeries({ priceLineVisible: false, lastValueVisible: false });
+  velas.setData(C.map(c => ({ time: c[0], open: c[1], high: c[2], low: c[3], close: c[4] })));
+  const linhaMedia = chart.addLineSeries({ lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  const faixaSup = chart.addLineSeries({ lineWidth: 1, lineStyle: LC.LineStyle.Dotted, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  const faixaInf = chart.addLineSeries({ lineWidth: 1, lineStyle: LC.LineStyle.Dotted, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  const niveis = ['Entrada', 'Stop', '1R', '2R', '3R'].map(titulo => chart.addLineSeries({
+    title: titulo, lineStyle: LC.LineStyle.Dashed, priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false,
+  }));
+
+  function aplicarTema() {
+    const ink = cor('--ink'), ink2 = cor('--ink-2'), ink3 = cor('--ink-3'), line = cor('--line'), surf = cor('--surface');
+    chart.applyOptions({
+      layout: { background: { type: 'solid', color: surf }, textColor: ink2, fontFamily: 'IBM Plex Mono, ui-monospace, monospace', fontSize: 11 },
+      grid: { vertLines: { color: line }, horzLines: { color: line } },
+      rightPriceScale: { borderColor: line }, timeScale: { borderColor: line },
+    });
+    velas.applyOptions({ upColor: surf, downColor: ink3, borderUpColor: ink3, borderDownColor: ink3, wickUpColor: ink3, wickDownColor: ink3 });
+    linhaMedia.applyOptions({ color: ink2 });
+    faixaSup.applyOptions({ color: ink3 });
+    faixaInf.applyOptions({ color: ink3 });
+    niveis[1].applyOptions({ color: cor('--stop'), lineWidth: 2 });
+    niveis[2].applyOptions({ color: cor('--alvo'), lineWidth: 2 });
+    niveis[3].applyOptions({ color: cor('--alvo'), lineWidth: 1 });
+    niveis[4].applyOptions({ color: cor('--alvo'), lineWidth: 1 });
+    if (estado.combo) { desenharMarcadores(); mostrarTrade(); }
+  }
+
+  // ---------- indicadores (mesmas fórmulas do Python: SMA do fechamento, ATR = média simples de 14 TRs) ----------
+  const atr = (() => {
+    const tr = C.map((c, i) => i === 0 ? c[2] - c[3] : Math.max(c[2] - c[3], Math.abs(c[2] - C[i - 1][4]), Math.abs(c[3] - C[i - 1][4])));
+    const out = new Array(n).fill(NaN); let soma = 0;
+    for (let i = 0; i < n; i++) { soma += tr[i]; if (i >= 14) soma -= tr[i - 14]; if (i >= 13) out[i] = soma / 14; }
+    return out;
+  })();
+  function sma(p) {
+    const out = new Array(n).fill(NaN); let soma = 0;
+    for (let i = 0; i < n; i++) { soma += C[i][4]; if (i >= p) soma -= C[i - p][4]; if (i >= p - 1) out[i] = soma / p; }
+    return out;
+  }
+  const serie = arr => arr.map((v, i) => Number.isNaN(v) ? { time: C[i][0] } : { time: C[i][0], value: v });
+
+  // ---------- estado ----------
+  const MEDIAS = [...new Set(Object.values(dados.combos).map(c => c.media))];
+  const KS = [...new Set(Object.values(dados.combos).map(c => c.k))];
+  const estado = { media: 100, k: 1.0, combo: null, lista: [], pos: 0 };
+  // trade: [e, s, dir, entrada, saida, stop, ret, ret_r, mfe_r, mae_r, r1_antes_stop, aberto]
+
+  function botoesSeg(id, valores, chave, fmt) {
+    const box = document.getElementById(id);
+    box.innerHTML = '';
+    valores.forEach(v => {
+      const b = document.createElement('button');
+      b.textContent = fmt(v);
+      b.setAttribute('aria-pressed', String(estado[chave] === v));
+      b.onclick = () => { estado[chave] = v; botoesSeg(id, valores, chave, fmt); carregarCombo(true); };
+      box.appendChild(b);
+    });
+  }
+
+  function metricas() {
+    const r = estado.combo.resumo, bh = dados.buy_hold;
+    const itens = [
+      ['Retorno total', pct(r.retorno_total), `buy & hold ${pct(bh.retorno_total)}`, r.retorno_total],
+      ['Retorno anual', pct(r.retorno_anual), `buy & hold ${pct(bh.retorno_anual)}`, r.retorno_anual],
+      ['Drawdown máx.', pct(r.dd_max), `buy & hold ${pct(bh.dd_max)}`, null],
+      ['Trades', r.trades.toLocaleString('pt-BR'), `duração média ${Math.round(r.duracao_media_h)} h`, null],
+      ['Acerto', pct(r.acerto).replace('+', ''), `profit factor ${r.profit_factor.toFixed(2).replace('.', ',')}`, null],
+      ['Chegaram a 1R / 2R / 3R', `${Math.round(r.pct_1r * 100)} / ${Math.round(r.pct_2r * 100)} / ${Math.round(r.pct_3r * 100)}%`, `1R antes do stop: ${Math.round(r.pct_1r_antes_stop * 100)}%`, null],
+      ['Compras · vendas', `${pct(r.ret_compras)} · ${pct(r.ret_vendas)}`, 'retorno acumulado de cada lado', null],
+    ];
+    document.getElementById('metricas').innerHTML = itens.map(([t, v, c, s]) =>
+      `<div class="metrica"><div class="rotulo">${t}</div><div class="v ${s == null ? '' : s >= 0 ? 'pos-v' : 'neg-v'}">${v}</div><div class="c">${c}</div></div>`).join('');
+  }
+
+  function desenharMarcadores() {
+    const tr = estado.combo.trades;
+    const atual = estado.lista[estado.pos];
+    const mk = [];
+    const corCompra = cor('--compra'), corVenda = cor('--venda');
+    tr.forEach((t, i) => {
+      const compra = t[2] === 1;
+      mk.push({ time: C[t[0]][0], position: compra ? 'belowBar' : 'aboveBar', color: compra ? corCompra : corVenda,
+        shape: compra ? 'arrowUp' : 'arrowDown', size: i === atual ? 2 : 1 });
+    });
+    if (atual != null) {
+      const t = tr[atual];
+      mk.push({ time: C[t[1]][0], position: t[2] === 1 ? 'aboveBar' : 'belowBar', color: cor('--ink'), shape: 'circle', text: 'saída' });
+    }
+    mk.sort((a, b) => a.time - b.time);
+    velas.setMarkers(mk);
+  }
+
+  function filtrar() {
+    const f = document.getElementById('filtro').value;
+    const tr = estado.combo.trades;
+    estado.lista = tr.map((_, i) => i).filter(i => {
+      const t = tr[i];
+      return f === 'todos' || (f === 'compras' && t[2] === 1) || (f === 'vendas' && t[2] === -1)
+        || (f === 'ganhos' && t[6] > 0) || (f === 'perdas' && t[6] <= 0);
+    });
+  }
+
+  function carregarCombo(manterData) {
+    const tAnterior = estado.combo && estado.lista.length ? C[estado.combo.trades[estado.lista[estado.pos]][0]][0] : null;
+    estado.combo = dados.combos[`${estado.media}_${estado.k.toFixed(1)}`] || dados.combos[`${estado.media}_${estado.k}`];
+    const m = sma(estado.media);
+    linhaMedia.setData(serie(m));
+    faixaSup.setData(serie(m.map((v, i) => v + estado.k * atr[i])));
+    faixaInf.setData(serie(m.map((v, i) => v - estado.k * atr[i])));
+    filtrar();
+    estado.pos = estado.lista.length - 1;
+    if (manterData && tAnterior != null) irPara(tAnterior, false);
+    metricas();
+    ultimos();
+    desenharMarcadores();
+    mostrarTrade();
+  }
+
+  function irPara(tempo, redesenhar = true) {
+    const tr = estado.combo.trades;
+    let melhor = 0;
+    estado.lista.forEach((idx, p) => { if (C[tr[idx][0]][0] <= tempo) melhor = p; });
+    estado.pos = melhor;
+    if (redesenhar) { desenharMarcadores(); mostrarTrade(); }
+  }
+
+  function mostrarTrade() {
+    if (!estado.lista.length) {
+      niveis.forEach(s => s.setData([]));
+      document.getElementById('posicao').textContent = 'nenhum trade';
+      ['cab', 'resultado', 'detalhes'].forEach(id => document.getElementById(id).innerHTML = '');
+      return;
+    }
+    const idx = estado.lista[estado.pos];
+    const t = estado.combo.trades[idx];
+    const [e, s, dir, entrada, saida, stop, ret, retR, mfeR, maeR, r1, aberto] = t;
+    const risco = dir * (entrada - stop);
+    const valores = [entrada, stop, entrada + dir * risco, entrada + 2 * dir * risco, entrada + 3 * dir * risco];
+    const t0 = C[e][0], t1 = C[s][0];
+    niveis[0].applyOptions({ color: cor(dir === 1 ? '--compra' : '--venda'), lineWidth: 2 });
+    niveis.forEach((serieN, i) => serieN.setData([{ time: t0, value: valores[i] }, { time: t1, value: valores[i] }]));
+
+    const antes = 40, depois = 15;
+    chart.timeScale().setVisibleLogicalRange({ from: Math.max(e - antes, 0), to: Math.min(s + depois, n - 1) + 6 });
+
+    document.getElementById('posicao').textContent = `trade ${(idx + 1).toLocaleString('pt-BR')} de ${estado.combo.trades.length.toLocaleString('pt-BR')}`
+      + (estado.lista.length !== estado.combo.trades.length ? ` · ${estado.pos + 1}/${estado.lista.length} no filtro` : '');
+    document.getElementById('cab').innerHTML =
+      `<span class="pill ${dir === 1 ? 'compra' : 'venda'}">${dir === 1 ? 'COMPRA' : 'VENDA'}</span>` +
+      (aberto ? '<span class="pill aberto">em aberto</span>' : '') +
+      `<span class="sub num">${dataHora(t0)}</span>`;
+    document.getElementById('resultado').innerHTML =
+      `<span class="${ret >= 0 ? 'pos-v' : 'neg-v'}">${pct(ret, 2)}</span> <span class="sub num">${rr(retR)}</span>`;
+    const linhas = [
+      ['Entrada', preco(entrada)],
+      ['Stop inicial', preco(stop)],
+      ['R (risco)', `${preco(risco)} · ${pct(risco / entrada, 2).replace('+', '')}`],
+      ['1R', preco(valores[2])], ['2R', preco(valores[3])], ['3R', preco(valores[4])],
+      [aberto ? 'Preço atual' : 'Saída (virada)', preco(saida)],
+      ['Duração', `${s - e} candles`],
+      ['Máx. a favor', rr(mfeR)],
+      ['Máx. contra', rr(maeR)],
+      ['1R antes do stop', r1 ? 'sim' : 'não'],
+    ];
+    document.getElementById('detalhes').innerHTML = linhas.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
+    document.querySelectorAll('#ultimos button').forEach(b => b.setAttribute('aria-current', String(Number(b.dataset.i) === idx)));
+  }
+
+  function ultimos() {
+    const tr = estado.combo.trades;
+    const fechados = tr.map((t, i) => [t, i]).filter(([t]) => !t[11]).slice(-10);
+    const box = document.getElementById('ultimos');
+    box.innerHTML = '';
+    fechados.forEach(([t, i]) => {
+      const b = document.createElement('button');
+      b.className = t[6] > 0 ? 'g' : 'p';
+      b.textContent = t[2] === 1 ? 'C' : 'V';
+      b.dataset.i = i;
+      b.title = `${t[2] === 1 ? 'Compra' : 'Venda'} ${dataHora(C[t[0]][0])} · ${pct(t[6], 2)}`;
+      b.setAttribute('aria-label', b.title);
+      b.onclick = () => { document.getElementById('filtro').value = 'todos'; filtrar(); estado.pos = estado.lista.indexOf(i); desenharMarcadores(); mostrarTrade(); };
+      box.appendChild(b);
+    });
+    const pos = fechados.filter(([t]) => t[6] > 0).length;
+    const r1 = fechados.filter(([t]) => t[8] >= 1).length;
+    const soma = fechados.reduce((a, [t]) => a * (1 + t[6]), 1) - 1;
+    document.getElementById('ultimos-resumo').textContent =
+      `${pos} de ${fechados.length} positivos · ${r1} chegaram a 1R · resultado somado ${pct(soma, 1)}. C = compra, V = venda; borda verde = ganho, vermelha = perda.`;
+  }
+
+  // ---------- controles ----------
+  const mover = d => { if (!estado.lista.length) return; estado.pos = Math.min(Math.max(estado.pos + d, 0), estado.lista.length - 1); desenharMarcadores(); mostrarTrade(); };
+  document.getElementById('ant').onclick = () => mover(-1);
+  document.getElementById('prox').onclick = () => mover(1);
+  document.addEventListener('keydown', ev => {
+    if (ev.target.matches('input, select')) return;
+    if (ev.key === 'ArrowLeft') mover(-1);
+    if (ev.key === 'ArrowRight') mover(1);
+  });
+  document.getElementById('filtro').onchange = () => {
+    const tempo = C[estado.combo.trades[estado.lista[estado.pos]]?.[0] ?? n - 1][0];
+    filtrar(); estado.pos = Math.max(estado.lista.length - 1, 0); irPara(tempo);
+  };
+  const campoData = document.getElementById('data');
+  campoData.min = new Date(C[0][0] * 1000).toISOString().slice(0, 10);
+  campoData.max = new Date(C[n - 1][0] * 1000).toISOString().slice(0, 10);
+  campoData.onchange = () => { if (campoData.value) irPara(Date.parse(campoData.value + 'T23:59:59Z') / 1000); };
+
+  botoesSeg('seg-media', MEDIAS, 'media', v => String(v));
+  botoesSeg('seg-k', KS, 'k', v => v.toLocaleString('pt-BR', { minimumFractionDigits: 1 }));
+  aplicarTema();
+  carregarCombo(false);
+
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', aplicarTema);
+  new MutationObserver(aplicarTema).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})().catch(err => {
+  document.getElementById('grafico').innerHTML = `<div id="carregando">Não foi possível carregar os dados: ${err.message}</div>`;
+});
+</script>
