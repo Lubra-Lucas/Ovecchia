@@ -26,7 +26,7 @@ def setups(df, mult=2):
     atr = est.calcular_atr(df).to_numpy()
     e = smc.estrutura(df, 5)
     s = smc.montar_setups(df, e, atr)
-    s = s[~s.duplicated(['dir', 'origem'])].reset_index(drop=True)
+    s = smc.primeiro_da_pernada(s).reset_index(drop=True)
     s['stop_atr'] = s['entrada'] - s['dir'] * mult * atr[s['i_fvg'].to_numpy()]
     s['r_estrutura'] = s['dir'] * (s['entrada'] - s['stop_estrutura']) / s['entrada']
     s['pernada_atr'] = s['dir'] * (s['entrada'] - s['stop_estrutura']) / atr[s['i_fvg'].to_numpy()]

@@ -270,3 +270,14 @@ def sessao_sao_paulo(tempos):
     rot[(m >= 3 * 60) & (m < 7 * 60) & (dia <= 4)] = 'Londres'
     rot[(m >= 10 * 60 + 30) & (m < 13 * 60 + 30) & (dia <= 4)] = 'Nova York'
     return rot
+
+
+def primeiro_da_pernada(setups):
+    """
+    1º FVG EXECUTADO de cada pernada, pela ordem de execução (regra que dá para seguir ao vivo).
+    Atenção: escolher pela ordem de formação (setups.duplicated sem ordenar) olha o futuro — descarta um FVG
+    que executou antes só porque um FVG mais antigo da mesma pernada vai executar depois (o que, numa venda,
+    significa que o preço subiu contra a primeira operação). Esse viés inflou os estudos das seções 8 a 11.
+    """
+    x = setups.sort_values(['i_exec', 'i_fvg'], kind='stable')
+    return x[~x.duplicated(['dir', 'origem'])].sort_index()

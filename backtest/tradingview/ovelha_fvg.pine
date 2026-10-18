@@ -1,0 +1,489 @@
+// Ovelha FVG — 1º FVG da pernada com estrutura pelos fechamentos
+// Reproduz as regras do backtest em backtest/smc.py (pasta backtest/ do repositório Ovecchia).
+//
+// Regras
+//  • Pivô: fechamento maior (menor) que os N fechamentos anteriores e >= (<=) aos N seguintes; só existe N candles depois.
+//  • BOS: fechamento além do último pivô a favor da tendência. CHoCH: fechamento além da origem da pernada
+//    (o maior/menor fechamento entre o pivô rompido e a quebra — "o topo que gerou o último fundo").
+//  • FVG de baixa: mínima[2] > máxima[0]; de alta: máxima[2] < mínima[0]. Só existe no fechamento do 3º candle.
+//  • Ordem limitada na borda do FVG, dentro da pernada a favor da tendência. Se o FVG nasce no impulso que ainda
+//    vai quebrar a estrutura, a ordem é ativada na quebra (até "Espera pela quebra" candles). FVG tocado antes da
+//    ativação é descartado. Cancelada se: passar a validade, um fechamento atravessar o FVG ou a tendência virar.
+//  • Só o 1º FVG executado de cada pernada. Se ele não passar no filtro da pernada (ou no horário), a pernada é pulada.
+//  • Stop: x × ATR(14) a partir da entrada, ou além do extremo da pernada + folga. Alvo em R.
+//  • Resultado conservador: no candle da entrada só o stop conta; stop e alvo no mesmo candle contam como stop.
+//
+// Observação: o TradingView carrega uma quantidade limitada de candles; as estatísticas cobrem só esse histórico.
+// Resultado esperado (backtest honesto, 3 anos de BTC/ETH): no M1/M5 o acerto em 1R fica perto do aleatório (~50%)
+// e o líquido é negativo com taxas de cripto; M15/H1 mostram vantagem pequena, ainda não confirmada. Ver ESTUDOS.md, seção 12.
+
+//@version=5
+indicator("Ovelha FVG · 1º FVG da pernada", shorttitle = "Ovelha FVG", overlay = true,
+     max_lines_count = 500, max_labels_count = 500, max_boxes_count = 500, max_bars_back = 5000)
+
+// ===================== ENTRADAS =====================
+grpE = "Estrutura"
+n = input.int(5, "Pivô (fechamentos de cada lado)", minval = 1, group = grpE)
+
+grpF = "Filtro da pernada (R da estrutura)"
+modoFiltro = input.string("% do preço", "Medir a pernada em", options = ["% do preço", "ATR"], group = grpF)
+minPct = input.float(0.4, "Pernada mínima (% do preço)", minval = 0, step = 0.05, group = grpF)
+minAtr = input.float(3.0, "Pernada mínima (ATRs)", minval = 0, step = 0.5, group = grpF)
+
+grpO = "Ordem"
+validade = input.int(240, "Validade da ordem (candles)", minval = 1, group = grpO)
+espera = input.int(30, "Espera pela quebra (candles)", minval = 1, group = grpO)
+
+grpS = "Stop e alvo"
+modoStop = input.string("ATR", "Stop", options = ["ATR", "Estrutura"], group = grpS)
+multAtr = input.float(2.0, "Stop em ATR (× ATR 14)", minval = 0.1, step = 0.5, group = grpS)
+folgaAtr = input.float(0.1, "Folga do stop de estrutura (× ATR)", minval = 0, step = 0.05, group = grpS)
+alvoR = input.int(3, "Alvo (R)", minval = 1, maxval = 3, group = grpS)
+horizonte = input.int(1440, "Encerrar operação após (candles)", minval = 10, group = grpS)
+
+grpH = "Horário (São Paulo)"
+soAberturas = input.bool(false, "Operar só nas aberturas (Ásia 22h–01h, Londres 03h–07h, NY 10h30–13h30)", group = grpH)
+
+grpT = "Taxas (para o resultado líquido)"
+taxaEnt = input.float(0.02, "Taxa na entrada (%)", minval = 0, step = 0.01, group = grpT)
+taxaSai = input.float(0.05, "Taxa na saída (%)", minval = 0, step = 0.01, group = grpT)
+
+grpV = "Visual"
+mostrarEstrutura = input.bool(true, "Mostrar BOS / CHoCH", group = grpV)
+mostrarMedias = input.bool(true, "Mostrar médias 13 / 26 / 50", group = grpV)
+mostrarFech = input.bool(false, "Mostrar fechamentos (pontos)", group = grpV)
+maxDesenhos = input.int(40, "Operações desenhadas (últimas)", minval = 1, maxval = 100, group = grpV)
+ladoPainel = input.string("Direita", "Painel de estatísticas", options = ["Direita", "Esquerda", "Oculto"], group = grpV)
+
+// ===================== CORES =====================
+corCompra = #2563eb
+corVenda = #dc2626
+corAlvo = #15803d
+corStop = #dc2626
+corTexto = #111827
+
+// ===================== INDICADORES =====================
+atr = ta.sma(ta.tr(true), 14)          // mesma fórmula do backtest: média simples de 14 True Ranges
+plot(mostrarMedias ? ta.sma(close, 13) : na, "Média 13", color = #7b83eb, linewidth = 1)
+plot(mostrarMedias ? ta.sma(close, 26) : na, "Média 26", color = #f0a742, linewidth = 1)
+plot(mostrarMedias ? ta.sma(close, 50) : na, "Média 50", color = #9cc3f5, linewidth = 1)
+plot(mostrarFech ? close : na, "Fechamentos", color = color.new(#6b7280, 30), style = plot.style_circles, linewidth = 1)
+
+// ===================== HORÁRIO =====================
+f_abertura() =>
+    m = hour(time, "America/Sao_Paulo") * 60 + minute(time, "America/Sao_Paulo")
+    dw = dayofweek(time, "America/Sao_Paulo")          // 1 = domingo ... 7 = sábado
+    util = dw >= 2 and dw <= 6
+    asia = (m >= 22 * 60 and dw >= 1 and dw <= 5) or (m < 60 and util)
+    londres = m >= 3 * 60 and m < 7 * 60 and util
+    ny = m >= 10 * 60 + 30 and m < 13 * 60 + 30 and util
+    asia or londres or ny
+
+// ===================== PIVÔS NOS FECHAMENTOS =====================
+pivoTopo = bar_index >= 2 * n and close[n] > ta.highest(close, n)[n + 1] and close[n] >= ta.highest(close, n)
+pivoFundo = bar_index >= 2 * n and close[n] < ta.lowest(close, n)[n + 1] and close[n] <= ta.lowest(close, n)
+
+// ===================== ESTADO =====================
+var int trend = 0
+var float nivelCima = na
+var int idxCima = na
+var float nivelBaixo = na
+var int idxBaixo = na
+var int ultimaQuebra = -1
+var int orig = na
+var float ext = na
+
+// ordens armadas (aguardando execução)
+var oDir = array.new<int>()
+var oEnt = array.new<float>()
+var oTopo = array.new<float>()
+var oBase = array.new<float>()
+var oStopE = array.new<float>()
+var oAtr = array.new<float>()
+var oOrig = array.new<int>()
+var oIni = array.new<int>()
+var oFvgL = array.new<int>()
+
+// FVGs aguardando a quebra de estrutura
+var pDir = array.new<int>()
+var pEnt = array.new<float>()
+var pTopo = array.new<float>()
+var pBase = array.new<float>()
+var pI = array.new<int>()
+var pAtr = array.new<float>()
+
+// operações abertas
+var tDir = array.new<int>()
+var tEnt = array.new<float>()
+var tStop = array.new<float>()
+var tR = array.new<float>()
+var tFill = array.new<int>()
+var tH1 = array.new<bool>()
+var tH2 = array.new<bool>()
+var tH3 = array.new<bool>()
+var tAberta = array.new<bool>()       // ainda sem resultado no alvo escolhido
+var tBoxA = array.new<box>()
+var tBoxS = array.new<box>()
+var tLab = array.new<label>()
+
+var pernadasUsadas = map.new<int, bool>()
+var desenhosBox = array.new<box>()
+var desenhosLab = array.new<label>()
+var estrLinhas = array.new<line>()
+var estrLabs = array.new<label>()
+
+// estatísticas
+var int nOps = 0
+var int nFech = 0
+var int nAlvo = 0
+var int nRast = 0
+var int h1 = 0
+var int h2 = 0
+var int h3 = 0
+var float somaR = 0.0
+var float somaLiq = 0.0
+var int seqPerda = 0
+var int maxSeqPerda = 0
+var int puladas = 0
+var string ultima = "–"
+
+f_custoR(e, r) =>
+    (taxaEnt + taxaSai) / 100.0 / (r / e)
+
+f_guardarDesenho(b1, b2, b3, lb) =>
+    array.push(desenhosBox, b1)
+    array.push(desenhosBox, b2)
+    array.push(desenhosBox, b3)
+    array.push(desenhosLab, lb)
+    if array.size(desenhosBox) > maxDesenhos * 3
+        for q = 1 to 3
+            box.delete(array.shift(desenhosBox))
+        label.delete(array.shift(desenhosLab))
+    true
+
+f_registrarResultado(res, e, r, d) =>
+    liq = res - f_custoR(e, r)
+    txt = (d == 1 ? "COMPRA " : "VENDA ") + (res >= 0 ? "+" : "") + str.tostring(res, "#.##") + "R"
+    [liq, txt]
+
+// ===================== 1) OPERAÇÕES ABERTAS =====================
+if array.size(tDir) > 0
+    for idx = array.size(tDir) - 1 to 0
+        d = array.get(tDir, idx)
+        e = array.get(tEnt, idx)
+        st = array.get(tStop, idx)
+        r = array.get(tR, idx)
+        aberta = array.get(tAberta, idx)
+        terminou = false
+        toqueStop = d == 1 ? low <= st : high >= st
+        if toqueStop
+            px = d == 1 ? math.min(open, st) : math.max(open, st)
+            if aberta
+                res = d * (px - e) / r
+                [liq, txt] = f_registrarResultado(res, e, r, d)
+                nFech += 1
+                somaR += res
+                somaLiq += liq
+                seqPerda += 1
+                maxSeqPerda := math.max(maxSeqPerda, seqPerda)
+                ultima := txt
+                label.set_text(array.get(tLab, idx), txt)
+                label.set_color(array.get(tLab, idx), corStop)
+                box.set_right(array.get(tBoxA, idx), bar_index)
+                box.set_right(array.get(tBoxS, idx), bar_index)
+            terminou := true
+        else
+            for x = 1 to 3
+                alvoX = e + d * x * r
+                if d == 1 ? high >= alvoX : low <= alvoX
+                    if x == 1
+                        array.set(tH1, idx, true)
+                    if x == 2
+                        array.set(tH2, idx, true)
+                    if x == 3
+                        array.set(tH3, idx, true)
+            atingiu = alvoR == 1 ? array.get(tH1, idx) : alvoR == 2 ? array.get(tH2, idx) : array.get(tH3, idx)
+            if aberta and atingiu
+                res = float(alvoR)
+                [liq, txt] = f_registrarResultado(res, e, r, d)
+                nFech += 1
+                nAlvo += 1
+                somaR += res
+                somaLiq += liq
+                seqPerda := 0
+                ultima := txt
+                array.set(tAberta, idx, false)
+                aberta := false
+                label.set_text(array.get(tLab, idx), txt)
+                label.set_color(array.get(tLab, idx), corAlvo)
+                box.set_right(array.get(tBoxA, idx), bar_index)
+                box.set_right(array.get(tBoxS, idx), bar_index)
+            if array.get(tH3, idx)
+                terminou := true
+            if bar_index - array.get(tFill, idx) >= horizonte
+                if aberta
+                    res = d * (close - e) / r
+                    [liq, txt] = f_registrarResultado(res, e, r, d)
+                    nFech += 1
+                    somaR += res
+                    somaLiq += liq
+                    ultima := txt + " (tempo)"
+                    label.set_text(array.get(tLab, idx), txt)
+                terminou := true
+        if aberta and not terminou
+            box.set_right(array.get(tBoxA, idx), bar_index)
+            box.set_right(array.get(tBoxS, idx), bar_index)
+        if terminou
+            nRast += 1
+            h1 += array.get(tH1, idx) ? 1 : 0
+            h2 += array.get(tH2, idx) ? 1 : 0
+            h3 += array.get(tH3, idx) ? 1 : 0
+            array.remove(tDir, idx)
+            array.remove(tEnt, idx)
+            array.remove(tStop, idx)
+            array.remove(tR, idx)
+            array.remove(tFill, idx)
+            array.remove(tH1, idx)
+            array.remove(tH2, idx)
+            array.remove(tH3, idx)
+            array.remove(tAberta, idx)
+            array.remove(tBoxA, idx)
+            array.remove(tBoxS, idx)
+            array.remove(tLab, idx)
+
+// ===================== 2) EXECUÇÃO DAS ORDENS =====================
+if array.size(oDir) > 0
+    for idx = array.size(oDir) - 1 to 0
+        d = array.get(oDir, idx)
+        e = array.get(oEnt, idx)
+        if d == -1 ? high >= e : low <= e
+            o = array.get(oOrig, idx)
+            chave = o * 2 + (d == 1 ? 1 : 0)
+            if not map.contains(pernadasUsadas, chave)
+                map.put(pernadasUsadas, chave, true)
+                stopE = array.get(oStopE, idx)
+                a = array.get(oAtr, idx)
+                rEstr = d * (e - stopE) / e
+                pernadaAtr = d * (e - stopE) / a
+                passa = modoFiltro == "ATR" ? pernadaAtr >= minAtr : rEstr * 100 >= minPct
+                horarioOk = not soAberturas or f_abertura()
+                stopP = modoStop == "ATR" ? e - d * multAtr * a : stopE
+                r = d * (e - stopP)
+                if passa and horarioOk and r > 0
+                    nOps += 1
+                    c = d == 1 ? corCompra : corVenda
+                    bF = box.new(array.get(oFvgL, idx), array.get(oTopo, idx), bar_index, array.get(oBase, idx), border_color = color.new(c, 100), bgcolor = color.new(c, 80))
+                    alvoP = e + d * alvoR * r
+                    bA = box.new(bar_index, math.max(e, alvoP), bar_index + 1, math.min(e, alvoP), border_color = color.new(corAlvo, 40), bgcolor = color.new(corAlvo, 85))
+                    bS = box.new(bar_index, math.max(e, stopP), bar_index + 1, math.min(e, stopP), border_color = color.new(corStop, 40), bgcolor = color.new(corStop, 88))
+                    lb = label.new(bar_index, d == 1 ? stopP : alvoP, d == 1 ? "COMPRA" : "VENDA", style = d == 1 ? label.style_label_up : label.style_label_down, color = c, textcolor = color.white, size = size.small)
+                    f_guardarDesenho(bF, bA, bS, lb)
+                    alert((d == 1 ? "COMPRA" : "VENDA") + " " + syminfo.ticker + " a " + str.tostring(e, format.mintick) + " | stop " + str.tostring(stopP, format.mintick) + " | alvo " + str.tostring(alvoP, format.mintick), alert.freq_once_per_bar)
+                    // no candle da entrada só o stop conta
+                    if d == 1 ? low <= stopP : high >= stopP
+                        res = -1.0
+                        [liq, txt] = f_registrarResultado(res, e, r, d)
+                        nFech += 1
+                        nRast += 1
+                        somaR += res
+                        somaLiq += liq
+                        seqPerda += 1
+                        maxSeqPerda := math.max(maxSeqPerda, seqPerda)
+                        ultima := txt
+                        label.set_text(lb, txt)
+                        label.set_color(lb, corStop)
+                    else
+                        array.push(tDir, d)
+                        array.push(tEnt, e)
+                        array.push(tStop, stopP)
+                        array.push(tR, r)
+                        array.push(tFill, bar_index)
+                        array.push(tH1, false)
+                        array.push(tH2, false)
+                        array.push(tH3, false)
+                        array.push(tAberta, true)
+                        array.push(tBoxA, bA)
+                        array.push(tBoxS, bS)
+                        array.push(tLab, lb)
+                else
+                    puladas += 1
+            array.remove(oDir, idx)
+            array.remove(oEnt, idx)
+            array.remove(oTopo, idx)
+            array.remove(oBase, idx)
+            array.remove(oStopE, idx)
+            array.remove(oAtr, idx)
+            array.remove(oOrig, idx)
+            array.remove(oIni, idx)
+            array.remove(oFvgL, idx)
+
+// ===================== 3) ESTRUTURA =====================
+int evento = 0
+float nivelRomp = na
+int idxRomp = na
+k = bar_index - n
+if k > ultimaQuebra
+    if pivoTopo and trend != -1
+        nivelCima := close[n]
+        idxCima := k
+    if pivoFundo and trend != 1
+        nivelBaixo := close[n]
+        idxBaixo := k
+
+if not na(nivelBaixo) and close < nivelBaixo
+    evento := trend == -1 ? -1 : -2
+    nivelRomp := nivelBaixo
+    idxRomp := idxBaixo
+    len = math.min(bar_index - idxBaixo, 4900)
+    float mx = na
+    int j = na
+    float hx = na
+    for off = len - 1 to 0
+        if na(mx) or close[off] > mx
+            mx := close[off]
+            j := bar_index - off
+        hx := na(hx) ? high[off] : math.max(hx, high[off])
+    orig := j
+    ext := hx
+    trend := -1
+    ultimaQuebra := bar_index
+    nivelCima := mx
+    idxCima := j
+    nivelBaixo := na
+    idxBaixo := na
+else if not na(nivelCima) and close > nivelCima
+    evento := trend == 1 ? 1 : 2
+    nivelRomp := nivelCima
+    idxRomp := idxCima
+    len = math.min(bar_index - idxCima, 4900)
+    float mn = na
+    int j = na
+    float lx = na
+    for off = len - 1 to 0
+        if na(mn) or close[off] < mn
+            mn := close[off]
+            j := bar_index - off
+        lx := na(lx) ? low[off] : math.min(lx, low[off])
+    orig := j
+    ext := lx
+    trend := 1
+    ultimaQuebra := bar_index
+    nivelBaixo := mn
+    idxBaixo := j
+    nivelCima := na
+    idxCima := na
+
+if evento != 0 and mostrarEstrutura
+    c = evento > 0 ? corCompra : corVenda
+    choch = math.abs(evento) == 2
+    array.push(estrLinhas, line.new(idxRomp, nivelRomp, bar_index, nivelRomp, color = c, width = choch ? 2 : 1))
+    array.push(estrLabs, label.new(bar_index, nivelRomp, choch ? "CHoCH" : "BOS", style = evento > 0 ? label.style_label_lower_left : label.style_label_upper_left, color = color.new(c, 100), textcolor = c, size = size.tiny))
+    if array.size(estrLinhas) > 150
+        line.delete(array.shift(estrLinhas))
+        label.delete(array.shift(estrLabs))
+
+// ===================== 4) CANCELAMENTO DAS ORDENS =====================
+if array.size(oDir) > 0
+    for idx = array.size(oDir) - 1 to 0
+        d = array.get(oDir, idx)
+        atravessou = d == -1 ? close > array.get(oTopo, idx) : close < array.get(oBase, idx)
+        venceu = bar_index >= array.get(oIni, idx) + validade - 1
+        if atravessou or trend != d or venceu
+            array.remove(oDir, idx)
+            array.remove(oEnt, idx)
+            array.remove(oTopo, idx)
+            array.remove(oBase, idx)
+            array.remove(oStopE, idx)
+            array.remove(oAtr, idx)
+            array.remove(oOrig, idx)
+            array.remove(oIni, idx)
+            array.remove(oFvgL, idx)
+
+// ===================== 5) FVG ESPERANDO A QUEBRA =====================
+f_armar(d, e, topo, base, a, fvgL) =>
+    stopE = d == -1 ? ext + folgaAtr * a : ext - folgaAtr * a
+    array.push(oDir, d)
+    array.push(oEnt, e)
+    array.push(oTopo, topo)
+    array.push(oBase, base)
+    array.push(oStopE, stopE)
+    array.push(oAtr, a)
+    array.push(oOrig, orig)
+    array.push(oIni, bar_index + 1)
+    array.push(oFvgL, fvgL)
+    true
+
+if array.size(pDir) > 0
+    for idx = array.size(pDir) - 1 to 0
+        d = array.get(pDir, idx)
+        e = array.get(pEnt, idx)
+        i = array.get(pI, idx)
+        tocou = d == -1 ? high >= e : low <= e
+        remover = tocou or bar_index > i + espera
+        if not remover and evento != 0
+            if math.sign(evento) == d and orig <= i - 2
+                f_armar(d, e, array.get(pTopo, idx), array.get(pBase, idx), array.get(pAtr, idx), i - 2)
+            remover := true
+        if remover
+            array.remove(pDir, idx)
+            array.remove(pEnt, idx)
+            array.remove(pTopo, idx)
+            array.remove(pBase, idx)
+            array.remove(pI, idx)
+            array.remove(pAtr, idx)
+
+// ===================== 6) NOVOS FVGs =====================
+f_novoFvg(d, topo, base) =>
+    e = d == -1 ? base : topo
+    if trend == d and not na(orig) and orig <= bar_index - 2
+        f_armar(d, e, topo, base, atr, bar_index - 2)
+    else
+        array.push(pDir, d)
+        array.push(pEnt, e)
+        array.push(pTopo, topo)
+        array.push(pBase, base)
+        array.push(pI, bar_index)
+        array.push(pAtr, atr)
+    true
+
+if bar_index >= 2 and not na(atr)
+    if low[2] > high
+        f_novoFvg(-1, low[2], high)
+    if high[2] < low
+        f_novoFvg(1, low, high[2])
+
+// ===================== PAINEL =====================
+var table painel = table.new(ladoPainel == "Esquerda" ? position.top_left : position.top_right, 2, 16, bgcolor = color.new(color.white, 8), border_color = #e3e6eb, border_width = 1, frame_color = #e3e6eb, frame_width = 1)
+
+f_linha(row, nome, valor, cor) =>
+    table.cell(painel, 0, row, nome, text_color = #4b5563, text_size = size.small, text_halign = text.align_left)
+    table.cell(painel, 1, row, valor, text_color = cor, text_size = size.small, text_halign = text.align_right)
+
+f_pct(a, b) =>
+    b > 0 ? str.tostring(100.0 * a / b, "#") + "%" : "–"
+
+f_r(x) =>
+    (x >= 0 ? "+" : "") + str.tostring(x, "#.##") + "R"
+
+if barstate.islast and ladoPainel != "Oculto"
+    medio = nFech > 0 ? somaR / nFech : 0.0
+    medioLiq = nFech > 0 ? somaLiq / nFech : 0.0
+    filtroTxt = modoFiltro == "ATR" ? str.tostring(minAtr) + " ATR" : str.tostring(minPct) + "%"
+    stopTxt = modoStop == "ATR" ? str.tostring(multAtr) + " × ATR" : "estrutura"
+    table.cell(painel, 0, 0, "OVELHA FVG · " + syminfo.ticker, text_color = corTexto, text_size = size.normal, text_halign = text.align_left)
+    table.merge_cells(painel, 0, 0, 1, 0)
+    f_linha(1, "Configuração", "pivô " + str.tostring(n) + " · pernada ≥ " + filtroTxt, corTexto)
+    f_linha(2, "Stop · alvo", stopTxt + " · " + str.tostring(alvoR) + "R" + (soAberturas ? " · aberturas" : ""), corTexto)
+    f_linha(3, "Operações", str.tostring(nOps) + "  (" + str.tostring(puladas) + " pernadas puladas)", corTexto)
+    f_linha(4, "Acerto antes do stop", f_pct(h1, nRast) + " · " + f_pct(h2, nRast) + " · " + f_pct(h3, nRast) + "  (1R·2R·3R)", corAlvo)
+    f_linha(5, "Acerto no alvo (" + str.tostring(alvoR) + "R)", f_pct(nAlvo, nFech), corAlvo)
+    f_linha(6, "Resultado médio (bruto)", f_r(medio), medio >= 0 ? corAlvo : corStop)
+    f_linha(7, "Resultado médio (líquido)", f_r(medioLiq), medioLiq >= 0 ? corAlvo : corStop)
+    f_linha(8, "Soma bruta", f_r(somaR), somaR >= 0 ? corAlvo : corStop)
+    f_linha(9, "Soma líquida", f_r(somaLiq), somaLiq >= 0 ? corAlvo : corStop)
+    f_linha(10, "Maior sequência de stops", str.tostring(maxSeqPerda), corTexto)
+    f_linha(11, "Stops seguidos agora", str.tostring(seqPerda), corTexto)
+    f_linha(12, "Última operação", ultima, corTexto)
+    f_linha(13, "Operações em andamento", str.tostring(array.size(tDir)), corTexto)
+    f_linha(14, "Ordens armadas", str.tostring(array.size(oDir)), corTexto)
+    f_linha(15, "Tendência (estrutura)", trend == 1 ? "alta" : trend == -1 ? "baixa" : "–", trend == 1 ? corCompra : trend == -1 ? corVenda : corTexto)

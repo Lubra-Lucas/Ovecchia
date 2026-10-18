@@ -37,7 +37,7 @@ def exportar(ativo, inicio):
     atr = est.calcular_atr(df).to_numpy()
     e = smc.estrutura(df, PIVO)
     setups = smc.montar_setups(df, e, atr)
-    setups = setups[~setups.duplicated(['dir', 'origem'])]           # 1º FVG executado da pernada
+    setups = smc.primeiro_da_pernada(setups)           # 1º FVG executado (no tempo) da pernada
     sessoes = smc.sessao_sao_paulo(df['time'])
 
     i0 = int(df['time'].searchsorted(pd.Timestamp(inicio, tz='UTC')))

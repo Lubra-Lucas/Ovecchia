@@ -37,6 +37,9 @@ python exportar_fvg_viz.py 2026-04-01 BTCUSDT ETHUSDT      # gera saida/visualiz
 cp visualizador_fvg/index.html saida/visualizador_fvg/ && python -m http.server -d saida/visualizador_fvg 8001
 ```
 
+Indicador do TradingView: `tradingview/ovelha_fvg.pine` (colar no editor Pine). A lógica é conferida contra o
+backtest com `python tradingview/conferir_pine.py BTCUSDT 100000`.
+
 Acesso de rede necessário: `data.binance.vision` e `data-api.binance.vision` (sem chave de API).
 `api.binance.com` costuma ser bloqueado para servidores nos EUA e não é usado.
 

@@ -53,7 +53,7 @@ def grupos(ativo):
         for n in PIVOS:
             e = smc.estrutura(df, n)
             s = smc.montar_setups(df, e, atr, espera_quebra=espera, validade=validade)
-            s = s[~s.duplicated(['dir', 'origem'])].reset_index(drop=True)      # 1º FVG da pernada
+            s = smc.primeiro_da_pernada(s).reset_index(drop=True)      # 1º FVG executado da pernada
             d = s['dir'].to_numpy()
             ref = s['i_ativa'].to_numpy() - 1
             s['lado_m50'] = np.where(d == 1, c[ref] > m50[ref], c[ref] < m50[ref])

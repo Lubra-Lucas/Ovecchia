@@ -98,6 +98,10 @@ A melhor saída é a virada do sinal. Para alta assertividade é preciso outro t
 
 ---
 
+> ⚠️ **AVISO (seção 12): os resultados das seções 8 a 11 estão inflados por um viés de seleção.**
+> O "1º FVG da pernada" era escolhido pela ordem de formação, o que olha o futuro. Com a regra honesta
+> (1º FVG executado no tempo), a vantagem no M1/M5 desaparece. Ver seção 12 antes de usar qualquer número abaixo.
+
 ## 8. FVG + estrutura pelos fechamentos no M1 — `resultados/estudo_fvg_1m.csv`
 
 Dados: BTC e ETH M1, 01/10/2023 a 18/10/2026 (1,6 milhão de candles cada, nenhum faltando).
@@ -237,6 +241,44 @@ Melhor por tempo gráfico (positiva nos 2 ativos e nas 2 metades; média por ati
   momentos de volatilidade maior, quando o stop em ATR fica grande o bastante para as taxas não pesarem.
 - Média 50: não muda nada (o 1º FVG depois da quebra quase sempre já está do lado certo da média; 98% das
   operações são as mesmas com e sem o filtro). As médias são só visuais hoje.
+
+## 12. Correção: viés de seleção no "1º FVG da pernada" — `resultados/correcao_vies_1fvg.csv`
+
+**O erro.** O backtest escolhia o 1º FVG da pernada com `setups.duplicated(['dir', 'origem'])` sem ordenar, ou seja,
+pela **ordem de formação** do FVG, considerando só os que chegaram a executar. Numa venda: o FVG A (mais alto) se
+forma antes do B (mais baixo); no pullback o preço toca B primeiro. Se depois o preço subir até A, o backtest ficava
+com A e **descartava B** — mas o preço subir até A significa que foi contra B, que provavelmente tomou stop. Na hora
+em que B executa ninguém sabe se A vai executar: é olhar o futuro. O efeito foi remover operações perdedoras.
+
+**Como foi descoberto.** Ao conferir o indicador do TradingView (que escolhe o 1º FVG executado no tempo) contra o
+backtest: nas operações em comum o resultado era idêntico, mas o indicador tinha operações extras que o backtest
+descartava, com 37% de acerto em 1R. A regra "só o FVG mais antigo ainda armado" (sem olhar o futuro) também não
+recupera a vantagem (45–47% em 1R).
+
+**Resultado honesto** (1º FVG executado no tempo; pivô 5; stop 2 × ATR; filtro R ≥ 0,4% no M1, pernada ≥ 3 ATR nos outros):
+
+| TF | Ativo | Acerto 1R com viés | Acerto 1R honesto | Aleatório | R bruto (3R) honesto | R líquido (3R) honesto |
+|---|---|---|---|---|---|---|
+| M1 | BTC | 72% | 50% | 49% | +0,04 | −0,33 |
+| M1 | ETH | 70% | 50% | 50% | +0,02 | −0,29 |
+| M5 | BTC | 66% | 51% | 48% | +0,03 | −0,31 |
+| M5 | ETH | 65% | 51% | 50% | +0,05 | −0,15 |
+| M15 | BTC | 65% | 53% | 48% | +0,07 | −0,08 |
+| M15 | ETH | 67% | 53% | 49% | +0,07 | −0,02 |
+| H1 | BTC | 72% | 56% | 49% | +0,25 | +0,19 |
+| H1 | ETH | 64% | 51% | 46% | +0,04 | +0,00 |
+
+- No M1 e no M5 a estratégia honesta é igual ao aleatório e perde com as taxas.
+- No M15 e no H1 sobra uma vantagem pequena (+3 a +7 pontos sobre o aleatório), positiva só no BTC H1; precisa de
+  confirmação em mais ativos e períodos antes de valer alguma coisa.
+- A relação "pernada maior = mais acerto" (seção 11) também era do viés: no BTC M1 honesto vai de 45% (< 0,1%) a 50% (> 0,4%).
+- **O que continua válido:** dados (seção 1), Ovelha V3 (seções 2–7, sem essa seleção), a conclusão de que "todos os FVGs"
+  não têm vantagem (seção 10) e que FVGs posteriores da pernada são piores.
+- Correção no código: `smc.primeiro_da_pernada()` (ordena por execução) passou a ser usado em todos os scripts.
+  O visualizador foi regenerado com a seleção honesta. O indicador `tradingview/ovelha_fvg.pine` sempre usou a regra
+  honesta; `tradingview/conferir_pine.py` replica a lógica dele em Python e confere: 100% das operações iguais ao backtest corrigido.
+- Lição para o método: toda regra de seleção ("o primeiro", "o melhor", "deduplicar") precisa ser checada contra
+  uma simulação candle a candle, que só conhece o passado.
 
 ## Próximos passos (em aberto)
 

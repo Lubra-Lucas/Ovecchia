@@ -96,7 +96,7 @@ def preparar(ativo, rng):
                                              (m13[ref] > m26[ref]) & (m26[ref] > m50[ref]))
             a['lado_da_m50'] = np.where(d == -1, c.to_numpy()[ref] < m50[ref], c.to_numpy()[ref] > m50[ref])
             a['premium'] = a['posicao_perna'] > 0.5
-            a['primeiro_da_perna'] = ~a.duplicated(['dir', 'origem'])
+            a['primeiro_da_perna'] = a.index.isin(smc.primeiro_da_pernada(a).index)
             a['aleat_1r'] = aleatorio_1r(df, a, sessoes, rng)
             a['ativo'], a['pivo'], a['stop'] = ativo, n, stop
             tabelas.append(a)

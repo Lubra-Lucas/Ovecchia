@@ -35,7 +35,7 @@ def main(ativos):
         atr = est.calcular_atr(df).to_numpy()
         e = smc.estrutura(df, 5)
         s = smc.montar_setups(df, e, atr)
-        s = s[~s.duplicated(['dir', 'origem'])].copy()
+        s = smc.primeiro_da_pernada(s).copy()
         s = s[s['dir'] * (s['entrada'] - s['stop_estrutura']) / s['entrada'] >= R_MINIMO].reset_index(drop=True)
         sessoes = smc.sessao(df['time'])
         dias = (df['time'].iloc[-1] - df['time'].iloc[0]).days

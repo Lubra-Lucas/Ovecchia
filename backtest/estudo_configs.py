@@ -145,7 +145,7 @@ def main(ativos):
     linhas = []
     for ativo in ativos:
         for n, stop, g, anos in grupos(ativo):
-            primeiro = g[~g.duplicated(['dir', 'origem'])]      # 1º FVG executado da pernada, antes de qualquer filtro
+            primeiro = smc.primeiro_da_pernada(g)      # 1º FVG executado (no tempo) da pernada, antes de qualquer filtro
             for entrada, rmin, horario in itertools.product(ENTRADAS, R_MIN, HORARIOS):
                 x = primeiro if entrada.startswith('1º FVG') else g
                 x = x[x['r_estrutura'] >= rmin]
