@@ -1,0 +1,6 @@
+  ativo  inicio  dados_ok faltando bh_anual bh_dd combos_positivas ret_anual_mediano dd_mediano bruto_trade_med bruto_r_med vant_compra vant_venda vendas_positivas sinal_vence_aleatorio
+BTCUSDT 2018-03      True    0.11%     +27%  -77%            11/12              +12%       -78%          +0.40%      +0.40R      +0.40%     +0.36%             0/12                 12/12
+ETHUSDT 2018-03      True    0.11%     +13%  -91%            12/12              +44%       -75%          +0.73%      +0.42R      +0.74%     +0.70%             5/12                 12/12
+SOLUSDT 2020-08      True    0.04%     +79%  -97%            10/12              +21%       -87%          +1.01%      +0.31R      +1.04%     +0.95%             0/12                 12/12
+ADAUSDT 2018-04      True    0.12%      -2%  -96%             9/12              +31%       -83%          +0.83%      +0.31R      +0.89%     +0.83%             5/12                 12/12
+ ETHBTC 2018-03      True    0.10%     -11%  -81%            12/12              +35%       -60%          +0.56%      +0.35R      +0.57%     +0.55%            12/12                 12/12

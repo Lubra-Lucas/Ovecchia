@@ -27,5 +27,3 @@ data/
 .idea/
 .DS_Store
 Thumbs.db
-backtest/cache/
-backtest/saida/
