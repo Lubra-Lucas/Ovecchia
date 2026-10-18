@@ -92,7 +92,11 @@ select, input[type="date"] {
   font: inherit; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
   border-radius: 6px; padding: 7px 12px; cursor: pointer;
 }
-.nav button:hover { border-color: var(--ink-3); }
+.nav button:hover, .acao:hover { border-color: var(--ink-3); }
+.acao {
+  font: inherit; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 6px; padding: 6px 14px; cursor: pointer;
+}
 .nav .pos { text-align: center; font-family: var(--font-num); font-size: 13px; color: var(--ink-2); }
 .filtros { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .filtros select, .filtros input { width: 100%; min-width: 0; }
@@ -125,13 +129,16 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
 <div class="wrap">
   <header>
     <h1>Operações FVG · <span id="titulo-ativo">BTCUSDT</span> M1</h1>
-    <span class="sub">1º FVG da pernada · estrutura pelos fechamentos (pivô 5) · stop além da pernada · alvo 1R</span>
+    <span class="sub" id="subtitulo">1º FVG da pernada · estrutura pelos fechamentos (pivô 5)</span>
   </header>
 
   <div class="controles">
     <div class="grupo"><span class="rotulo">Ativo</span><div class="seg" id="seg-ativo"></div></div>
-    <div class="grupo"><span class="rotulo">R mínimo</span><div class="seg" id="seg-rmin"></div></div>
+    <div class="grupo"><span class="rotulo">Stop</span><div class="seg texto" id="seg-stop"></div></div>
+    <div class="grupo"><span class="rotulo">Alvo</span><div class="seg" id="seg-alvo"></div></div>
+    <div class="grupo"><span class="rotulo">R da estrutura ≥</span><div class="seg" id="seg-rmin"></div></div>
     <div class="grupo"><span class="rotulo">Médias 13 · 26 · 50</span><div class="seg texto" id="seg-medias"></div></div>
+    <button class="acao" id="centralizar" title="Volta o gráfico para a operação atual e ajusta a escala de preço (tecla C)">Centralizar</button>
   </div>
 
   <div class="metricas" id="metricas"></div>
@@ -147,7 +154,7 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
         <span><span class="sw" style="background:#4f6bed"></span>Candle de alta</span>
         <span><span class="sw" style="background:#131313"></span>Candle de baixa</span>
         <span style="color:#6b7280"><span class="ln pon"></span>Fechamentos</span>
-        <span><span class="sw" style="background:rgba(21,128,61,.22)"></span>Zona do alvo (1R)</span>
+        <span><span class="sw" style="background:rgba(21,128,61,.22)"></span>Zona do alvo</span>
         <span><span class="sw" style="background:rgba(220,38,38,.18)"></span>Zona do stop</span>
         <span><span class="sw" style="background:rgba(37,99,235,.2);outline:1px solid rgba(220,38,38,.35)"></span>FVG</span>
         <span style="color:#6b7280"><span class="ln tra"></span>50% da pernada</span>
@@ -171,7 +178,7 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
         </select>
         <select id="f-res" aria-label="Resultado">
           <option value="todos">Todos os resultados</option>
-          <option value="ganho">Só ganhos (1R)</option>
+          <option value="ganho">Só ganhos</option>
           <option value="perda">Só perdas</option>
         </select>
         <select id="f-ses" aria-label="Sessão">
@@ -202,9 +209,11 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
   <p class="nota">
     Estrutura: pivôs nos fechamentos (5 de cada lado, usados só depois de confirmados). BOS = fechamento além do último pivô;
     CHoCH = fechamento além da origem da pernada (o topo que gerou o último fundo, ou o espelho). Entrada: ordem limitada na
-    borda do 1º FVG da pernada. Stop: além do extremo da pernada + 0,1 ATR. "Chegou antes do stop" usa máximas e mínimas;
+    borda do 1º FVG da pernada, só quando a distância até o extremo da pernada é de pelo menos o R mínimo escolhido. Stop: além do
+    extremo da pernada + 0,1 ATR, ou 3 × ATR(14) do M1 a partir da entrada. "Chegou antes do stop" usa máximas e mínimas;
     no candle da entrada só o stop conta, e alvo e stop no mesmo candle contam como stop. Líquido: 0,02% na entrada + 0,05% na saída.
-    No estudo de 3 anos, entradas aleatórias com o mesmo R acertam 1R em cerca de 49%. Horários em UTC. Use ← e → para navegar.
+    No estudo de 3 anos, entradas aleatórias com o mesmo R acertam 1R em cerca de 49%; com 3 × ATR e alvo 2R, o líquido ficou
+    entre +0,24R e +0,38R em todos os anos. Horários em UTC. Use ← e → para navegar e C (ou o botão Centralizar) para voltar à operação.
   </p>
 </div>
 
@@ -219,7 +228,8 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     m13: '#7b83eb', m26: '#f0a742', m50: '#9cc3f5',
     compra: '#2563eb', venda: '#dc2626', alvo: '#15803d', stop: '#dc2626', tinta: '#111827', meio: '#6b7280',
   };
-  const estado = { ativo: 'BTCUSDT', rmin: 0.004, medias: true, ops: [], lista: [], pos: 0, dados: null, meses: [] };
+  const estado = { ativo: 'BTCUSDT', stop: 'atr3', alvo: 2, rmin: 0.004, medias: true, ops: [], lista: [], pos: 0, dados: null, meses: [] };
+  const NOME_STOP = { estrutura: 'além da pernada', atr3: '3 × ATR' };
   const cacheOps = {}, cacheMes = {};
   let barras = [], eventos = [], tempos = [];
 
@@ -325,11 +335,11 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
       // posição (zona do alvo e zona do stop), como a ferramenta do TradingView
       if (xE != null && xS != null) {
         const largura = Math.max(xS - xE, 6);
-        const yE = y(op.entrada), y1 = y(op.alvo[0]), yS = y(op.stop);
+        const yE = y(op.entrada), y1 = y(op.alvo[estado.alvo - 1]), yS = y(op.stop);
         ctx.fillStyle = 'rgba(21,128,61,.18)'; ctx.fillRect(xE, Math.min(yE, y1), largura, Math.abs(y1 - yE));
         ctx.fillStyle = 'rgba(220,38,38,.14)'; ctx.fillRect(xE, Math.min(yE, yS), largura, Math.abs(yS - yE));
         const niveis = [['Entrada', op.entrada, c, [], 2], ['Stop', op.stop, COR.stop, [6, 4], 1.4],
-                        ['1R', op.alvo[0], COR.alvo, [6, 4], 1.6], ['2R', op.alvo[1], COR.alvo, [3, 4], 1], ['3R', op.alvo[2], COR.alvo, [2, 5], 1]];
+                        ...[1, 2, 3].map(x => [`${x}R`, op.alvo[x - 1], COR.alvo, x === estado.alvo ? [6, 4] : [2, 5], x === estado.alvo ? 1.8 : 1])];
         for (const [nome, p, cc, dash, lw] of niveis) {
           const yy = y(p); if (yy == null) continue;
           ctx.setLineDash(dash); ctx.strokeStyle = cc; ctx.lineWidth = lw;
@@ -355,17 +365,22 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     if (!cacheOps[estado.ativo]) cacheOps[estado.ativo] = await (await fetch(`dados/${estado.ativo}/operacoes.json`)).json();
     const d = estado.dados = cacheOps[estado.ativo];
     const k = Object.fromEntries(d.campos.map((c, i) => [c, i]));
-    estado.ops = d.operacoes.map((r, i) => {
+    estado.ops = d.variantes[estado.stop].map((r, i) => {
       const o = { i }; for (const c in k) o[c] = r[k[c]];
       const risco = o.dir * (o.entrada - o.stop);
       o.risco = risco;
       o.alvo = [1, 2, 3].map(x => o.entrada + o.dir * x * risco);
-      const fins = [o.t_stop, o.t_1r].filter(v => v >= 0);
+      o.acerto = estado.alvo === 1 ? o.a1 : o.a2;
+      o.resultado = estado.alvo === 1 ? o.resultado_1r : o.resultado_2r;
+      o.t_alvo = estado.alvo === 1 ? o.t_1r : o.t_2r;
+      const fins = [o.t_stop, o.t_alvo].filter(v => v >= 0);
       o.t_res = fins.length ? Math.min(...fins) : -1;
       o.t_saida = o.t_exec + 60 * (o.t_res >= 0 ? Math.max(o.t_res, 1) : 240);
-      o.liq = o.resultado_1r - TAXA / o.risco_pct;
+      o.liq = o.resultado - TAXA / o.risco_pct;
       return o;
     });
+    document.getElementById('subtitulo').textContent =
+      `1º FVG da pernada · estrutura pelos fechamentos (pivô 5) · stop ${NOME_STOP[estado.stop]} · alvo ${estado.alvo}R`;
     document.getElementById('titulo-ativo').textContent = d.ativo;
     const campo = document.getElementById('f-data');
     campo.min = new Date(d.inicio * 1000).toISOString().slice(0, 10);
@@ -412,14 +427,14 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
   // ---------- filtros e métricas ----------
   function filtrar() {
     const dir = document.getElementById('f-dir').value, res = document.getElementById('f-res').value, ses = document.getElementById('f-ses').value;
-    estado.lista = estado.ops.filter(o => o.risco_pct >= estado.rmin
+    estado.lista = estado.ops.filter(o => o.r_estrutura >= estado.rmin
       && (dir === 'todas' || o.dir === Number(dir))
-      && (res === 'todos' || (res === 'ganho' ? o.a1 === 1 : o.a1 === 0))
+      && (res === 'todos' || (res === 'ganho' ? o.acerto === 1 : o.acerto === 0))
       && (ses === 'todas' || (ses === 'sessoes' ? o.sessao > 0 : o.sessao === Number(ses)))).map(o => o.i);
   }
 
   function metricas() {
-    const base = estado.ops.filter(o => o.risco_pct >= estado.rmin
+    const base = estado.ops.filter(o => o.r_estrutura >= estado.rmin
       && (document.getElementById('f-dir').value === 'todas' || o.dir === Number(document.getElementById('f-dir').value))
       && (document.getElementById('f-ses').value === 'todas' || (document.getElementById('f-ses').value === 'sessoes' ? o.sessao > 0 : o.sessao === Number(document.getElementById('f-ses').value))));
     const n = base.length;
@@ -429,10 +444,11 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     const itens = [
       ['Operações', n.toLocaleString('pt-BR'), `${(n / dias).toLocaleString('pt-BR', nf(1))} por dia · ${Math.round(dias)} dias`, null, ''],
       ['Acerto antes do stop', `${pctSem(media(o => o.a1))} · ${pctSem(media(o => o.a2))} · ${pctSem(media(o => o.a3))}`, '1R · 2R · 3R (aleatório ≈ 49% em 1R)', null, 'destaque'],
-      ['Resultado médio', isNaN(media(o => o.resultado_1r)) ? '–' : rr(media(o => o.resultado_1r)), 'por operação com alvo 1R, antes das taxas', media(o => o.resultado_1r), ''],
+      ['Resultado médio', isNaN(media(o => o.resultado)) ? '–' : rr(media(o => o.resultado)), `por operação com alvo ${estado.alvo}R, antes das taxas`, media(o => o.resultado), ''],
+      ['R mediano', base.length ? pctSem([...base].map(o => o.risco_pct).sort((a, b) => a - b)[Math.floor(base.length / 2)], 2) : '–', `taxas ≈ ${base.length ? (TAXA / [...base].map(o => o.risco_pct).sort((a, b) => a - b)[Math.floor(base.length / 2)]).toLocaleString('pt-BR', nf(2)) : '–'}R por operação`, null, ''],
       ['Resultado líquido', isNaN(media(o => o.liq)) ? '–' : rr(media(o => o.liq)), 'com 0,02% + 0,05% de taxas', media(o => o.liq), ''],
       ['Soma líquida', isNaN(media(o => o.liq)) ? '–' : rr(base.reduce((a, o) => a + o.liq, 0)), 'se todas fossem operadas', base.reduce((a, o) => a + o.liq, 0), ''],
-      ['Tempo até resolver', res.length ? minutos(res[Math.floor(res.length / 2)]) : '–', 'mediana até 1R ou stop', null, ''],
+      ['Tempo até resolver', res.length ? minutos(res[Math.floor(res.length / 2)]) : '–', `mediana até ${estado.alvo}R ou stop`, null, ''],
     ];
     document.getElementById('metricas').innerHTML = itens.map(([t, v, c, s, cls]) =>
       `<div class="metrica ${cls}"><div class="rotulo">${t}</div><div class="v ${s == null || isNaN(s) ? '' : s >= 0 ? 'pos-v' : 'neg-v'}">${v}</div><div class="c">${c}</div></div>`).join('');
@@ -455,12 +471,11 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
       time: o.t_exec, position: o.dir === 1 ? 'belowBar' : 'aboveBar', color: o.dir === 1 ? COR.compra : COR.venda,
       shape: o.dir === 1 ? 'arrowUp' : 'arrowDown', size: o.i === op.i ? 2 : 0.6,
     }));
-    if (op.t_saida <= t1) mk.push({ time: op.t_saida, position: op.dir === 1 ? 'aboveBar' : 'belowBar', color: COR.tinta, shape: 'circle', text: op.a1 ? 'alvo' : (op.t_stop >= 0 ? 'stop' : 'aberta') });
+    if (op.t_saida <= t1) mk.push({ time: op.t_saida, position: op.dir === 1 ? 'aboveBar' : 'belowBar', color: COR.tinta, shape: 'circle', text: op.acerto ? 'alvo' : (op.t_stop >= 0 ? 'stop' : 'aberta') });
     mk.sort((a, b) => a.time - b.time);
     velas.setMarkers(mk);
 
-    const de = Math.min(op.t_origem, op.t_fvg) - 25 * 60, ate = Math.max(op.t_saida, op.t_exec + 60 * 30) + 25 * 60;
-    chart.timeScale().setVisibleRange({ from: Math.max(de, t0), to: Math.min(ate, t1) });
+    enquadrar(op);
 
     document.getElementById('posicao').textContent = `${(estado.pos + 1).toLocaleString('pt-BR')} de ${estado.lista.length.toLocaleString('pt-BR')}`;
     const ses = estado.dados.sessoes[op.sessao];
@@ -468,18 +483,18 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
       `<span class="pill ${op.dir === 1 ? 'compra' : 'venda'}">${op.dir === 1 ? 'COMPRA' : 'VENDA'}</span>` +
       `<span class="pill neutra">${ses === 'fora' ? 'fora das aberturas' : ses}</span>` +
       `<span class="sub num">${dataHora(op.t_exec)} UTC</span>`;
-    const r = op.resultado_1r;
+    const r = op.resultado;
     document.getElementById('resultado').innerHTML =
       `<span class="${r >= 0 ? 'pos-v' : 'neg-v'}">${rr(r)}</span> <span class="sub num">líquido ${rr(op.liq)}</span>`;
     document.getElementById('chips').innerHTML = [op.a1, op.a2, op.a3].map((a, i) =>
       `<span class="chip ${a ? 'sim' : 'nao'}" aria-label="${i + 1}R ${a ? 'atingido' : 'não atingido'} antes do stop">${i + 1}R ${a ? '✓' : '✗'}</span>`).join('');
     const linhas = [
       ['Entrada (borda do FVG)', preco(op.entrada)],
-      ['Stop (além da pernada)', preco(op.stop)],
+      [`Stop (${NOME_STOP[estado.stop]})`, preco(op.stop)],
       ['R', `${preco(op.risco)} · ${pctSem(op.risco_pct, 2)}`],
       ['1R · 2R · 3R', preco(op.alvo[0])], ['', preco(op.alvo[1])], ['', preco(op.alvo[2])],
       ['FVG na pernada', `${pctSem(op.posicao)} (${op.posicao > 0.5 ? 'premium' : 'discount'})`],
-      ['Tempo até 1R', minutos(op.t_1r)],
+      [`Tempo até ${estado.alvo}R`, minutos(op.t_alvo)],
       ['Tempo até o stop', minutos(op.t_stop)],
     ];
     document.getElementById('detalhes').innerHTML = linhas.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
@@ -487,23 +502,35 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     redesenhar();
   }
 
+  // enquadra a operação e devolve a escala de preço ao automático (necessário ao trocar de ativo)
+  function enquadrar(op) {
+    if (!tempos.length) return;
+    const t0 = tempos[0], t1 = tempos[tempos.length - 1];
+    const de = Math.min(op.t_origem, op.t_fvg) - 25 * 60, ate = Math.max(op.t_saida, op.t_exec + 60 * 30) + 25 * 60;
+    chart.priceScale('right').applyOptions({ autoScale: true });
+    chart.timeScale().setVisibleRange({ from: Math.max(de, t0), to: Math.min(ate, t1) });
+    redesenhar();
+  }
+  const centralizar = () => { if (estado.lista.length) enquadrar(estado.ops[estado.lista[estado.pos]]); };
+  document.getElementById('centralizar').onclick = centralizar;
+
   function ultimos() {
     const ult = estado.lista.slice(-10).map(i => estado.ops[i]);
     const box = document.getElementById('ultimos');
     box.innerHTML = '';
     ult.forEach(o => {
       const b = document.createElement('button');
-      b.className = o.a1 ? 'g' : 'p';
+      b.className = o.acerto ? 'g' : 'p';
       b.textContent = o.dir === 1 ? 'C' : 'V';
       b.dataset.i = o.i;
-      b.title = `${o.dir === 1 ? 'Compra' : 'Venda'} ${dataHora(o.t_exec)} · ${rr(o.resultado_1r)}`;
+      b.title = `${o.dir === 1 ? 'Compra' : 'Venda'} ${dataHora(o.t_exec)} · ${rr(o.resultado)}`;
       b.setAttribute('aria-label', b.title);
       b.onclick = () => { estado.pos = estado.lista.indexOf(o.i); mostrar(); };
       box.appendChild(b);
     });
-    const g = ult.filter(o => o.a1).length;
+    const g = ult.filter(o => o.acerto).length;
     document.getElementById('ultimos-resumo').textContent =
-      `${g} de ${ult.length} chegaram a 1R antes do stop · soma líquida ${rr(ult.reduce((a, o) => a + o.liq, 0))}. C = compra, V = venda.`;
+      `${g} de ${ult.length} chegaram a ${estado.alvo}R antes do stop · soma líquida ${rr(ult.reduce((a, o) => a + o.liq, 0))}. C = compra, V = venda.`;
   }
 
   async function aplicarFiltros(manterTempo = true) {
@@ -539,6 +566,9 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     estado.ativo = v; estado.meses = [];
     carregarOps().then(() => aplicarFiltros(false)).catch(falha);
   });
+  const trocarVariante = () => carregarOps().then(() => aplicarFiltros()).catch(falha);
+  botoesSeg('seg-stop', ['estrutura', 'atr3'], () => estado.stop, v => v === 'atr3' ? '3 × ATR' : 'Estrutura', v => { estado.stop = v; trocarVariante(); });
+  botoesSeg('seg-alvo', [1, 2], () => estado.alvo, v => `${v}R`, v => { estado.alvo = v; trocarVariante(); });
   botoesSeg('seg-rmin', [0, 0.002, 0.004, 0.006], () => estado.rmin, v => v ? `≥ ${(v * 100).toLocaleString('pt-BR', nf(1))}%` : 'todos', v => {
     estado.rmin = v; aplicarFiltros().catch(falha);
   });
@@ -554,6 +584,7 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     if (ev.target.matches('input, select')) return;
     if (ev.key === 'ArrowLeft') mover(-1);
     if (ev.key === 'ArrowRight') mover(1);
+    if (ev.key === 'c' || ev.key === 'C') centralizar();
   });
 
   await carregarOps();

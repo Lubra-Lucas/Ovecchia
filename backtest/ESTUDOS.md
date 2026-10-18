@@ -148,6 +148,31 @@ fica fora do ruído do M1 e o primeiro pullback após a quebra tende a continuar
 Ainda não considerado: slippage do stop em movimentos rápidos, funding dos perpétuos, e custo
 real conforme a conta (o usuário informou que maker e taker podem ser iguais na conta dele).
 
+## 9. Tamanho do stop no FVG (M1) — `resultados/estudo_stop_1m.csv`
+
+Mesmas operações da seção 8 (1º FVG da pernada, pivô 5, R pela estrutura ≥ 0,4%); só o stop muda.
+
+| Stop | BTC acerto 1R | BTC acerto 2R | BTC líquido 1R | BTC líquido 2R | ETH líquido 1R | ETH líquido 2R |
+|---|---|---|---|---|---|---|
+| Estrutura (anterior) | 64% | 42% | +0,15R | +0,20R | +0,15R | +0,19R |
+| 50% da distância da estrutura | 70% | 52% | +0,15R | +0,32R | +0,13R | +0,28R |
+| 2 × ATR | 72% | 56% | +0,09R | +0,35R | +0,11R | +0,30R |
+| **3 × ATR** | **71%** | **52%** | **+0,19R** | **+0,32R** | **+0,17R** | **+0,29R** |
+| 5 × ATR | 66% | 45% | +0,18R | +0,24R | +0,16R | +0,21R |
+| Acima do FVG | 70% | 56% | −0,03R | +0,25R | −0,02R | +0,21R |
+
+Aleatório com o mesmo R: ~49% em 1R em todas as linhas. Taxas: 0,02% + 0,05%.
+
+- Stop mais curto aumenta o acerto (o primeiro movimento depois da entrada tende a ir a favor),
+  mas aumenta o peso das taxas em R. O equilíbrio fica em ~3 × ATR(14) do M1.
+- **Melhor combinação: stop 3 × ATR com alvo 2R** — líquido de +0,24R a +0,38R em todos os anos
+  (2023–2026), igual em compra e venda; com execução realista da ordem limitada
+  (penetração de 0,02%), +0,25R.
+- Não precisa de R mínimo no stop em ATR: operações com R pequeno acertam mais e compensam as taxas
+  (líquido +0,35R a +0,41R abaixo de 0,5% de R; acima de 0,5%, +0,20R).
+- Correção: o exportador do visualizador reaproveitava setups já avaliados ao calcular a variante
+  em ATR (colunas duplicadas); corrigido antes de publicar. O estudo não tinha esse problema.
+
 ## Próximos passos (em aberto)
 
 ### A. Estratégia de fair value gap (SMC) — feita no M1 (seção 8); próximos testes abaixo
@@ -185,7 +210,7 @@ na virada. Objetivo: reduzir o drawdown e as perdas do lado vendido no BTC e na 
 
 ### D. Continuação do estudo de FVG
 - Validar o candidato (1º FVG + R mínimo) em outros ativos (SOL, BNB) e em M5/M15.
-- Testar alvo 1,5R e 2R para o candidato e a saída parcial.
+- Testar saída parcial (metade em 1R, resto em 2R/3R) com stop 3 × ATR.
 - Levar a regra para o indicador do TradingView (Pine) para o usuário acompanhar ao vivo:
   estrutura pelos fechamentos, linha dos 50%, destaque do 1º FVG da pernada, R mínimo e alerta
   com entrada, stop e alvo. Usar `barstate.isconfirmed` para não repintar ao vivo.

@@ -1,0 +1,19 @@
+ativo                          stop  operacoes r_mediano acerto_1r aleat_1r acerto_2r bruto_1r liq_1r bruto_2r liq_2r taxa_em_r
+  BTC             estrutura (atual)       8174     0.55%       64%      48%       42%   +0.28R +0.15R   +0.32R +0.20R     0.13R
+  BTC           acima/abaixo do FVG       8174     0.20%       70%      49%       56%   +0.40R -0.03R   +0.67R +0.25R     0.34R
+  BTC 25% da distância da estrutura       8174     0.14%       69%      50%       56%   +0.38R -0.11R   +0.68R +0.19R     0.51R
+  BTC 50% da distância da estrutura       8174     0.28%       70%      50%       52%   +0.40R +0.15R   +0.56R +0.32R     0.25R
+  BTC 75% da distância da estrutura       8174     0.42%       67%      48%       47%   +0.34R +0.17R   +0.42R +0.25R     0.17R
+  BTC                       2 × ATR       8174     0.24%       72%      49%       56%   +0.44R +0.09R   +0.69R +0.35R     0.29R
+  BTC                       3 × ATR       8174     0.36%       71%      48%       52%   +0.42R +0.19R   +0.55R +0.32R     0.20R
+  BTC                       5 × ATR       8174     0.59%       66%      49%       45%   +0.32R +0.18R   +0.38R +0.24R     0.12R
+  BTC                       8 × ATR       8174     0.95%       60%      44%       36%   +0.23R +0.14R   +0.24R +0.16R     0.07R
+  ETH             estrutura (atual)      14247     0.58%       63%      49%       43%   +0.27R +0.15R   +0.31R +0.19R     0.12R
+  ETH           acima/abaixo do FVG      14247     0.23%       68%      49%       53%   +0.35R -0.02R   +0.58R +0.21R     0.30R
+  ETH 25% da distância da estrutura      14247     0.14%       66%      48%       53%   +0.31R -0.16R   +0.59R +0.12R     0.48R
+  ETH 50% da distância da estrutura      14247     0.29%       68%      50%       50%   +0.37R +0.13R   +0.51R +0.28R     0.24R
+  ETH 75% da distância da estrutura      14247     0.43%       65%      50%       46%   +0.31R +0.16R   +0.39R +0.24R     0.16R
+  ETH                       2 × ATR      14247     0.28%       70%      49%       53%   +0.39R +0.11R   +0.59R +0.30R     0.25R
+  ETH                       3 × ATR      14247     0.42%       68%      49%       49%   +0.36R +0.17R   +0.48R +0.29R     0.17R
+  ETH                       5 × ATR      14247     0.69%       63%      49%       43%   +0.27R +0.16R   +0.32R +0.21R     0.10R
+  ETH                       8 × ATR      14247     1.11%       58%      46%       37%   +0.19R +0.12R   +0.21R +0.14R     0.06R
