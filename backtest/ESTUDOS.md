@@ -98,9 +98,59 @@ A melhor saída é a virada do sinal. Para alta assertividade é preciso outro t
 
 ---
 
+## 8. FVG + estrutura pelos fechamentos no M1 — `resultados/estudo_fvg_1m.csv`
+
+Dados: BTC e ETH M1, 01/10/2023 a 18/10/2026 (1,6 milhão de candles cada, nenhum faltando).
+Código: `smc.py` (estrutura, FVG, setups), `estudo_fvg.py` (estudo), `figura_smc.py` (imagens).
+
+Regras (venda; compra é o espelho):
+- Pivôs nos fechamentos (n = 2, 3, 5), usados só depois de confirmados. Teste de repaint: ok.
+- BOS = fechamento abaixo do último fundo; CHoCH = fechamento acima da origem da pernada
+  (maior fechamento entre o fundo rompido e a quebra — "o topo que gerou o último fundo").
+- FVG de baixa dentro da pernada, não tocado antes da ativação. Ordem limitada na borda da zona,
+  válida 240 candles, cancelada se um fechamento atravessar a zona ou a tendência virar.
+- Stop: acima do topo da pernada (estrutura) ou acima dos 3 candles do FVG, com folga de 0,1 ATR.
+- Acerto = chegou a 1R antes do stop (horizonte de 1 dia). No candle da execução só o stop conta.
+- Referência aleatória: mesma sessão, direção e risco (%). Taxas: 0,02% entrada + 0,05% saída.
+
+Resultado sem filtros: ~300 setups por dia e acerto de 1R **abaixo** do aleatório (−1 a −5 pontos)
+em todas as 12 configurações. Filtros por zona premium, médias 13/26/50, sessões e "FVG do impulso
+da quebra", sozinhos ou combinados, também ficaram abaixo ou empatados com o aleatório.
+
+**Premium foi pior que discount** (41–44% contra 45–47% do aleatório). No M1, o FVG premium fica
+perto da origem da pernada e o stop fica minúsculo (R mediano 0,05–0,11%), então o ruído leva ao stop
+e as taxas passam de 1R por trade.
+
+**O único filtro que venceu o aleatório nas 12 configurações: o primeiro FVG executado da pernada**
+(+3 a +8 pontos). Combinado com um R mínimo (stop longe o bastante do ruído e das taxas):
+
+| Pivô 5, stop estrutura, 1º FVG | Trades/dia | Acerto 1R | Aleatório | R mediano | Bruto | Líquido |
+|---|---|---|---|---|---|---|
+| BTC, R ≥ 0,2% | 22,5 | 61% | 50% | 0,32% | +0,23R | +0,01R |
+| BTC, R ≥ 0,4% | 7,3 | 64% | 49% | 0,55% | +0,28R | **+0,15R** |
+| ETH, R ≥ 0,2% | 32,2 | 60% | 50% | 0,35% | +0,20R | +0,00R |
+| ETH, R ≥ 0,4% | 12,8 | 63% | 49% | 0,58% | +0,27R | **+0,15R** |
+
+Robustez do candidato (1º FVG, R ≥ 0,4%):
+- Ano a ano 2023–2026: 62–64% em todos os anos, nos dois ativos.
+- Compra 63–64%, venda 63%. Todas as sessões entre 61% e 67% (sessões não fazem diferença).
+- Pivô 3 dá praticamente o mesmo (63%). Stop no FVG também (64–66%, com menos trades).
+- R mínimo de 0,3% a 0,8%: acerto estável (61–64%); o líquido melhora com R maior.
+- Execução realista da ordem limitada (preço precisa ultrapassar a entrada em 0,01–0,02%):
+  acerto 62–63%, líquido +0,12 a +0,14R.
+- Uma operação por vez: BTC 4,7 trades/dia, ETH 7,4/dia, ~63% de acerto, +0,15R líquido por trade.
+- Tempo até resolver: mediana 35 min (p25 13 min, p75 91 min).
+
+Leitura: o que funciona no M1 não é o FVG premium com stop curto, e sim **entrar no primeiro
+retorno ao FVG logo depois da quebra, com o stop do outro lado da pernada inteira**. O stop largo
+fica fora do ruído do M1 e o primeiro pullback após a quebra tende a continuar.
+
+Ainda não considerado: slippage do stop em movimentos rápidos, funding dos perpétuos, e custo
+real conforme a conta (o usuário informou que maker e taker podem ser iguais na conta dele).
+
 ## Próximos passos (em aberto)
 
-### A. Estratégia de fair value gap (SMC) — prioridade do usuário
+### A. Estratégia de fair value gap (SMC) — feita no M1 (seção 8); próximos testes abaixo
 
 Reproduzir a operação manual do usuário e medir a assertividade em 1R, 2R e 3R contra o aleatório.
 Proposta de regras objetivas (a confirmar com o usuário):
@@ -132,3 +182,11 @@ Precisa baixar esses timeframes com `dados_binance.carregar`.
 
 Só vender quando o diário estiver abaixo da média 200 (e só comprar acima), mantendo a saída
 na virada. Objetivo: reduzir o drawdown e as perdas do lado vendido no BTC e na SOL.
+
+### D. Continuação do estudo de FVG
+- Validar o candidato (1º FVG + R mínimo) em outros ativos (SOL, BNB) e em M5/M15.
+- Testar alvo 1,5R e 2R para o candidato e a saída parcial.
+- Levar a regra para o indicador do TradingView (Pine) para o usuário acompanhar ao vivo:
+  estrutura pelos fechamentos, linha dos 50%, destaque do 1º FVG da pernada, R mínimo e alerta
+  com entrada, stop e alvo. Usar `barstate.isconfirmed` para não repintar ao vivo.
+- Corrigir no relatório: setups com horizonte incompleto no fim dos dados contam como erro (impacto desprezível).

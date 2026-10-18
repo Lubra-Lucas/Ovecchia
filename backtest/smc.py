@@ -110,13 +110,14 @@ def fvgs(df):
     return sorted(out)
 
 
-def montar_setups(df, est, atr, espera_quebra=30, validade=240, folga_atr=0.1, entrada='borda'):
+def montar_setups(df, est, atr, espera_quebra=30, validade=240, folga_atr=0.1, entrada='borda', penetracao=0.0):
     """
     Para cada FVG dentro de uma pernada a favor da tendência, cria a ordem limitada e procura a execução.
     - FVG formado com a tendência já a favor: ativa no candle seguinte.
     - FVG formado no impulso que ainda vai quebrar a estrutura: ativa quando a quebra acontece
       (até espera_quebra candles depois), desde que esteja depois da origem da nova pernada.
     - A zona não pode ter sido tocada antes da ativação.
+    - penetracao: fração do preço que o mercado precisa ultrapassar a entrada para a ordem executar.
     - A ordem é cancelada se: passar 'validade' candles, um fechamento atravessar a zona,
       ou a tendência mudar antes da execução.
     Dois stops são registrados: acima/abaixo do extremo da pernada (estrutura) e do FVG.
@@ -156,7 +157,8 @@ def montar_setups(df, est, atr, espera_quebra=30, validade=240, folga_atr=0.1, e
 
         # ---- execução da ordem limitada ----
         fim = min(a + validade, N)
-        toque = (h[a:fim] >= preco) if d == -1 else (l[a:fim] <= preco)
+        # penetracao > 0: só executa se o preço ultrapassar a entrada (fila da ordem limitada)
+        toque = (h[a:fim] >= preco * (1 + penetracao)) if d == -1 else (l[a:fim] <= preco * (1 - penetracao))
         if not toque.any():
             continue
         f = a + int(np.argmax(toque))
