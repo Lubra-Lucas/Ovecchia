@@ -139,6 +139,7 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
 
   <div class="controles">
     <div class="grupo"><span class="rotulo">Ativo</span><div class="seg" id="seg-ativo"></div></div>
+    <div class="grupo"><span class="rotulo">Pernada</span><div class="seg texto" id="seg-perna"></div></div>
     <div class="grupo"><span class="rotulo">Stop</span><div class="seg texto" id="seg-stop"></div></div>
     <div class="grupo"><span class="rotulo">Alvo</span><div class="seg" id="seg-alvo"></div></div>
     <div class="grupo"><span class="rotulo">R da estrutura ≥</span><div class="seg" id="seg-rmin"></div></div>
@@ -221,7 +222,10 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     no candle da entrada só o stop conta, e alvo e stop no mesmo candle contam como stop. Líquido: 0,02% na entrada + 0,05% na saída.
     No estudo de 3 anos (BTC e ETH), entradas aleatórias com o mesmo R acertam 1R em cerca de 49%. O "1º FVG" é o primeiro
     executado no tempo, a regra que dá para seguir ao vivo; com ela, no M1, o acerto fica perto do aleatório (≈ 50% em 1R).
-    Uma versão anterior desta página escolhia o 1º FVG pela ordem de formação, o que olhava o futuro e inflava os números. Horários de São Paulo; aberturas: Ásia 22h–01h, Londres 03h–07h, Nova York 10h30–13h30 (dias úteis). Use ← e → para navegar e C (ou o botão Centralizar) para voltar à operação.
+    Uma versão anterior desta página escolhia o 1º FVG pela ordem de formação, o que olhava o futuro e inflava os números.
+    "2+ FVGs": só pernadas com pelo menos mais um FVG válido além do da entrada (deslocamento forte); no estudo de 3 anos
+    deu +4 a +7 pontos de acerto sobre o aleatório no M5/M15, mas pouco no M1, onde as taxas consomem a vantagem.
+    "Próximo FVG": stop além do próximo FVG válido da pernada + 0,25 ATR (sem outro FVG, além do próprio FVG). Horários de São Paulo; aberturas: Ásia 22h–01h, Londres 03h–07h, Nova York 10h30–13h30 (dias úteis). Use ← e → para navegar e C (ou o botão Centralizar) para voltar à operação.
   </p>
 </div>
 
@@ -236,8 +240,8 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     m13: '#7b83eb', m26: '#f0a742', m50: '#9cc3f5',
     compra: '#2563eb', venda: '#dc2626', alvo: '#15803d', stop: '#dc2626', tinta: '#111827', meio: '#6b7280',
   };
-  const estado = { ativo: 'BTCUSDT', stop: 'atr2', alvo: 3, rmin: 0.004, medias: true, ops: [], lista: [], pos: 0, dados: null, meses: [] };
-  const NOME_STOP = { estrutura: 'além da pernada', atr2: '2 × ATR', atr3: '3 × ATR' };
+  const estado = { ativo: 'BTCUSDT', stop: 'prox', alvo: 2, rmin: 0, perna2: true, medias: true, ops: [], lista: [], pos: 0, dados: null, meses: [] };
+  const NOME_STOP = { estrutura: 'além da pernada', atr2: '2 × ATR', atr3: '3 × ATR', prox: 'acima do próximo FVG' };
   const cacheOps = {}, cacheMes = {};
   let barras = [], eventos = [], tempos = [];
 
@@ -446,14 +450,14 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
   // ---------- filtros e métricas ----------
   function filtrar() {
     const dir = document.getElementById('f-dir').value, res = document.getElementById('f-res').value, ses = document.getElementById('f-ses').value;
-    estado.lista = estado.ops.filter(o => o.r_estrutura >= estado.rmin
+    estado.lista = estado.ops.filter(o => o.r_estrutura >= estado.rmin && (!estado.perna2 || o.n_outros > 0)
       && (dir === 'todas' || o.dir === Number(dir))
       && (res === 'todos' || (res === 'ganho' ? o.acerto === 1 : o.acerto === 0))
       && (ses === 'todas' || (ses === 'sessoes' ? o.sessao > 0 : o.sessao === Number(ses)))).map(o => o.i);
   }
 
   function metricas() {
-    const base = estado.ops.filter(o => o.r_estrutura >= estado.rmin
+    const base = estado.ops.filter(o => o.r_estrutura >= estado.rmin && (!estado.perna2 || o.n_outros > 0)
       && (document.getElementById('f-dir').value === 'todas' || o.dir === Number(document.getElementById('f-dir').value))
       && (document.getElementById('f-ses').value === 'todas' || (document.getElementById('f-ses').value === 'sessoes' ? o.sessao > 0 : o.sessao === Number(document.getElementById('f-ses').value))));
     const n = base.length;
@@ -510,6 +514,7 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     const linhas = [
       ['Entrada (borda do FVG)', preco(op.entrada)],
       [`Stop (${NOME_STOP[estado.stop]})`, preco(op.stop)],
+      ['Outros FVGs válidos na pernada', String(op.n_outros)],
       ['R', `${preco(op.risco)} · ${pctSem(op.risco_pct, 2)}`],
       ['1R · 2R · 3R', preco(op.alvo[0])], ['', preco(op.alvo[1])], ['', preco(op.alvo[2])],
       ['FVG na pernada', `${pctSem(op.posicao)} (${op.posicao > 0.5 ? 'premium' : 'discount'})`],
@@ -586,7 +591,8 @@ dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-nu
     carregarOps().then(() => aplicarFiltros(false)).catch(falha);
   });
   const trocarVariante = () => carregarOps().then(() => aplicarFiltros()).catch(falha);
-  botoesSeg('seg-stop', ['estrutura', 'atr2', 'atr3'], () => estado.stop, v => v === 'estrutura' ? 'Estrutura' : NOME_STOP[v], v => { estado.stop = v; trocarVariante(); });
+  botoesSeg('seg-perna', [true, false], () => estado.perna2, v => v ? '2+ FVGs' : 'Todas', v => { estado.perna2 = v; aplicarFiltros().catch(falha); });
+  botoesSeg('seg-stop', ['prox', 'atr2', 'atr3', 'estrutura'], () => estado.stop, v => ({ prox: 'Próximo FVG', estrutura: 'Estrutura' })[v] || NOME_STOP[v], v => { estado.stop = v; trocarVariante(); });
   botoesSeg('seg-alvo', [1, 2, 3], () => estado.alvo, v => `${v}R`, v => { estado.alvo = v; trocarVariante(); });
   botoesSeg('seg-rmin', [0, 0.002, 0.004, 0.006], () => estado.rmin, v => v ? `≥ ${(v * 100).toLocaleString('pt-BR', nf(1))}%` : 'todos', v => {
     estado.rmin = v; aplicarFiltros().catch(falha);

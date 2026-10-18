@@ -19,6 +19,7 @@ import pandas as pd
 
 import estrategia as est
 import smc
+from estudo_stop_protegido import stops_protegidos
 
 PIVO = 5
 STOP = 'stop_estrutura'
@@ -36,8 +37,11 @@ def exportar(ativo, inicio):
     assert (passo == 60_000).all(), 'há buracos no M1; o formato compacto assume candles contínuos'
     atr = est.calcular_atr(df).to_numpy()
     e = smc.estrutura(df, PIVO)
-    setups = smc.montar_setups(df, e, atr)
-    setups = smc.primeiro_da_pernada(setups)           # 1º FVG executado (no tempo) da pernada
+    cands = []
+    setups = smc.montar_setups(df, e, atr, candidatos=cands)
+    setups = smc.primeiro_da_pernada(setups).reset_index(drop=True)      # 1º FVG executado (no tempo) da pernada
+    # stop protegido além do próximo FVG válido da pernada e quantos outros FVGs válidos a pernada tinha na entrada
+    setups = stops_protegidos(df, setups, cands, atr, df['close'].rolling(50).mean().to_numpy())
     sessoes = smc.sessao_sao_paulo(df['time'])
 
     i0 = int(df['time'].searchsorted(pd.Timestamp(inicio, tz='UTC')))
@@ -67,7 +71,7 @@ def exportar(ativo, inicio):
     h, l = df['high'].to_numpy(), df['low'].to_numpy()
     inf = lambda v: -1 if v == np.inf else int(v)
     variantes = {}
-    for nome, col in (('estrutura', 'stop_estrutura'), ('atr2', 'stop_atr2'), ('atr3', 'stop_atr3')):
+    for nome, col in (('estrutura', 'stop_estrutura'), ('atr2', 'stop_atr2'), ('atr3', 'stop_atr3'), ('prox', 'stop_prox')):
         av = smc.avaliar(df, sel.reset_index(drop=True), col)
         assert len(av) == len(sel)
         ops = []
@@ -83,13 +87,13 @@ def exportar(ativo, inicio):
                         inf(s.t_stop), inf(s.t_1r), inf(s.t_2r), inf(s.t_3r),
                         round(float(s.resultado_1r), 3), round(float(s.resultado_2r), 3), round(float(s.resultado_3r), 3),
                         SESSOES.index(sessoes[s.i_exec]), _t(df, s.origem), round(float(topo), casas),
-                        round(float(fundo), casas), round(float(r_estrutura[k]), 5)])
+                        round(float(fundo), casas), round(float(r_estrutura[k]), 5), int(s.n_outros)])
         variantes[nome] = ops
     resumo = {'ativo': ativo, 'pivo': PIVO, 'meses': meses, 'casas': casas,
               'inicio': _t(df, i0), 'fim': _t(df, len(df) - 1), 'sessoes': SESSOES,
               'campos': ['t_fvg', 't_exec', 'dir', 'entrada', 'stop', 'zona_base', 'zona_topo', 'posicao',
                          'risco_pct', 'a1', 'a2', 'a3', 't_stop', 't_1r', 't_2r', 't_3r', 'resultado_1r',
-                         'resultado_2r', 'resultado_3r', 'sessao', 't_origem', 'topo_perna', 'fundo_perna', 'r_estrutura'],
+                         'resultado_2r', 'resultado_3r', 'sessao', 't_origem', 'topo_perna', 'fundo_perna', 'r_estrutura', 'n_outros'],
               'variantes': variantes}
     (destino / 'operacoes.json').write_text(json.dumps(resumo, separators=(',', ':')))
     tam = sum(f.stat().st_size for f in destino.iterdir()) / 1e6
