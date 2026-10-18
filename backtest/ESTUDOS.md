@@ -304,6 +304,12 @@ Código: `estudo_stop_protegido.py` (usa `montar_setups(..., candidatos=lista)` 
 - **Obstáculo: taxas de cripto.** A vantagem bruta (+0,08 a +0,13R no M5/M15) é menor que a taxa em R no M5 e
   empata no M15. Num mercado com custo fixo por contrato (MNQ: ~1% do R), o bruto vira praticamente o líquido.
 
+## Estratégia de FVG: arquivada
+
+Parada por decisão do usuário: a marcação de pernadas e fractais ainda depende de interpretação (o operador consideraria
+pernadas que o código não considera). Estado ao arquivar: seção 12/13 — com seleção honesta, acerto ~50–55% em 1R,
+vantagem pequena só com o filtro de 2+ FVGs no M5/M15. Retomar quando houver uma definição de pernada fechada com o operador.
+
 ## Próximos passos (em aberto)
 
 ### A. Estratégia de fair value gap (SMC) — feita no M1 (seção 8); próximos testes abaixo
