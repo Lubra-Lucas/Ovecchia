@@ -31,6 +31,10 @@ python exportar_visualizador.py 1h BTCUSDT ETHUSDT SOLUSDT ADAUSDT ETHBTC
 # serve a pasta com index.html + dados/<ATIVO>_1h.json:
 mkdir -p saida/site/dados && cp visualizador/index.html saida/site/ && cp saida/visualizador/*.json saida/site/dados/
 python -m http.server -d saida/site 8000         # abrir http://localhost:8000
+
+# 5. Visualizador das operações de FVG (M1, últimos meses)
+python exportar_fvg_viz.py 2026-04-01 BTCUSDT ETHUSDT      # gera saida/visualizador_fvg/dados/
+cp visualizador_fvg/index.html saida/visualizador_fvg/ && python -m http.server -d saida/visualizador_fvg 8001
 ```
 
 Acesso de rede necessário: `data.binance.vision` e `data-api.binance.vision` (sem chave de API).

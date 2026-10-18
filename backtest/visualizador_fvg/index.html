@@ -1,0 +1,565 @@
+<title>Operações FVG M1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: mesa de operação — controles, faixa de métricas, gráfico grande e ficha da operação ao lado (empilha no celular).
+   O gráfico fica sempre claro para manter as cores de candle do operador (alta azul, baixa preta). */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #111827;
+  --ink-2: #4b5563;
+  --ink-3: #8a93a3;
+  --line: #e3e6eb;
+  --compra: #2563eb;
+  --venda: #dc2626;
+  --ganho: #15803d;
+  --perda: #dc2626;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1218; --surface: #161a22; --ink: #e8ebf0; --ink-2: #b0b7c3; --ink-3: #7b8494; --line: #262c37;
+    --compra: #5b8def; --venda: #f05252; --ganho: #22b8a6; --perda: #f05252;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1218; --surface: #161a22; --ink: #e8ebf0; --ink-2: #b0b7c3; --ink-3: #7b8494; --line: #262c37;
+  --compra: #5b8def; --venda: #f05252; --ganho: #22b8a6; --perda: #f05252;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 32px;
+}
+.wrap { max-width: 1440px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--ink-2); font-size: 13px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+.controles { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.grupo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rotulo { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.seg button {
+  border: 0; background: transparent; color: var(--ink-2); font: inherit; font-family: var(--font-num);
+  padding: 6px 11px; cursor: pointer; border-right: 1px solid var(--line);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.seg.texto button { font-family: var(--font-ui); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--compra); outline-offset: 2px; }
+select, input[type="date"] {
+  font: inherit; font-size: 13px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
+}
+
+.metricas {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+}
+.metrica { padding: 10px 14px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; margin: 0 -1px -1px 0; }
+.metrica .v { font-family: var(--font-num); font-size: 17px; font-weight: 500; margin-top: 3px; }
+.metrica .c { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+.metrica.destaque { background: color-mix(in srgb, var(--ganho) 8%, var(--surface)); }
+
+.principal { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
+@media (max-width: 900px) { .principal { grid-template-columns: minmax(0, 1fr); } }
+.painel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; min-width: 0; overflow: hidden; }
+.area { position: relative; height: min(66vh, 600px); min-height: 360px; background: #ffffff; }
+#grafico { position: absolute; inset: 0; }
+#camada { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; }
+.aviso { position: absolute; inset: 0; display: grid; place-items: center; color: #4b5563; background: #ffffff; z-index: 5; font-size: 14px; }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-2); }
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+.ln { width: 18px; border-top: 2px solid currentColor; display: inline-block; }
+.ln.tra { border-top-style: dashed; }
+.ln.pon { border-top-style: dotted; }
+
+.ficha { padding: 14px; display: grid; gap: 14px; align-content: start; }
+.nav { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; }
+.nav button {
+  font: inherit; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 6px; padding: 7px 12px; cursor: pointer;
+}
+.nav button:hover { border-color: var(--ink-3); }
+.nav .pos { text-align: center; font-family: var(--font-num); font-size: 13px; color: var(--ink-2); }
+.filtros { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.filtros select, .filtros input { width: 100%; min-width: 0; }
+.pill { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 4px; color: #fff; }
+.pill.compra { background: var(--compra); }
+.pill.venda { background: var(--venda); }
+.pill.neutra { background: transparent; color: var(--ink-2); border: 1px solid var(--line); font-weight: 500; letter-spacing: 0.02em; }
+.cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.resultado { font-family: var(--font-num); font-size: 26px; font-weight: 500; }
+.pos-v { color: var(--ganho); } .neg-v { color: var(--perda); }
+dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 13px; }
+dt { color: var(--ink-3); }
+dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.sep { border-top: 1px solid var(--line); }
+.chips { display: flex; gap: 6px; }
+.chip { font-family: var(--font-num); font-size: 12px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--line); color: var(--ink-3); }
+.chip.sim { border-color: var(--ganho); color: var(--ganho); }
+.chip.nao { text-decoration: line-through; }
+.ultimos { display: flex; gap: 4px; flex-wrap: wrap; }
+.ultimos button {
+  width: 26px; height: 26px; border-radius: 4px; border: 1px solid var(--line); cursor: pointer;
+  font-family: var(--font-num); font-size: 11px; background: var(--surface); color: var(--ink-2);
+}
+.ultimos button.g { border-color: var(--ganho); color: var(--ganho); }
+.ultimos button.p { border-color: var(--perda); color: var(--perda); }
+.ultimos button[aria-current="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.nota { font-size: 12px; color: var(--ink-3); line-height: 1.5; max-width: 95ch; margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Operações FVG · <span id="titulo-ativo">BTCUSDT</span> M1</h1>
+    <span class="sub">1º FVG da pernada · estrutura pelos fechamentos (pivô 5) · stop além da pernada · alvo 1R</span>
+  </header>
+
+  <div class="controles">
+    <div class="grupo"><span class="rotulo">Ativo</span><div class="seg" id="seg-ativo"></div></div>
+    <div class="grupo"><span class="rotulo">R mínimo</span><div class="seg" id="seg-rmin"></div></div>
+    <div class="grupo"><span class="rotulo">Médias 13 · 26 · 50</span><div class="seg texto" id="seg-medias"></div></div>
+  </div>
+
+  <div class="metricas" id="metricas"></div>
+
+  <div class="principal">
+    <div class="painel">
+      <div class="area" id="area">
+        <div id="grafico"></div>
+        <canvas id="camada"></canvas>
+        <div class="aviso" id="aviso">Carregando…</div>
+      </div>
+      <div class="legenda">
+        <span><span class="sw" style="background:#4f6bed"></span>Candle de alta</span>
+        <span><span class="sw" style="background:#131313"></span>Candle de baixa</span>
+        <span style="color:#6b7280"><span class="ln pon"></span>Fechamentos</span>
+        <span><span class="sw" style="background:rgba(21,128,61,.22)"></span>Zona do alvo (1R)</span>
+        <span><span class="sw" style="background:rgba(220,38,38,.18)"></span>Zona do stop</span>
+        <span><span class="sw" style="background:rgba(37,99,235,.2);outline:1px solid rgba(220,38,38,.35)"></span>FVG</span>
+        <span style="color:#6b7280"><span class="ln tra"></span>50% da pernada</span>
+        <span style="color:#7b83eb"><span class="ln"></span>13</span>
+        <span style="color:#f0a742"><span class="ln"></span>26</span>
+        <span style="color:#9cc3f5"><span class="ln"></span>50</span>
+      </div>
+    </div>
+
+    <aside class="painel ficha" aria-live="polite">
+      <div class="nav">
+        <button id="ant" aria-label="Operação anterior">←</button>
+        <div class="pos" id="posicao">–</div>
+        <button id="prox" aria-label="Próxima operação">→</button>
+      </div>
+      <div class="filtros">
+        <select id="f-dir" aria-label="Direção">
+          <option value="todas">Compras e vendas</option>
+          <option value="1">Só compras</option>
+          <option value="-1">Só vendas</option>
+        </select>
+        <select id="f-res" aria-label="Resultado">
+          <option value="todos">Todos os resultados</option>
+          <option value="ganho">Só ganhos (1R)</option>
+          <option value="perda">Só perdas</option>
+        </select>
+        <select id="f-ses" aria-label="Sessão">
+          <option value="todas">Todas as horas</option>
+          <option value="sessoes">Só aberturas</option>
+          <option value="1">Ásia (3h)</option>
+          <option value="2">Londres (3h)</option>
+          <option value="3">Nova York (3h)</option>
+        </select>
+        <input type="date" id="f-data" aria-label="Ir para a data">
+      </div>
+      <div class="cab" id="cab"></div>
+      <div class="resultado" id="resultado"></div>
+      <div>
+        <div class="rotulo" style="margin-bottom:6px">Chegou antes do stop</div>
+        <div class="chips" id="chips"></div>
+      </div>
+      <dl id="detalhes"></dl>
+      <div class="sep"></div>
+      <div>
+        <div class="rotulo" style="margin-bottom:6px">Últimas 10 operações</div>
+        <div class="ultimos" id="ultimos"></div>
+        <p class="nota" id="ultimos-resumo" style="margin-top:6px"></p>
+      </div>
+    </aside>
+  </div>
+
+  <p class="nota">
+    Estrutura: pivôs nos fechamentos (5 de cada lado, usados só depois de confirmados). BOS = fechamento além do último pivô;
+    CHoCH = fechamento além da origem da pernada (o topo que gerou o último fundo, ou o espelho). Entrada: ordem limitada na
+    borda do 1º FVG da pernada. Stop: além do extremo da pernada + 0,1 ATR. "Chegou antes do stop" usa máximas e mínimas;
+    no candle da entrada só o stop conta, e alvo e stop no mesmo candle contam como stop. Líquido: 0,02% na entrada + 0,05% na saída.
+    No estudo de 3 anos, entradas aleatórias com o mesmo R acertam 1R em cerca de 49%. Horários em UTC. Use ← e → para navegar.
+  </p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(async function () {
+  const LC = LightweightCharts;
+  const ATIVOS = ['BTCUSDT', 'ETHUSDT'];
+  const TAXA = 0.0007;
+  const COR = {
+    alta: '#4f6bed', baixa: '#131313', fech: '#6b7280', grade: '#f1f2f5', texto: '#4b5563', borda: '#e3e6eb',
+    m13: '#7b83eb', m26: '#f0a742', m50: '#9cc3f5',
+    compra: '#2563eb', venda: '#dc2626', alvo: '#15803d', stop: '#dc2626', tinta: '#111827', meio: '#6b7280',
+  };
+  const estado = { ativo: 'BTCUSDT', rmin: 0.004, medias: true, ops: [], lista: [], pos: 0, dados: null, meses: [] };
+  const cacheOps = {}, cacheMes = {};
+  let barras = [], eventos = [], tempos = [];
+
+  const nf = d => ({ minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = (x, d = 0) => x == null || Number.isNaN(x) ? '–' : (x >= 0 ? '+' : '') + (x * 100).toLocaleString('pt-BR', nf(d)) + '%';
+  const pctSem = (x, d = 0) => x == null || Number.isNaN(x) ? '–' : (x * 100).toLocaleString('pt-BR', nf(d)) + '%';
+  const preco = x => x.toLocaleString('pt-BR', nf(2));
+  const rr = x => (x >= 0 ? '+' : '') + x.toLocaleString('pt-BR', nf(2)) + 'R';
+  const dataHora = t => new Date(t * 1000).toLocaleString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const mesDe = t => new Date(t * 1000).toISOString().slice(0, 7);
+  const minutos = m => m < 0 ? 'não chegou' : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
+  const aviso = document.getElementById('aviso');
+
+  // ---------- gráfico ----------
+  const chart = LC.createChart(document.getElementById('grafico'), {
+    autoSize: true,
+    layout: { background: { type: 'solid', color: '#ffffff' }, textColor: COR.texto, fontFamily: 'IBM Plex Mono, ui-monospace, monospace', fontSize: 11 },
+    grid: { vertLines: { color: COR.grade }, horzLines: { color: COR.grade } },
+    rightPriceScale: { borderColor: COR.borda },
+    timeScale: { borderColor: COR.borda, timeVisible: true, secondsVisible: false, rightOffset: 8 },
+    crosshair: { mode: LC.CrosshairMode.Normal },
+    localization: { locale: 'pt-BR', priceFormatter: p => preco(p) },
+  });
+  const velas = chart.addCandlestickSeries({
+    upColor: COR.alta, downColor: COR.baixa, borderUpColor: COR.alta, borderDownColor: COR.baixa,
+    wickUpColor: COR.alta, wickDownColor: COR.baixa, priceLineVisible: false, lastValueVisible: false,
+  });
+  const linha = { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+  const fechamentos = chart.addLineSeries({ color: COR.fech, lineWidth: 1, lineStyle: LC.LineStyle.Dotted, ...linha });
+  const medias = [[13, COR.m13], [26, COR.m26], [50, COR.m50]].map(([p, c]) => ({ p, s: chart.addLineSeries({ color: c, lineWidth: 1, ...linha }) }));
+
+  // ---------- camada de desenho (caixas e linhas por cima do gráfico) ----------
+  const area = document.getElementById('area');
+  const canvas = document.getElementById('camada');
+  const ctx = canvas.getContext('2d');
+  let agendado = false;
+  const redesenhar = () => { if (!agendado) { agendado = true; requestAnimationFrame(() => { agendado = false; desenhar(); }); } };
+
+  function xDe(t) {
+    const ts = chart.timeScale();
+    const x = ts.timeToCoordinate(t);
+    if (x != null) return x;
+    if (!tempos.length) return null;
+    if (t < tempos[0]) return -10;
+    if (t > tempos[tempos.length - 1]) return ts.width() + 10;
+    return null;
+  }
+
+  function desenhar() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = area.clientWidth, h = area.clientHeight;
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+      canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const larg = chart.timeScale().width();
+    const alt = h - chart.timeScale().height();
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, larg, alt); ctx.clip();
+    const y = p => velas.priceToCoordinate(p);
+    ctx.font = '11px "IBM Plex Mono", ui-monospace, monospace';
+
+    // estrutura: BOS / CHoCH na parte visível
+    const vis = chart.timeScale().getVisibleRange();
+    if (vis) {
+      for (const [t, ev, nivel, tR] of eventos) {
+        if (t < vis.from || tR > vis.to) continue;
+        const x1 = xDe(tR), x2 = xDe(t), yy = y(nivel);
+        if (x1 == null || x2 == null || yy == null) continue;
+        const c = ev > 0 ? COR.compra : COR.venda;
+        ctx.strokeStyle = c; ctx.lineWidth = Math.abs(ev) === 2 ? 1.6 : 1; ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(x1, yy); ctx.lineTo(x2, yy); ctx.stroke();
+        ctx.fillStyle = c; ctx.font = (Math.abs(ev) === 2 ? '600 ' : '') + '11px "IBM Plex Mono", ui-monospace, monospace';
+        ctx.fillText(Math.abs(ev) === 2 ? 'CHoCH' : 'BOS', x2 + 3, ev > 0 ? yy - 4 : yy + 12);
+      }
+    }
+
+    const op = estado.lista.length ? estado.ops[estado.lista[estado.pos]] : null;
+    if (op && tempos.length) {
+      const d = op.dir, c = d === 1 ? COR.compra : COR.venda;
+      const xF = xDe(op.t_fvg), xE = xDe(op.t_exec), xS = xDe(op.t_saida), xO = xDe(op.t_origem);
+      // pernada e 50%
+      if (xO != null && xE != null) {
+        ctx.setLineDash([2, 3]); ctx.strokeStyle = COR.meio; ctx.lineWidth = 1;
+        for (const p of [op.topo_perna, op.fundo_perna]) { ctx.beginPath(); ctx.moveTo(xO, y(p)); ctx.lineTo(xE, y(p)); ctx.stroke(); }
+        const meio = (op.topo_perna + op.fundo_perna) / 2;
+        ctx.setLineDash([8, 4, 2, 4]); ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(xO, y(meio)); ctx.lineTo(xE, y(meio)); ctx.stroke();
+        ctx.setLineDash([]); ctx.fillStyle = COR.meio; ctx.fillText('50% da pernada', xO + 3, y(meio) - 4);
+        ctx.beginPath(); ctx.arc(xO, y(d === -1 ? op.topo_perna : op.fundo_perna), 6, 0, Math.PI * 2);
+        ctx.strokeStyle = c; ctx.lineWidth = 1.6; ctx.stroke();
+        ctx.fillStyle = c; ctx.fillText('origem', xO + 9, y(d === -1 ? op.topo_perna : op.fundo_perna) + (d === -1 ? -6 : 14));
+      }
+      // FVG
+      if (xF != null && xE != null) {
+        const yt = y(op.zona_topo), yb = y(op.zona_base);
+        ctx.fillStyle = d === 1 ? 'rgba(37,99,235,.18)' : 'rgba(220,38,38,.16)';
+        ctx.fillRect(xF, Math.min(yt, yb), Math.max(xE - xF, 2), Math.abs(yb - yt));
+        ctx.fillStyle = c; ctx.fillText('FVG', xF + 2, Math.min(yt, yb) - 3);
+      }
+      // posição (zona do alvo e zona do stop), como a ferramenta do TradingView
+      if (xE != null && xS != null) {
+        const largura = Math.max(xS - xE, 6);
+        const yE = y(op.entrada), y1 = y(op.alvo[0]), yS = y(op.stop);
+        ctx.fillStyle = 'rgba(21,128,61,.18)'; ctx.fillRect(xE, Math.min(yE, y1), largura, Math.abs(y1 - yE));
+        ctx.fillStyle = 'rgba(220,38,38,.14)'; ctx.fillRect(xE, Math.min(yE, yS), largura, Math.abs(yS - yE));
+        const niveis = [['Entrada', op.entrada, c, [], 2], ['Stop', op.stop, COR.stop, [6, 4], 1.4],
+                        ['1R', op.alvo[0], COR.alvo, [6, 4], 1.6], ['2R', op.alvo[1], COR.alvo, [3, 4], 1], ['3R', op.alvo[2], COR.alvo, [2, 5], 1]];
+        for (const [nome, p, cc, dash, lw] of niveis) {
+          const yy = y(p); if (yy == null) continue;
+          ctx.setLineDash(dash); ctx.strokeStyle = cc; ctx.lineWidth = lw;
+          ctx.beginPath(); ctx.moveTo(xE, yy); ctx.lineTo(xE + largura, yy); ctx.stroke();
+          const txt = `${nome} ${preco(p)}`;
+          const tw = ctx.measureText(txt).width;
+          ctx.setLineDash([]); ctx.fillStyle = 'rgba(255,255,255,.85)';
+          ctx.fillRect(xE + largura + 4, yy - 8, tw + 6, 15);
+          ctx.fillStyle = cc === COR.alvo || cc === COR.stop ? cc : COR.tinta; ctx.fillText(txt, xE + largura + 7, yy + 4);
+        }
+      }
+    }
+    ctx.restore();
+  }
+  chart.timeScale().subscribeVisibleLogicalRangeChange(redesenhar);
+  chart.subscribeCrosshairMove(redesenhar);
+  new ResizeObserver(redesenhar).observe(area);
+  area.addEventListener('wheel', redesenhar, { passive: true });
+  area.addEventListener('pointermove', redesenhar);
+
+  // ---------- dados ----------
+  async function carregarOps() {
+    if (!cacheOps[estado.ativo]) cacheOps[estado.ativo] = await (await fetch(`dados/${estado.ativo}/operacoes.json`)).json();
+    const d = estado.dados = cacheOps[estado.ativo];
+    const k = Object.fromEntries(d.campos.map((c, i) => [c, i]));
+    estado.ops = d.operacoes.map((r, i) => {
+      const o = { i }; for (const c in k) o[c] = r[k[c]];
+      const risco = o.dir * (o.entrada - o.stop);
+      o.risco = risco;
+      o.alvo = [1, 2, 3].map(x => o.entrada + o.dir * x * risco);
+      const fins = [o.t_stop, o.t_1r].filter(v => v >= 0);
+      o.t_res = fins.length ? Math.min(...fins) : -1;
+      o.t_saida = o.t_exec + 60 * (o.t_res >= 0 ? Math.max(o.t_res, 1) : 240);
+      o.liq = o.resultado_1r - TAXA / o.risco_pct;
+      return o;
+    });
+    document.getElementById('titulo-ativo').textContent = d.ativo;
+    const campo = document.getElementById('f-data');
+    campo.min = new Date(d.inicio * 1000).toISOString().slice(0, 10);
+    campo.max = new Date(d.fim * 1000).toISOString().slice(0, 10);
+  }
+
+  async function garantirMeses(meses) {
+    const faltam = meses.filter(m => estado.dados.meses.includes(m));
+    for (const m of faltam) {
+      const chave = `${estado.ativo}/${m}`;
+      if (!cacheMes[chave]) {
+        aviso.hidden = false; aviso.textContent = `Carregando candles de ${m}…`;
+        cacheMes[chave] = await (await fetch(`dados/${chave}.json`)).json();
+      }
+    }
+    const alvo = faltam.sort().join(',');
+    if (alvo === estado.meses.join(',')) { aviso.hidden = true; return; }
+    estado.meses = faltam.sort();
+    barras = []; eventos = [];
+    for (const m of estado.meses) {
+      const d = cacheMes[`${estado.ativo}/${m}`];
+      for (let i = 0; i < d.c.length; i++) barras.push({ time: d.t0 + 60 * i, open: d.o[i], high: d.h[i], low: d.l[i], close: d.c[i] });
+      eventos.push(...d.eventos);
+    }
+    tempos = barras.map(b => b.time);
+    velas.setData(barras);
+    fechamentos.setData(barras.map(b => ({ time: b.time, value: b.close })));
+    atualizarMedias();
+    aviso.hidden = true;
+  }
+
+  function atualizarMedias() {
+    for (const { p, s } of medias) {
+      if (!estado.medias) { s.setData([]); continue; }
+      const out = []; let soma = 0;
+      for (let i = 0; i < barras.length; i++) {
+        soma += barras[i].close; if (i >= p) soma -= barras[i - p].close;
+        out.push(i >= p - 1 ? { time: barras[i].time, value: soma / p } : { time: barras[i].time });
+      }
+      s.setData(out);
+    }
+  }
+
+  // ---------- filtros e métricas ----------
+  function filtrar() {
+    const dir = document.getElementById('f-dir').value, res = document.getElementById('f-res').value, ses = document.getElementById('f-ses').value;
+    estado.lista = estado.ops.filter(o => o.risco_pct >= estado.rmin
+      && (dir === 'todas' || o.dir === Number(dir))
+      && (res === 'todos' || (res === 'ganho' ? o.a1 === 1 : o.a1 === 0))
+      && (ses === 'todas' || (ses === 'sessoes' ? o.sessao > 0 : o.sessao === Number(ses)))).map(o => o.i);
+  }
+
+  function metricas() {
+    const base = estado.ops.filter(o => o.risco_pct >= estado.rmin
+      && (document.getElementById('f-dir').value === 'todas' || o.dir === Number(document.getElementById('f-dir').value))
+      && (document.getElementById('f-ses').value === 'todas' || (document.getElementById('f-ses').value === 'sessoes' ? o.sessao > 0 : o.sessao === Number(document.getElementById('f-ses').value))));
+    const n = base.length;
+    const dias = (estado.dados.fim - estado.dados.inicio) / 86400;
+    const media = f => n ? base.reduce((a, o) => a + f(o), 0) / n : NaN;
+    const res = base.map(o => o.t_res).filter(v => v >= 0).sort((a, b) => a - b);
+    const itens = [
+      ['Operações', n.toLocaleString('pt-BR'), `${(n / dias).toLocaleString('pt-BR', nf(1))} por dia · ${Math.round(dias)} dias`, null, ''],
+      ['Acerto antes do stop', `${pctSem(media(o => o.a1))} · ${pctSem(media(o => o.a2))} · ${pctSem(media(o => o.a3))}`, '1R · 2R · 3R (aleatório ≈ 49% em 1R)', null, 'destaque'],
+      ['Resultado médio', isNaN(media(o => o.resultado_1r)) ? '–' : rr(media(o => o.resultado_1r)), 'por operação com alvo 1R, antes das taxas', media(o => o.resultado_1r), ''],
+      ['Resultado líquido', isNaN(media(o => o.liq)) ? '–' : rr(media(o => o.liq)), 'com 0,02% + 0,05% de taxas', media(o => o.liq), ''],
+      ['Soma líquida', isNaN(media(o => o.liq)) ? '–' : rr(base.reduce((a, o) => a + o.liq, 0)), 'se todas fossem operadas', base.reduce((a, o) => a + o.liq, 0), ''],
+      ['Tempo até resolver', res.length ? minutos(res[Math.floor(res.length / 2)]) : '–', 'mediana até 1R ou stop', null, ''],
+    ];
+    document.getElementById('metricas').innerHTML = itens.map(([t, v, c, s, cls]) =>
+      `<div class="metrica ${cls}"><div class="rotulo">${t}</div><div class="v ${s == null || isNaN(s) ? '' : s >= 0 ? 'pos-v' : 'neg-v'}">${v}</div><div class="c">${c}</div></div>`).join('');
+  }
+
+  // ---------- operação atual ----------
+  async function mostrar() {
+    const vazio = !estado.lista.length;
+    if (vazio) {
+      document.getElementById('posicao').textContent = 'nenhuma operação';
+      ['cab', 'resultado', 'detalhes', 'chips'].forEach(id => document.getElementById(id).innerHTML = '');
+      velas.setMarkers([]); redesenhar(); return;
+    }
+    const op = estado.ops[estado.lista[estado.pos]];
+    await garantirMeses([...new Set([mesDe(op.t_origem - 3600), mesDe(op.t_exec), mesDe(op.t_saida + 3600)])]);
+
+    // marcadores: entradas das operações filtradas no período carregado + saída da atual
+    const t0 = tempos[0], t1 = tempos[tempos.length - 1];
+    const mk = estado.lista.map(i => estado.ops[i]).filter(o => o.t_exec >= t0 && o.t_exec <= t1).map(o => ({
+      time: o.t_exec, position: o.dir === 1 ? 'belowBar' : 'aboveBar', color: o.dir === 1 ? COR.compra : COR.venda,
+      shape: o.dir === 1 ? 'arrowUp' : 'arrowDown', size: o.i === op.i ? 2 : 0.6,
+    }));
+    if (op.t_saida <= t1) mk.push({ time: op.t_saida, position: op.dir === 1 ? 'aboveBar' : 'belowBar', color: COR.tinta, shape: 'circle', text: op.a1 ? 'alvo' : (op.t_stop >= 0 ? 'stop' : 'aberta') });
+    mk.sort((a, b) => a.time - b.time);
+    velas.setMarkers(mk);
+
+    const de = Math.min(op.t_origem, op.t_fvg) - 25 * 60, ate = Math.max(op.t_saida, op.t_exec + 60 * 30) + 25 * 60;
+    chart.timeScale().setVisibleRange({ from: Math.max(de, t0), to: Math.min(ate, t1) });
+
+    document.getElementById('posicao').textContent = `${(estado.pos + 1).toLocaleString('pt-BR')} de ${estado.lista.length.toLocaleString('pt-BR')}`;
+    const ses = estado.dados.sessoes[op.sessao];
+    document.getElementById('cab').innerHTML =
+      `<span class="pill ${op.dir === 1 ? 'compra' : 'venda'}">${op.dir === 1 ? 'COMPRA' : 'VENDA'}</span>` +
+      `<span class="pill neutra">${ses === 'fora' ? 'fora das aberturas' : ses}</span>` +
+      `<span class="sub num">${dataHora(op.t_exec)} UTC</span>`;
+    const r = op.resultado_1r;
+    document.getElementById('resultado').innerHTML =
+      `<span class="${r >= 0 ? 'pos-v' : 'neg-v'}">${rr(r)}</span> <span class="sub num">líquido ${rr(op.liq)}</span>`;
+    document.getElementById('chips').innerHTML = [op.a1, op.a2, op.a3].map((a, i) =>
+      `<span class="chip ${a ? 'sim' : 'nao'}" aria-label="${i + 1}R ${a ? 'atingido' : 'não atingido'} antes do stop">${i + 1}R ${a ? '✓' : '✗'}</span>`).join('');
+    const linhas = [
+      ['Entrada (borda do FVG)', preco(op.entrada)],
+      ['Stop (além da pernada)', preco(op.stop)],
+      ['R', `${preco(op.risco)} · ${pctSem(op.risco_pct, 2)}`],
+      ['1R · 2R · 3R', preco(op.alvo[0])], ['', preco(op.alvo[1])], ['', preco(op.alvo[2])],
+      ['FVG na pernada', `${pctSem(op.posicao)} (${op.posicao > 0.5 ? 'premium' : 'discount'})`],
+      ['Tempo até 1R', minutos(op.t_1r)],
+      ['Tempo até o stop', minutos(op.t_stop)],
+    ];
+    document.getElementById('detalhes').innerHTML = linhas.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
+    document.querySelectorAll('#ultimos button').forEach(b => b.setAttribute('aria-current', String(Number(b.dataset.i) === op.i)));
+    redesenhar();
+  }
+
+  function ultimos() {
+    const ult = estado.lista.slice(-10).map(i => estado.ops[i]);
+    const box = document.getElementById('ultimos');
+    box.innerHTML = '';
+    ult.forEach(o => {
+      const b = document.createElement('button');
+      b.className = o.a1 ? 'g' : 'p';
+      b.textContent = o.dir === 1 ? 'C' : 'V';
+      b.dataset.i = o.i;
+      b.title = `${o.dir === 1 ? 'Compra' : 'Venda'} ${dataHora(o.t_exec)} · ${rr(o.resultado_1r)}`;
+      b.setAttribute('aria-label', b.title);
+      b.onclick = () => { estado.pos = estado.lista.indexOf(o.i); mostrar(); };
+      box.appendChild(b);
+    });
+    const g = ult.filter(o => o.a1).length;
+    document.getElementById('ultimos-resumo').textContent =
+      `${g} de ${ult.length} chegaram a 1R antes do stop · soma líquida ${rr(ult.reduce((a, o) => a + o.liq, 0))}. C = compra, V = venda.`;
+  }
+
+  async function aplicarFiltros(manterTempo = true) {
+    const atual = estado.lista.length ? estado.ops[estado.lista[estado.pos]] : null;
+    filtrar();
+    estado.pos = Math.max(estado.lista.length - 1, 0);
+    if (manterTempo && atual) irPara(atual.t_exec, false);
+    metricas(); ultimos();
+    await mostrar();
+  }
+
+  function irPara(t, mostrarJa = true) {
+    let melhor = 0;
+    estado.lista.forEach((i, p) => { if (estado.ops[i].t_exec <= t) melhor = p; });
+    estado.pos = melhor;
+    if (mostrarJa) mostrar();
+  }
+
+  // ---------- controles ----------
+  function botoesSeg(id, valores, atual, fmt, aoMudar) {
+    const box = document.getElementById(id);
+    box.innerHTML = '';
+    valores.forEach(v => {
+      const b = document.createElement('button');
+      b.textContent = fmt(v);
+      b.setAttribute('aria-pressed', String(atual() === v));
+      b.onclick = () => { aoMudar(v); botoesSeg(id, valores, atual, fmt, aoMudar); };
+      box.appendChild(b);
+    });
+  }
+  const falha = err => { aviso.hidden = false; aviso.textContent = `Não foi possível carregar os dados: ${err.message}`; };
+  botoesSeg('seg-ativo', ATIVOS, () => estado.ativo, v => v.replace('USDT', ''), v => {
+    estado.ativo = v; estado.meses = [];
+    carregarOps().then(() => aplicarFiltros(false)).catch(falha);
+  });
+  botoesSeg('seg-rmin', [0, 0.002, 0.004, 0.006], () => estado.rmin, v => v ? `≥ ${(v * 100).toLocaleString('pt-BR', nf(1))}%` : 'todos', v => {
+    estado.rmin = v; aplicarFiltros().catch(falha);
+  });
+  botoesSeg('seg-medias', [true, false], () => estado.medias, v => v ? 'Mostrar' : 'Ocultar', v => {
+    estado.medias = v; atualizarMedias();
+  });
+  for (const id of ['f-dir', 'f-res', 'f-ses']) document.getElementById(id).onchange = () => aplicarFiltros().catch(falha);
+  document.getElementById('f-data').onchange = e => { if (e.target.value) irPara(Date.parse(e.target.value + 'T23:59:59Z') / 1000); };
+  const mover = d => { if (!estado.lista.length) return; estado.pos = Math.min(Math.max(estado.pos + d, 0), estado.lista.length - 1); mostrar().catch(falha); };
+  document.getElementById('ant').onclick = () => mover(-1);
+  document.getElementById('prox').onclick = () => mover(1);
+  document.addEventListener('keydown', ev => {
+    if (ev.target.matches('input, select')) return;
+    if (ev.key === 'ArrowLeft') mover(-1);
+    if (ev.key === 'ArrowRight') mover(1);
+  });
+
+  await carregarOps();
+  await aplicarFiltros(false);
+})().catch(err => {
+  const a = document.getElementById('aviso');
+  a.hidden = false; a.textContent = `Não foi possível carregar os dados: ${err.message}`;
+});
+</script>

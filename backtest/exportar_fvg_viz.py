@@ -1,0 +1,91 @@
+"""
+Exporta os dados do visualizador de operações de FVG (M1).
+
+A estrutura e os setups são calculados no histórico inteiro (para o estado da estrutura ser o
+mesmo do estudo); só os últimos meses vão para a página. Candles saem em um arquivo por mês,
+carregado sob demanda.
+
+Uso: python exportar_fvg_viz.py 2026-04-01 BTCUSDT ETHUSDT
+"""
+
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+import estrategia as est
+import smc
+
+PIVO = 5
+STOP = 'stop_estrutura'
+SESSOES = ['fora', 'Ásia', 'Londres', 'Nova York']
+SAIDA = Path(__file__).parent / 'saida' / 'visualizador_fvg' / 'dados'
+
+
+def _t(df, i):
+    return int(df['open_time'].iat[i] // 1000)
+
+
+def exportar(ativo, inicio):
+    df = pd.read_pickle(Path(__file__).parent / 'cache' / f'{ativo}_1m.pkl')
+    passo = df['open_time'].diff().iloc[1:]
+    assert (passo == 60_000).all(), 'há buracos no M1; o formato compacto assume candles contínuos'
+    atr = est.calcular_atr(df).to_numpy()
+    e = smc.estrutura(df, PIVO)
+    setups = smc.montar_setups(df, e, atr)
+    setups = smc.avaliar(df, setups, STOP)
+    setups = setups[~setups.duplicated(['dir', 'origem'])]           # 1º FVG executado da pernada
+    sessoes = smc.sessao(df['time'])
+
+    i0 = int(df['time'].searchsorted(pd.Timestamp(inicio, tz='UTC')))
+    destino = SAIDA / ativo
+    destino.mkdir(parents=True, exist_ok=True)
+    casas = 2
+
+    # ---- candles e eventos de estrutura, um arquivo por mês ----
+    sub = df.iloc[i0:]
+    meses = []
+    for mes, g in sub.groupby(sub['time'].dt.strftime('%Y-%m')):
+        a, b = g.index[0], g.index[-1]
+        ev_idx = np.flatnonzero(e['evento'][a:b + 1]) + a
+        eventos = [[_t(df, t), int(e['evento'][t]), round(float(e['nivel_rompido'][t]), casas),
+                    _t(df, int(e['idx_rompido'][t])), _t(df, int(e['origem_idx'][t])),
+                    round(float(df['close'].iat[int(e['origem_idx'][t])]), casas)] for t in ev_idx]
+        dados = {'t0': _t(df, a), 'o': g['open'].round(casas).tolist(), 'h': g['high'].round(casas).tolist(),
+                 'l': g['low'].round(casas).tolist(), 'c': g['close'].round(casas).tolist(), 'eventos': eventos}
+        (destino / f'{mes}.json').write_text(json.dumps(dados, separators=(',', ':')))
+        meses.append(mes)
+
+    # ---- operações ----
+    sel = setups[setups['i_exec'] >= i0]
+    h, l = df['high'].to_numpy(), df['low'].to_numpy()
+    inf = lambda v: -1 if v == np.inf else int(v)
+    ops = []
+    for s in sel.itertuples():
+        if s.dir == -1:
+            topo, fundo = s.extremo_perna, l[s.origem:s.i_fvg + 1].min()
+        else:
+            topo, fundo = h[s.origem:s.i_fvg + 1].max(), s.extremo_perna
+        ops.append([_t(df, s.i_fvg - 2), _t(df, s.i_exec), int(s.dir), round(s.entrada, casas),
+                    round(s.stop_estrutura, casas), round(s.zona_base, casas), round(s.zona_topo, casas),
+                    round(float(s.posicao_perna), 3), round(float(s.risco_pct), 5),
+                    int(s.acerto_1r), int(s.acerto_2r), int(s.acerto_3r),
+                    inf(s.t_stop), inf(s.t_1r), inf(s.t_2r), inf(s.t_3r),
+                    round(float(s.resultado_1r), 3), SESSOES.index(sessoes[s.i_exec]),
+                    _t(df, s.origem), round(float(topo), casas), round(float(fundo), casas)])
+    resumo = {'ativo': ativo, 'pivo': PIVO, 'meses': meses, 'casas': casas,
+              'inicio': _t(df, i0), 'fim': _t(df, len(df) - 1), 'sessoes': SESSOES,
+              'campos': ['t_fvg', 't_exec', 'dir', 'entrada', 'stop', 'zona_base', 'zona_topo', 'posicao',
+                         'risco_pct', 'a1', 'a2', 'a3', 't_stop', 't_1r', 't_2r', 't_3r', 'resultado_1r',
+                         'sessao', 't_origem', 'topo_perna', 'fundo_perna'],
+              'operacoes': ops}
+    (destino / 'operacoes.json').write_text(json.dumps(resumo, separators=(',', ':')))
+    tam = sum(f.stat().st_size for f in destino.iterdir()) / 1e6
+    print(f'{ativo}: {len(meses)} meses, {len(ops)} operações, {tam:.1f} MB')
+
+
+if __name__ == '__main__':
+    for a in sys.argv[2:]:
+        exportar(a, sys.argv[1])
